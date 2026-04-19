@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+oracledb
+pandas
+plotly
+kaleido
+reportlab
+python-dotenv
