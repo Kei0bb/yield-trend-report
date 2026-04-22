@@ -82,7 +82,7 @@ Report_gen/
 ## クイックスタート
 
 ### 前提条件
-- Python 3.13+
+- [uv](https://docs.astral.sh/uv/) (`curl -LsSf https://astral.sh/uv/install.sh | sh`)
 - Node.js 18+
 - （本番のみ）Oracle Instant Client
 
@@ -91,13 +91,14 @@ Report_gen/
 ```bash
 cd backend
 
-# 仮想環境作成 & パッケージインストール
-python3.13 -m venv venv
-source venv/bin/activate       # Windows: venv\Scripts\activate
-pip install -r requirements.txt
+# 依存パッケージ一括インストール（Python 3.13 の venv も自動作成）
+uv sync
 
 # モックデータで起動（Oracle 不要）
-USE_MOCK_DATA=true uvicorn app.main:app --reload --port 8000
+uv run uvicorn app.main:app --reload --port 8000
+
+# または環境変数を明示して起動
+USE_MOCK_DATA=true uv run uvicorn app.main:app --reload --port 8000
 ```
 
 API ドキュメントは http://localhost:8000/docs で確認できます。

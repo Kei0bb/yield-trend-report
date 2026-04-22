@@ -1,0 +1,22 @@
+[project]
+name = "yield-trend-report"
+version = "0.1.0"
+description = "Yield Trend Report Generator — FastAPI backend"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "oracledb",
+    "pandas",
+    "plotly",
+    "kaleido",
+    "reportlab",
+    "python-dotenv",
+    "pillow",
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "httpx",   # FastAPI TestClient に必要
+]

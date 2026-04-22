@@ -12,6 +12,9 @@ build/
 venv/
 .venv/
 env/
+
+# uv — lock file はコミットする、キャッシュは除外
+.uv-cache/
 .env
 .env.*
 !.env.example
