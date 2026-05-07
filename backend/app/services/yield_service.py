@@ -42,7 +42,7 @@ def get_yield_data(
                 h.WAFER_ID                                     AS wafer_id,
                 CASE
                     WHEN h.EFFECTIVE_NUM > 0
-                    THEN ROUND(h.PASS_CHIP / h.EFFECTIVE_NUM * 100, 3)
+                    THEN ROUND(h.PERFECT_PASS_CHIP / h.EFFECTIVE_NUM * 100, 3)
                     ELSE 0
                 END                                            AS yield_pct,
                 h.EFFECTIVE_NUM                                AS gross_die,
