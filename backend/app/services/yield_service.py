@@ -15,7 +15,12 @@ def get_products() -> list[str]:
     try:
         cursor = conn.cursor()
         cursor.execute(
-            "SELECT DISTINCT product_name FROM wafer_test_results ORDER BY product_name"
+            """
+            SELECT DISTINCT PRODUCT_ID
+            FROM SEMI_CP_HEADER
+            WHERE DEL_FLAG = 0
+            ORDER BY PRODUCT_ID
+            """
         )
         return [row[0] for row in cursor.fetchall()]
     finally:
@@ -33,18 +38,28 @@ def get_yield_data(
         cursor = conn.cursor()
         query = """
             SELECT
-                lot_id,
-                wafer_id,
-                yield_pct,
-                gross_die,
-                bin_code,
-                bin_fail_count
-            FROM wafer_test_results
-            WHERE product_name = :product
-              AND test_process = :process
-              AND test_month >= :start_month
-              AND test_month <= :end_month
-            ORDER BY lot_id, wafer_id
+                h.LOT_ID                                       AS lot_id,
+                h.WAFER_ID                                     AS wafer_id,
+                CASE
+                    WHEN h.EFFECTIVE_NUM > 0
+                    THEN ROUND(h.PASS_CHIP / h.EFFECTIVE_NUM * 100, 3)
+                    ELSE 0
+                END                                            AS yield_pct,
+                h.EFFECTIVE_NUM                                AS gross_die,
+                b.BIN_NAME                                     AS bin_code,
+                b.BIN_COUNT                                    AS bin_fail_count
+            FROM SEMI_CP_HEADER h
+            JOIN SEMI_CP_BIN_SUM b
+              ON h.SUBSTRATE_ID = b.SUBSTRATE_ID
+            WHERE h.PRODUCT_ID  = :product
+              AND h.PROCESS      = :process
+              AND h.CREATE_DATE >= TO_DATE(:start_month || '-01', 'YYYY-MM-DD')
+              AND h.CREATE_DATE  < ADD_MONTHS(
+                                      TO_DATE(:end_month || '-01', 'YYYY-MM-DD'), 1)
+              AND h.DEL_FLAG     = 0
+              AND b.DEL_FLAG     = 0
+              AND b.BIN_QUALITY != 'PASS'
+            ORDER BY h.LOT_ID, h.WAFER_ID
         """
         cursor.execute(
             query,
