@@ -1,10 +1,45 @@
 import random
+from functools import lru_cache
+from pathlib import Path
 
 import pandas as pd
 
 from app.config import settings
 from app.database import get_connection, release_connection
 from app.models.schemas import ProcessData
+
+# bin_group.csv は backend/ 直下に置く
+_BIN_GROUP_CSV = Path(__file__).parent.parent.parent / "bin_group.csv"
+
+
+@lru_cache(maxsize=1)
+def _load_bin_groups() -> dict[int, str]:
+    """
+    bin_group.csv を読み込み {bin_code(int): bin_group(str)} を返す。
+    ファイルがなければ空辞書（= BIN_NAME をそのまま使用）。
+    CSV を更新した場合はサーバー再起動で反映される。
+    """
+    if not _BIN_GROUP_CSV.exists():
+        return {}
+    df = pd.read_csv(_BIN_GROUP_CSV, dtype={"bin_code": int, "bin_group": str})
+    return dict(zip(df["bin_code"], df["bin_group"]))
+
+
+def _apply_bin_groups(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    bin_code(数値) を CSV のグループ名に置き換える。
+    マッピングがない bin は bin_name をそのまま使う。
+    """
+    mapping = _load_bin_groups()
+    if not mapping:
+        return df  # CSV なし → bin_name をそのまま使用
+
+    df = df.copy()
+    df["bin_code"] = df.apply(
+        lambda r: mapping.get(int(r["raw_bin_code"]), r["bin_name"]),
+        axis=1,
+    )
+    return df
 
 
 def get_products() -> list[str]:
@@ -46,7 +81,8 @@ def get_yield_data(
                     ELSE 0
                 END                                            AS yield_pct,
                 h.EFFECTIVE_NUM                                AS gross_die,
-                b.BIN_NAME                                     AS bin_code,
+                b.BIN_CODE                                     AS raw_bin_code,
+                b.BIN_NAME                                     AS bin_name,
                 b.BIN_COUNT                                    AS bin_fail_count
             FROM SEMI_CP_HEADER h
             JOIN SEMI_CP_BIN_SUM b
@@ -76,11 +112,15 @@ def get_yield_data(
             "wafer_id",
             "yield_pct",
             "gross_die",
-            "bin_code",
+            "raw_bin_code",
+            "bin_name",
             "bin_fail_count",
         ]
         rows = cursor.fetchall()
         df = pd.DataFrame(rows, columns=columns)
+
+        # bin_code(数値) → グループ名に置き換え
+        df = _apply_bin_groups(df)
 
         return _aggregate_lot_data(df)
     finally:
