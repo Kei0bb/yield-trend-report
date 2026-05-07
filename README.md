@@ -84,7 +84,9 @@ Report_gen/
 ### 前提条件
 - [uv](https://docs.astral.sh/uv/) (`curl -LsSf https://astral.sh/uv/install.sh | sh`)
 - Node.js 18+
-- （本番のみ）Oracle Instant Client
+
+> **Oracle Instant Client は不要です。**  
+> `oracledb` は Thin モード（Pure Python）がデフォルトのため、クライアントライブラリのインストールなしで Oracle DB に接続できます。
 
 ### 1. バックエンド起動
 
