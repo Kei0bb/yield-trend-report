@@ -13,6 +13,7 @@ from datetime import date
 from pathlib import Path
 
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.units import mm
 from reportlab.lib.utils import ImageReader
@@ -144,6 +145,107 @@ def _create_chart_image(
         height=height,
     )
 
+    return fig.to_image(format="png", scale=2)
+
+
+def _create_multi_chart_image(
+    process_name: str,
+    products: list[str],
+    product_data: dict[str, ProcessData],
+    width: int = 1400,
+    height: int = 480,
+) -> bytes:
+    """複数品種: 品種ごとに Bin stacked bar + Yield line を横並び (subplots)"""
+    n = len(products)
+    # 共通 yield スケール
+    all_yields = [v for p in products for v in product_data[p].yield_avg]
+    y_min = min(all_yields) if all_yields else 80
+    y_max = max(all_yields) if all_yields else 100
+    y_pad = max((y_max - y_min) * 0.5, 2)
+    y_range = [max(0, y_min - y_pad), min(100, y_max + y_pad)]
+
+    specs = [[{"secondary_y": True}] * n]
+    subplot_titles = products
+    fig = make_subplots(
+        rows=1, cols=n,
+        specs=specs,
+        subplot_titles=subplot_titles,
+        horizontal_spacing=0.06,
+    )
+
+    for col_idx, product in enumerate(products, start=1):
+        proc_data = product_data[product]
+        color = PRODUCT_COLORS[(col_idx - 1) % len(PRODUCT_COLORS)]
+        bin_names = list(proc_data.fail_bins.keys())
+
+        for i, bin_name in enumerate(bin_names):
+            fig.add_trace(
+                go.Bar(
+                    x=proc_data.lots,
+                    y=proc_data.fail_bins[bin_name],
+                    name=bin_name,
+                    marker_color=BIN_COLORS[i % len(BIN_COLORS)],
+                    opacity=0.9,
+                    showlegend=(col_idx == 1),  # 凡例は最初のカラムのみ
+                    legendgroup=bin_name,
+                ),
+                row=1, col=col_idx, secondary_y=False,
+            )
+
+        fig.add_trace(
+            go.Scatter(
+                x=proc_data.lots,
+                y=proc_data.yield_avg,
+                name=product,
+                mode="lines+markers",
+                line=dict(color=color, width=2.5, shape="spline"),
+                marker=dict(size=6, color=color),
+                showlegend=True,
+                legendgroup=f"yield_{product}",
+            ),
+            row=1, col=col_idx, secondary_y=True,
+        )
+
+        # 各サブプロットの軸設定
+        fig.update_yaxes(
+            title_text="Fail Bin (%)" if col_idx == 1 else "",
+            rangemode="tozero",
+            tickfont=dict(size=10, color=SUBTEXT_COLOR),
+            gridcolor="rgba(0,0,0,0.04)",
+            row=1, col=col_idx, secondary_y=False,
+        )
+        fig.update_yaxes(
+            title_text="Yield (%)" if col_idx == n else "",
+            range=y_range,
+            tickfont=dict(size=10, color=SUBTEXT_COLOR),
+            showgrid=False,
+            row=1, col=col_idx, secondary_y=True,
+        )
+        fig.update_xaxes(
+            tickangle=-30,
+            tickfont=dict(size=9, color=SUBTEXT_COLOR),
+            gridcolor="rgba(0,0,0,0.04)",
+            row=1, col=col_idx,
+        )
+
+    fig.update_layout(
+        barmode="stack",
+        font=dict(family=FONT_FAMILY, size=11, color=TEXT_COLOR),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=-0.32,
+            xanchor="center",
+            x=0.5,
+            font=dict(size=10, color=SUBTEXT_COLOR, family=FONT_FAMILY),
+            bgcolor="rgba(0,0,0,0)",
+        ),
+        margin=dict(l=55, r=55, t=40, b=110),
+        plot_bgcolor="#ffffff",
+        paper_bgcolor="#ffffff",
+        width=width,
+        height=height,
+    )
     return fig.to_image(format="png", scale=2)
 
 
@@ -428,7 +530,8 @@ def generate_pdf(
 
         # 3. Chart
         if multi:
-            chart_bytes = _create_comparison_chart_image(process_name, prod_dict)
+            # 複数品種: 品種ごとに Bin chart を生成して横に並べた画像を返す
+            chart_bytes = _create_multi_chart_image(process_name, products, prod_dict)
         else:
             chart_bytes = _create_chart_image(process_name, prod_dict[products[0]])
 
