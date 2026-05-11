@@ -13,12 +13,15 @@ def list_products() -> list[str]:
 
 @router.post("/yield-data")
 def fetch_yield_data(req: YieldRequest) -> YieldResponse:
-    data = {}
+    # data[process][product] = ProcessData
+    data: dict = {}
     for process in req.processes:
-        data[process] = get_yield_data(
-            product=req.product,
-            start_month=req.start_month,
-            end_month=req.end_month,
-            process=process,
-        )
+        data[process] = {}
+        for product in req.products:
+            data[process][product] = get_yield_data(
+                product=product,
+                start_month=req.start_month,
+                end_month=req.end_month,
+                process=process,
+            )
     return YieldResponse(data=data)

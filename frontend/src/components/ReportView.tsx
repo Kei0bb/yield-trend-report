@@ -16,9 +16,9 @@ export default function ReportView({ data, request }: ReportViewProps) {
           <div style={styles.emptyBadge}>Ready</div>
           <h2 style={styles.emptyTitle}>Generate your yield report</h2>
           <p style={styles.emptyText}>
-            Pick a product, period, and test process on the left, then hit{" "}
-            <b>Generate Report</b> to see lot-level yield trends and failure-bin
-            breakdown per process.
+            Pick a product (or multiple to compare), period, and test process on
+            the left, then hit <b>Generate Report</b> to see lot-level yield
+            trends and failure-bin breakdown per process.
           </p>
         </div>
       </main>
@@ -30,13 +30,26 @@ export default function ReportView({ data, request }: ReportViewProps) {
   );
 
   const today = new Date().toISOString().slice(0, 10);
+  const isMulti = request.products.length > 1;
+  const titleText = isMulti
+    ? request.products.join(" vs ")
+    : request.products[0];
 
   return (
     <main style={styles.container}>
       <header style={styles.header}>
         <div style={styles.breadcrumb}>Reports · Yield Trend</div>
-        <h1 style={styles.title}>{request.product}</h1>
+        <h1 style={styles.title}>{titleText}</h1>
         <div style={styles.metaRow}>
+          {isMulti && (
+            <>
+              <span style={styles.metaItem}>
+                <span style={styles.metaLabel}>Products</span>
+                {request.products.join(" · ")}
+              </span>
+              <span style={styles.metaDivider} />
+            </>
+          )}
           <span style={styles.metaItem}>
             <span style={styles.metaLabel}>Period</span>
             {request.start_month} → {request.end_month}
@@ -59,7 +72,7 @@ export default function ReportView({ data, request }: ReportViewProps) {
           <YieldChart
             key={process}
             processName={process}
-            data={data.data[process]}
+            productData={data.data[process]}
           />
         ))}
       </div>

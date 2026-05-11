@@ -56,6 +56,18 @@ HEADER_H = 38 * mm   # height of the header band
 FOOTER_H = 10 * mm   # height of the footer band
 
 
+# 品種ごとの色（複数品種比較用）
+PRODUCT_COLORS = [
+    "#0075de",  # notion blue
+    "#e03e3e",  # red
+    "#1aae39",  # green
+    "#dd5b00",  # orange
+    "#391c57",  # purple
+    "#e9b949",  # yellow
+    "#097fe8",  # focus blue
+    "#ff64c8",  # pink
+]
+
 # ---------------------------------------------------------------------------
 # Chart rendering
 # ---------------------------------------------------------------------------
@@ -66,6 +78,7 @@ def _create_chart_image(
     width: int = 1000,
     height: int = 460,
 ) -> bytes:
+    """単一品種: Bin stacked bar + Yield line"""
     fig = go.Figure()
 
     bin_names = list(proc_data.fail_bins.keys())
@@ -93,7 +106,7 @@ def _create_chart_image(
         barmode="stack",
         font=dict(family=FONT_FAMILY, size=12, color=TEXT_COLOR),
         xaxis=dict(
-            title=dict(text="Lot ID", font=dict(size=11, color=SUBTEXT_COLOR)),
+            title=dict(text="Work Week", font=dict(size=11, color=SUBTEXT_COLOR)),
             tickangle=-30,
             tickfont=dict(size=11, color=SUBTEXT_COLOR),
             gridcolor="rgba(0,0,0,0.04)",
@@ -114,6 +127,61 @@ def _create_chart_image(
             range=[80, 100],
             tickfont=dict(size=11, color=SUBTEXT_COLOR),
             showgrid=False,
+        ),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=-0.38,
+            xanchor="center",
+            x=0.5,
+            font=dict(size=11, color=SUBTEXT_COLOR, family=FONT_FAMILY),
+            bgcolor="rgba(0,0,0,0)",
+        ),
+        margin=dict(l=60, r=60, t=20, b=110),
+        plot_bgcolor="#ffffff",
+        paper_bgcolor="#ffffff",
+        width=width,
+        height=height,
+    )
+
+    return fig.to_image(format="png", scale=2)
+
+
+def _create_comparison_chart_image(
+    process_name: str,
+    product_data: dict[str, ProcessData],
+    width: int = 1000,
+    height: int = 460,
+) -> bytes:
+    """複数品種比較: 品種ごとの Yield line を重ね描き"""
+    fig = go.Figure()
+
+    for i, (product, proc_data) in enumerate(product_data.items()):
+        color = PRODUCT_COLORS[i % len(PRODUCT_COLORS)]
+        fig.add_trace(go.Scatter(
+            x=proc_data.lots,
+            y=proc_data.yield_avg,
+            name=product,
+            mode="lines+markers",
+            line=dict(color=color, width=2.5, shape="spline"),
+            marker=dict(size=7, color=color),
+        ))
+
+    fig.update_layout(
+        font=dict(family=FONT_FAMILY, size=12, color=TEXT_COLOR),
+        xaxis=dict(
+            title=dict(text="Work Week", font=dict(size=11, color=SUBTEXT_COLOR)),
+            tickangle=-30,
+            tickfont=dict(size=11, color=SUBTEXT_COLOR),
+            gridcolor="rgba(0,0,0,0.05)",
+            linecolor="rgba(0,0,0,0.1)",
+        ),
+        yaxis=dict(
+            title=dict(text="Yield (%)", font=dict(size=11, color=SUBTEXT_COLOR)),
+            rangemode="tozero",
+            tickfont=dict(size=11, color=SUBTEXT_COLOR),
+            gridcolor="rgba(0,0,0,0.05)",
+            zerolinecolor="rgba(0,0,0,0.08)",
         ),
         legend=dict(
             orientation="h",
@@ -315,29 +383,48 @@ def _draw_footer(
 # ---------------------------------------------------------------------------
 
 def generate_pdf(
-    product: str,
+    products: list[str],
     start_month: str,
     end_month: str,
-    data: dict[str, ProcessData],
+    data: dict[str, dict[str, ProcessData]],  # process -> product -> ProcessData
 ) -> bytes:
+    """
+    複数品種対応 PDF 生成。
+    - 1 品種: 工程ごとに Bin bar + Yield line のページ
+    - 複数品種: 工程ごとに品種別 Yield line 比較ページ
+    """
     buf = io.BytesIO()
     page_width, page_height = landscape(A4)
     c = canvas.Canvas(buf, pagesize=landscape(A4))
 
-    processes = [p for p, d in data.items() if d.lots]
+    multi = len(products) > 1
+    title_label = " vs ".join(products) if multi else products[0]
+
+    # データがある工程のみ対象
+    processes = [
+        p for p, prod_dict in data.items()
+        if any(d.lots for d in prod_dict.values())
+    ]
     total_pages = len(processes)
 
     for page_num, process_name in enumerate(processes, start=1):
-        proc_data = data[process_name]
+        prod_dict = data[process_name]
 
-        # 1. Watermark (drawn first, behind everything)
+        # 1. Watermark
         _draw_confidential_watermark(c, page_width, page_height)
 
         # 2. Header
-        _draw_header(c, page_width, page_height, product, start_month, end_month, process_name)
+        _draw_header(
+            c, page_width, page_height,
+            title_label, start_month, end_month, process_name,
+        )
 
         # 3. Chart
-        chart_bytes = _create_chart_image(process_name, proc_data)
+        if multi:
+            chart_bytes = _create_comparison_chart_image(process_name, prod_dict)
+        else:
+            chart_bytes = _create_chart_image(process_name, prod_dict[products[0]])
+
         img_reader = ImageReader(io.BytesIO(chart_bytes))
         chart_x = MARGIN
         chart_y = FOOTER_H + 2 * mm

@@ -23,7 +23,8 @@ export async function exportPdf(req: YieldRequest): Promise<void> {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `YieldTrend_${req.product}_${req.start_month}_to_${req.end_month}.pdf`;
+  const productsLabel = req.products.join("_vs_");
+  a.download = `YieldTrend_${productsLabel}_${req.start_month}_to_${req.end_month}.pdf`;
   a.click();
   URL.revokeObjectURL(url);
 }
