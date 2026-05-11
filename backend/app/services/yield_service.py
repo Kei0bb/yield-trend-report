@@ -8,8 +8,28 @@ from app.config import settings
 from app.database import get_connection, release_connection
 from app.models.schemas import ProcessData
 
-# bin_group.csv は backend/ 直下に置く
-_BIN_GROUP_CSV = Path(__file__).parent.parent.parent / "bin_group.csv"
+# backend/ 直下の設定ファイル
+_BIN_GROUP_CSV   = Path(__file__).parent.parent.parent / "bin_group.csv"
+_PRODUCT_LIST_TXT = Path(__file__).parent.parent.parent / "product_list.txt"
+
+
+@lru_cache(maxsize=1)
+def _load_product_list() -> list[str] | None:
+    """
+    product_list.txt を読み込み、表示したい PRODUCT_ID のリストを返す。
+    ファイルがなければ None（= DB 全件を使用）。
+    '#' で始まる行・空行はコメントとして無視。
+    サーバー再起動で反映される。
+    """
+    if not _PRODUCT_LIST_TXT.exists():
+        return None
+    lines = _PRODUCT_LIST_TXT.read_text(encoding="utf-8").splitlines()
+    products = [
+        line.strip()
+        for line in lines
+        if line.strip() and not line.strip().startswith("#")
+    ]
+    return products if products else None
 
 
 @lru_cache(maxsize=1)
@@ -47,6 +67,12 @@ def get_products() -> list[str]:
     if settings.USE_MOCK_DATA:
         return _mock_products()
 
+    # product_list.txt があればそのリストを返す（DB 問い合わせ不要）
+    product_list = _load_product_list()
+    if product_list is not None:
+        return product_list
+
+    # ファイルなし → DB から全件取得
     conn = get_connection()
     try:
         cursor = conn.cursor()
