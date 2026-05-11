@@ -154,6 +154,13 @@ def _create_comparison_chart_image(
     height: int = 460,
 ) -> bytes:
     """複数品種比較: 品種ごとの Yield line を重ね描き"""
+    # Y 軸範囲を動的計算（余白 ±2%）
+    all_yields = [v for d in product_data.values() for v in d.yield_avg]
+    y_min = min(all_yields) if all_yields else 80
+    y_max = max(all_yields) if all_yields else 100
+    y_pad = max((y_max - y_min) * 0.5, 2)
+    y_range = [max(0, y_min - y_pad), min(100, y_max + y_pad)]
+
     fig = go.Figure()
 
     for i, (product, proc_data) in enumerate(product_data.items()):
@@ -178,7 +185,7 @@ def _create_comparison_chart_image(
         ),
         yaxis=dict(
             title=dict(text="Yield (%)", font=dict(size=11, color=SUBTEXT_COLOR)),
-            rangemode="tozero",
+            range=y_range,
             tickfont=dict(size=11, color=SUBTEXT_COLOR),
             gridcolor="rgba(0,0,0,0.05)",
             zerolinecolor="rgba(0,0,0,0.08)",

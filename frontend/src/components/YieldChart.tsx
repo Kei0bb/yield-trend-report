@@ -155,6 +155,14 @@ export default function YieldChart({ processName, productData }: YieldChartProps
   }
 
   // ── 複数品種比較レンダリング ─────────────────────────────────────
+
+  // Y 軸範囲を全品種のデータから動的計算（余白 ±2%）
+  const allYields = productNames.flatMap((p) => productData[p].yield_avg);
+  const yMin = allYields.length > 0 ? Math.min(...allYields) : 80;
+  const yMax = allYields.length > 0 ? Math.max(...allYields) : 100;
+  const yPad = Math.max((yMax - yMin) * 0.5, 2);
+  const yRange = [Math.max(0, Math.floor(yMin - yPad)), Math.min(100, Math.ceil(yMax + yPad))];
+
   const lineTraces: Plotly.Data[] = productNames.map((product, i) => {
     const d = productData[product];
     const color = PRODUCT_COLORS[i % PRODUCT_COLORS.length];
@@ -181,7 +189,7 @@ export default function YieldChart({ processName, productData }: YieldChartProps
     },
     yaxis: {
       title: { text: "Yield (%)", font: { size: 11, color: "#787672" } },
-      rangemode: "tozero",
+      range: yRange,
       tickfont: { size: 11, color: "#615d59" },
       gridcolor: "rgba(0,0,0,0.05)",
       zerolinecolor: "rgba(0,0,0,0.08)",
