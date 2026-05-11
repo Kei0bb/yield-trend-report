@@ -74,7 +74,7 @@ def get_yield_data(
         cursor = conn.cursor()
         query = """
             SELECT
-                h.LOT_ID                                       AS lot_id,
+                TO_CHAR(h.CREATE_DATE, 'IYYY"W"IW')           AS lot_id,
                 h.WAFER_ID                                     AS wafer_id,
                 CASE
                     WHEN h.EFFECTIVE_NUM > 0
@@ -88,6 +88,8 @@ def get_yield_data(
             FROM SEMI_CP_HEADER h
             JOIN SEMI_CP_BIN_SUM b
               ON h.SUBSTRATE_ID = b.SUBSTRATE_ID
+             AND h.WAFER_ID     = b.WAFER_ID
+             AND h.PROCESS      = b.PROCESS
             WHERE h.PRODUCT_ID  = :product
               AND h.PROCESS      = :process
               AND h.CREATE_DATE >= TO_DATE(:start_month || '-01', 'YYYY-MM-DD')
@@ -96,7 +98,7 @@ def get_yield_data(
               AND h.DEL_FLAG     = 0
               AND b.DEL_FLAG     = 0
               AND b.BIN_QUALITY != 'PASS'
-            ORDER BY h.LOT_ID, h.WAFER_ID
+            ORDER BY TO_CHAR(h.CREATE_DATE, 'IYYY"W"IW'), h.WAFER_ID
         """
         cursor.execute(
             query,
@@ -177,7 +179,10 @@ def _mock_yield_data(
     random.seed(hash(f"{product}-{process}-{start_month}") % 2**32)
 
     num_lots = random.randint(6, 12)
-    lots = [f"LOT{str(i + 1).zfill(3)}" for i in range(num_lots)]
+    # x軸は Work Week 形式（例: 2026W01）
+    year = int(start_month[:4])
+    start_week = int(start_month[5:7]) * 4  # 月→週の近似
+    lots = [f"{year}W{str(start_week + i).zfill(2)}" for i in range(num_lots)]
 
     base_yield = {"CP": 96.0, "FT": 94.0, "SLT": 92.0}.get(process, 95.0)
     yield_avg = [round(base_yield + random.uniform(-3, 3), 2) for _ in lots]
