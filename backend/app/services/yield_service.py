@@ -27,18 +27,19 @@ def _load_bin_groups() -> dict[int, str]:
 
 def _apply_bin_groups(df: pd.DataFrame) -> pd.DataFrame:
     """
-    bin_code(数値) を CSV のグループ名に置き換える。
+    raw_bin_code(数値) を CSV のグループ名に置き換えて bin_code 列を作る。
     マッピングがない bin は bin_name をそのまま使う。
     """
-    mapping = _load_bin_groups()
-    if not mapping:
-        return df  # CSV なし → bin_name をそのまま使用
-
     df = df.copy()
-    df["bin_code"] = df.apply(
-        lambda r: mapping.get(int(r["raw_bin_code"]), r["bin_name"]),
-        axis=1,
-    )
+    mapping = _load_bin_groups()
+    if mapping:
+        # vectorized map: マッピングにない bin_code は NaN → bin_name で埋める
+        df["bin_code"] = (
+            df["raw_bin_code"].astype(int).map(mapping).fillna(df["bin_name"])
+        )
+    else:
+        # CSV なし → bin_name をそのまま使用
+        df["bin_code"] = df["bin_name"]
     return df
 
 
