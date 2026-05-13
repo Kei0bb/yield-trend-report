@@ -152,11 +152,13 @@ def _create_multi_chart_image(
     process_name: str,
     products: list[str],
     product_data: dict[str, ProcessData],
-    width: int = 1400,
-    height: int = 480,
+    width: int = 1100,
+    height: int = 500,
 ) -> bytes:
-    """複数品種: 品種ごとに Bin stacked bar + Yield line を横並び (subplots)"""
-    n = len(products)
+    """
+    複数（改版）品種: 同一チャートに grouped stacked bar + 品種別 Yield line
+    Work Week ごとに品種別 Bin stack を横に並べ、Yield ラインを重ね描き。
+    """
     # 共通 yield スケール
     all_yields = [v for p in products for v in product_data[p].yield_avg]
     y_min = min(all_yields) if all_yields else 80
@@ -164,83 +166,89 @@ def _create_multi_chart_image(
     y_pad = max((y_max - y_min) * 0.5, 2)
     y_range = [max(0, y_min - y_pad), min(100, y_max + y_pad)]
 
-    specs = [[{"secondary_y": True}] * n]
-    subplot_titles = products
-    fig = make_subplots(
-        rows=1, cols=n,
-        specs=specs,
-        subplot_titles=subplot_titles,
-        horizontal_spacing=0.06,
-    )
+    # 全 bin 名のユニオン
+    all_bin_names: list[str] = []
+    for p in products:
+        for b in product_data[p].fail_bins.keys():
+            if b not in all_bin_names:
+                all_bin_names.append(b)
 
-    for col_idx, product in enumerate(products, start=1):
+    fig = make_subplots(specs=[[{"secondary_y": True}]])
+
+    # Bar traces: product × bin
+    for p_idx, product in enumerate(products):
         proc_data = product_data[product]
-        color = PRODUCT_COLORS[(col_idx - 1) % len(PRODUCT_COLORS)]
-        bin_names = list(proc_data.fail_bins.keys())
-
-        for i, bin_name in enumerate(bin_names):
+        for b_idx, bin_name in enumerate(all_bin_names):
+            y_vals = proc_data.fail_bins.get(bin_name, [0] * len(proc_data.lots))
             fig.add_trace(
                 go.Bar(
                     x=proc_data.lots,
-                    y=proc_data.fail_bins[bin_name],
+                    y=y_vals,
                     name=bin_name,
-                    marker_color=BIN_COLORS[i % len(BIN_COLORS)],
+                    marker_color=BIN_COLORS[b_idx % len(BIN_COLORS)],
                     opacity=0.9,
-                    showlegend=(col_idx == 1),  # 凡例は最初のカラムのみ
+                    offsetgroup=product,        # 同じ product のbinsは積み上げ
                     legendgroup=bin_name,
+                    showlegend=(p_idx == 0),    # 凡例は最初の品種のみ
+                    hovertemplate=f"<b>{product}</b> @ %{{x}}<br>{bin_name}: %{{y:.3f}}%<extra></extra>",
                 ),
-                row=1, col=col_idx, secondary_y=False,
+                secondary_y=False,
             )
 
+    # Yield line: 品種別
+    for i, product in enumerate(products):
+        proc_data = product_data[product]
+        color = PRODUCT_COLORS[i % len(PRODUCT_COLORS)]
         fig.add_trace(
             go.Scatter(
                 x=proc_data.lots,
                 y=proc_data.yield_avg,
-                name=product,
+                name=f"Yield · {product}",
                 mode="lines+markers",
                 line=dict(color=color, width=2.5, shape="spline"),
                 marker=dict(size=6, color=color),
-                showlegend=True,
                 legendgroup=f"yield_{product}",
+                hovertemplate=f"<b>{product}</b> @ %{{x}}<br>Yield: %{{y:.2f}}%<extra></extra>",
             ),
-            row=1, col=col_idx, secondary_y=True,
+            secondary_y=True,
         )
 
-        # 各サブプロットの軸設定
-        fig.update_yaxes(
-            title_text="Fail Bin (%)" if col_idx == 1 else "",
-            rangemode="tozero",
-            tickfont=dict(size=10, color=SUBTEXT_COLOR),
-            gridcolor="rgba(0,0,0,0.04)",
-            row=1, col=col_idx, secondary_y=False,
-        )
-        fig.update_yaxes(
-            title_text="Yield (%)" if col_idx == n else "",
-            range=y_range,
-            tickfont=dict(size=10, color=SUBTEXT_COLOR),
-            showgrid=False,
-            row=1, col=col_idx, secondary_y=True,
-        )
-        fig.update_xaxes(
-            tickangle=-30,
-            tickfont=dict(size=9, color=SUBTEXT_COLOR),
-            gridcolor="rgba(0,0,0,0.04)",
-            row=1, col=col_idx,
-        )
+    fig.update_yaxes(
+        title_text="Fail Bin (%)",
+        rangemode="tozero",
+        tickfont=dict(size=11, color=SUBTEXT_COLOR),
+        gridcolor="rgba(0,0,0,0.04)",
+        secondary_y=False,
+    )
+    fig.update_yaxes(
+        title_text="Yield (%)",
+        range=y_range,
+        tickfont=dict(size=11, color=SUBTEXT_COLOR),
+        showgrid=False,
+        secondary_y=True,
+    )
+    fig.update_xaxes(
+        title_text="Work Week",
+        tickangle=-30,
+        tickfont=dict(size=11, color=SUBTEXT_COLOR),
+        gridcolor="rgba(0,0,0,0.04)",
+    )
 
     fig.update_layout(
         barmode="stack",
-        font=dict(family=FONT_FAMILY, size=11, color=TEXT_COLOR),
+        bargap=0.25,
+        bargroupgap=0.08,
+        font=dict(family=FONT_FAMILY, size=12, color=TEXT_COLOR),
         legend=dict(
             orientation="h",
             yanchor="bottom",
-            y=-0.32,
+            y=-0.38,
             xanchor="center",
             x=0.5,
-            font=dict(size=10, color=SUBTEXT_COLOR, family=FONT_FAMILY),
+            font=dict(size=11, color=SUBTEXT_COLOR, family=FONT_FAMILY),
             bgcolor="rgba(0,0,0,0)",
         ),
-        margin=dict(l=55, r=55, t=40, b=110),
+        margin=dict(l=60, r=60, t=20, b=110),
         plot_bgcolor="#ffffff",
         paper_bgcolor="#ffffff",
         width=width,
