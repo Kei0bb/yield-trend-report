@@ -1,0 +1,5 @@
+bin_code,bin_group_name
+# Product-B 用 bin マッピング (process 列省略 → 全 process 共通)
+3,Open
+5,Short
+7,Leakage

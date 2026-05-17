@@ -9,14 +9,15 @@ from app.database import get_connection, release_connection
 from app.models.schemas import ProcessData
 
 # backend/ 直下の設定ファイル
-_BACKEND_ROOT       = Path(__file__).parent.parent.parent
-_BIN_GROUP_CSV      = _BACKEND_ROOT / "bin_group.csv"
-_PRODUCT_LIST_TXT   = _BACKEND_ROOT / "product_list.txt"
-_PRODUCT_CONFIG_CSV = _BACKEND_ROOT / "product_config.csv"
+_BACKEND_ROOT        = Path(__file__).parent.parent.parent
+_BIN_MAPPINGS_DIR    = _BACKEND_ROOT / "bin_mappings"          # 製品別 bin マッピングディレクトリ
+_BIN_GROUP_CSV       = _BACKEND_ROOT / "bin_group.csv"          # 旧フォーマット (フォールバック用)
+_PRODUCT_LIST_TXT    = _BACKEND_ROOT / "product_list.txt"
+_PRODUCT_CONFIG_CSV  = _BACKEND_ROOT / "product_config.csv"
 
 # bin_group 未指定時のデフォルト識別子
 _DEFAULT_BIN_GROUP = "default"
-# process 未指定 (旧形式) のワイルドカード
+# process 未指定のワイルドカード
 _ANY_PROCESS = "*"
 
 
@@ -92,80 +93,92 @@ def _load_product_list() -> list[str] | None:
 
 
 # ──────────────────────────────────────────────────────────────────────
-# Bin グループマッピング ((bin_group, process) → {bin_code: bin_group_name})
+# Bin マッピング (製品ごとに別 CSV ファイル)
+#   bin_mappings/<bin_group>.csv を読み込んで {process: {bin_code: bin_group_name}} を返す
 # ──────────────────────────────────────────────────────────────────────
 
-@lru_cache(maxsize=1)
-def _load_bin_groups() -> dict[tuple[str, str], dict[int, str]]:
+@lru_cache(maxsize=32)
+def _load_bin_mapping(bin_group: str) -> dict[str, dict[int, str]]:
     """
-    bin_group.csv を読み込み {(bin_group, process): {bin_code: bin_group_name}} を返す。
-    ファイルがなければ空辞書。
+    bin_mappings/<bin_group>.csv を読み込み {process: {bin_code: bin_group_name}} を返す。
+    ファイルがなければ空辞書 → _apply_bin_groups で BIN_NAME にフォールバック。
 
-    新フォーマット:
-        bin_group,process,bin_code,bin_group_name
-        main,CP,3,Open/Short
-        main,FT,2,DC-Fail
+    CSV フォーマット (process 列ありの場合: process 別マッピング):
+        process,bin_code,bin_group_name
+        CP,3,Open/Short
+        FT,2,DC-Fail
 
-    旧フォーマット (後方互換):
-        bin_code,bin_group
+    CSV フォーマット (process 列なしの場合: 全 process 共通):
+        bin_code,bin_group_name
         3,Open/Short
-        → ('default', '*') グループに格納
     """
-    if not _BIN_GROUP_CSV.exists():
+    if not bin_group:
         return {}
 
-    df = pd.read_csv(_BIN_GROUP_CSV, dtype=str, comment="#").fillna("")
-    if df.empty:
+    csv_path = _BIN_MAPPINGS_DIR / f"{bin_group}.csv"
+    if not csv_path.exists():
+        # 旧フォーマット (backend/bin_group.csv) フォールバック
+        if bin_group == _DEFAULT_BIN_GROUP:
+            return _load_legacy_bin_groups()
         return {}
 
-    # 旧フォーマット検出 (bin_group / process カラムなし)
-    if "bin_group_name" not in df.columns and "bin_group" in df.columns and "bin_code" in df.columns:
-        legacy_map = {}
-        for _, row in df.iterrows():
-            code = row["bin_code"].strip()
-            name = row["bin_group"].strip()
-            if code and name:
-                legacy_map[int(code)] = name
-        return {(_DEFAULT_BIN_GROUP, _ANY_PROCESS): legacy_map} if legacy_map else {}
+    df = pd.read_csv(csv_path, dtype=str, comment="#").fillna("")
+    if df.empty or "bin_code" not in df.columns or "bin_group_name" not in df.columns:
+        return {}
 
-    # 新フォーマット
-    result: dict[tuple[str, str], dict[int, str]] = {}
+    result: dict[str, dict[int, str]] = {}
+    has_process_col = "process" in df.columns
     for _, row in df.iterrows():
-        group = (row.get("bin_group", "") or _DEFAULT_BIN_GROUP).strip()
-        proc = (row.get("process", "") or _ANY_PROCESS).strip().upper() or _ANY_PROCESS
         code = row.get("bin_code", "").strip()
         name = row.get("bin_group_name", "").strip()
         if not code or not name:
             continue
-        result.setdefault((group, proc), {})[int(code)] = name
+        proc = (row.get("process", "").strip().upper() if has_process_col else "") or _ANY_PROCESS
+        result.setdefault(proc, {})[int(code)] = name
     return result
+
+
+def _load_legacy_bin_groups() -> dict[str, dict[int, str]]:
+    """
+    旧 backend/bin_group.csv (bin_code,bin_group のみ) を読み込み、
+    {'*': {bin_code: bin_group_name}} 形式で返す (後方互換)。
+    """
+    if not _BIN_GROUP_CSV.exists():
+        return {}
+    df = pd.read_csv(_BIN_GROUP_CSV, dtype=str, comment="#").fillna("")
+    if df.empty or "bin_code" not in df.columns:
+        return {}
+    name_col = "bin_group_name" if "bin_group_name" in df.columns else "bin_group"
+    if name_col not in df.columns:
+        return {}
+    mapping = {}
+    for _, row in df.iterrows():
+        code = row["bin_code"].strip()
+        name = row[name_col].strip()
+        if code and name:
+            mapping[int(code)] = name
+    return {_ANY_PROCESS: mapping} if mapping else {}
 
 
 def _apply_bin_groups(
     df: pd.DataFrame, bin_group: str = _DEFAULT_BIN_GROUP, process: str = _ANY_PROCESS
 ) -> pd.DataFrame:
     """
-    raw_bin_code(数値) を CSV のグループ名に置き換えて bin_code 列を作る。
-    マッピング検索順:
-        1. (bin_group, process)         ── 完全一致
-        2. (bin_group, '*')             ── process ワイルドカード
-        3. ('default', '*')             ── 旧フォーマット互換
-    マッピングがない bin は bin_name をそのまま使う。
+    raw_bin_code(数値) を bin_mappings/<bin_group>.csv のグループ名に置き換えて
+    bin_code 列を作る。マッピング検索順:
+        1. <bin_group>.csv の process 完全一致
+        2. <bin_group>.csv の '*' (process 列なし行)
+    マッピングがない bin は DB の BIN_NAME をそのまま使用。
     """
     df = df.copy()
-    all_mappings = _load_bin_groups()
+    proc_mappings = _load_bin_mapping(bin_group)
     proc_key = (process or _ANY_PROCESS).upper()
 
-    # 候補を優先度順に検索してマージ (完全一致 > ワイルドカード)
     mapping: dict[int, str] = {}
-    for key in [
-        (bin_group, proc_key),
-        (bin_group, _ANY_PROCESS),
-        (_DEFAULT_BIN_GROUP, _ANY_PROCESS),
-    ]:
-        if key in all_mappings:
-            # 既存キーは上書きしない (より高優先のマッピングを保持)
-            for code, name in all_mappings[key].items():
+    # 優先順位: process 完全一致 > ワイルドカード '*'
+    for key in (proc_key, _ANY_PROCESS):
+        if key in proc_mappings:
+            for code, name in proc_mappings[key].items():
                 mapping.setdefault(code, name)
 
     if mapping:

@@ -55,3 +55,8 @@ backend/product_list.txt
 !backend/product_list.txt.example
 backend/product_config.csv
 !backend/product_config.csv.example
+
+# bin マッピングは bin_mappings/ 配下に品種別 CSV を配置
+# 本体 *.csv は環境別管理（gitignore）、サンプル *.csv.example と README はコミット
+backend/bin_mappings/*.csv
+!backend/bin_mappings/*.csv.example

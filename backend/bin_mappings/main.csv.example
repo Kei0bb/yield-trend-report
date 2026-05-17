@@ -1,0 +1,25 @@
+process,bin_code,bin_group_name
+# ─────────────────────────────────────────────────────────────────
+# Bin マッピング: bin_group = "main" 用
+#
+# このファイルは product_config.csv で bin_group=main を指定した
+# 品種に適用されます。
+#
+# 列:
+#   process        : 'CP' / 'FT' / '*' (全 process 共通)
+#                    process 列を省略した場合は全 process 共通扱い
+#   bin_code       : DB の BIN_CODE (数値)
+#   bin_group_name : チャート上の表示名 (同名 bin はグループ化される)
+#
+# このファイルが存在しない or 該当 bin_code がない場合、
+# DB の BIN_NAME がそのまま使用されます。
+# ─────────────────────────────────────────────────────────────────
+CP,3,Open/Short
+CP,5,Open/Short
+CP,7,Leakage
+CP,9,Functional
+CP,11,Parametric
+FT,2,DC-Fail
+FT,4,Function-Fail
+FT,6,Speed
+FT,8,Power
