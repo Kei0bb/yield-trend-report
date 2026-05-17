@@ -12,7 +12,6 @@ from app.models.schemas import ProcessData
 _BACKEND_ROOT        = Path(__file__).parent.parent.parent
 _BIN_MAPPINGS_DIR    = _BACKEND_ROOT / "bin_mappings"          # 製品別 bin マッピングディレクトリ
 _BIN_GROUP_CSV       = _BACKEND_ROOT / "bin_group.csv"          # 旧フォーマット (フォールバック用)
-_PRODUCT_LIST_TXT    = _BACKEND_ROOT / "product_list.txt"
 _PRODUCT_CONFIG_CSV  = _BACKEND_ROOT / "product_config.csv"
 
 # bin_group 未指定時のデフォルト識別子
@@ -29,7 +28,7 @@ _ANY_PROCESS = "*"
 def _load_product_config() -> dict[str, dict[str, str]] | None:
     """
     product_config.csv を読み込み {nickname: {cp_product_id, ft_product_id, bin_group}} を返す。
-    ファイルがなければ None (= product_list.txt にフォールバック)。
+    ファイルがなければ None (= mock 時はモック、本番時は DB 全件にフォールバック)。
 
     CSV フォーマット:
         nickname,cp_product_id,ft_product_id,bin_group
@@ -108,23 +107,6 @@ def group_by_display_name(nicknames: list[str]) -> dict[str, list[str]]:
         display = resolve_display_name(nickname)
         groups.setdefault(display, []).append(nickname)
     return groups
-
-
-@lru_cache(maxsize=1)
-def _load_product_list() -> list[str] | None:
-    """
-    product_list.txt を読み込み、表示したい PRODUCT_ID のリストを返す。
-    ファイルがなければ None（= DB 全件を使用）。
-    """
-    if not _PRODUCT_LIST_TXT.exists():
-        return None
-    lines = _PRODUCT_LIST_TXT.read_text(encoding="utf-8").splitlines()
-    products = [
-        line.strip()
-        for line in lines
-        if line.strip() and not line.strip().startswith("#")
-    ]
-    return products if products else None
 
 
 # ──────────────────────────────────────────────────────────────────────
@@ -230,8 +212,7 @@ def get_products() -> list[str]:
     UI に表示する品種リストを返す。
     優先度:
         1. product_config.csv の nickname (CP/FT 別 PRODUCT_ID 対応)
-        2. product_list.txt のリスト
-        3. DB の SEMI_CP_HEADER.PRODUCT_ID 全件 (mock 時はモック品種)
+        2. DB の SEMI_CP_HEADER.PRODUCT_ID 全件 (mock 時はモック品種)
     """
     # product_config.csv は mock / 本番ともに優先 (nickname テストのため)
     config = _load_product_config()
@@ -241,12 +222,7 @@ def get_products() -> list[str]:
     if settings.USE_MOCK_DATA:
         return _mock_products()
 
-    # 優先2: product_list.txt
-    product_list = _load_product_list()
-    if product_list is not None:
-        return product_list
-
-    # 優先3: DB 全件
+    # フォールバック: DB 全件
     conn = get_connection()
     try:
         cursor = conn.cursor()

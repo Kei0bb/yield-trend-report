@@ -50,9 +50,7 @@ htmlcov/
 # PDF output (generated at runtime)
 *.pdf
 
-# 品種リスト・設定（環境ごとに管理、サンプルのみコミット）
-backend/product_list.txt
-!backend/product_list.txt.example
+# 製品設定（環境ごとに管理、サンプルのみコミット）
 backend/product_config.csv
 !backend/product_config.csv.example
 
