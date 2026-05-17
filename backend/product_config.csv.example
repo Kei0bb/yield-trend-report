@@ -7,12 +7,20 @@ nickname,display_name,cp_product_id,ft_product_id,bin_group
 #                     1 本のチャート（同一品種扱い）にマージされる
 #                     → 改版品種の連続的な yield trend を見るのに有効
 # ・cp_product_id   : CP DB クエリ用 PRODUCT_ID（空欄なら CP データなし）
-# ・ft_product_id   : FT DB クエリ用 PRODUCT_ID
+#                     ';' 区切りで複数 ID も指定可能（IN 句で取得）
+#                     例: "SCT101A;SCT101B"
+# ・ft_product_id   : FT DB クエリ用 PRODUCT_ID (同上)
 # ・bin_group       : bin_mappings/<bin_group>.csv のファイル名（拡張子なし）
 #
-# 例: 改版で型番が変わるが同じ製品として扱いたい場合
-#   Product-A と Product-A-rev2 の display_name を同じ "Product-A" にする
+# 想定パターン:
+#   (a) 改版で CP/FT 型番が変わるが同じ製品として扱いたい
+#       → 別 nickname にして display_name を同じにする
+#         (UI で両方を選択するとマージされる)
+#   (b) 1 つの製品で CP 側に複数の PRODUCT_ID が存在する (例: SCT101A/B)
+#       → 1 nickname の cp_product_id を ';' 区切りで複数指定
+#         (UI 上は 1 チップ、内部で IN 句クエリ)
 # ─────────────────────────────────────────────────────────────────
 Product-A,Product-A,P12345-A,Q67890-A,main
 Product-A-rev2,Product-A,P12346-A,Q67891-A,main
 Product-B,Product-B,P12345-B,Q67890-B,main_b
+SCT101,SCT101,SCT101A;SCT101B,SC0G29A,main

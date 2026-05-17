@@ -56,16 +56,30 @@ def _load_product_config() -> dict[str, dict[str, str]] | None:
     return config if config else None
 
 
-def _resolve_product_id(nickname: str, process: str) -> str:
+def _resolve_product_ids(nickname: str, process: str) -> list[str]:
     """
-    nickname と process から DB クエリ用の PRODUCT_ID を解決する。
-    product_config.csv がない場合は nickname をそのまま PRODUCT_ID として使用。
+    nickname と process から DB クエリ用の PRODUCT_ID リストを解決する。
+    1 nickname に対し複数の PRODUCT_ID が紐づく場合に対応 (';' 区切り)。
+    product_config.csv がない場合は nickname をそのまま 1 件として返す。
+
+    例: cp_product_id="SCT101A;SCT101B" → ["SCT101A", "SCT101B"]
     """
     config = _load_product_config()
     if config is None or nickname not in config:
-        return nickname
+        return [nickname] if nickname else []
     key = f"{process.lower()}_product_id"
-    return config[nickname].get(key, "") or nickname
+    raw = config[nickname].get(key, "")
+    if not raw:
+        return []
+    # ';' / ',' どちらでも分割
+    ids = [pid.strip() for pid in raw.replace(",", ";").split(";")]
+    return [pid for pid in ids if pid]
+
+
+def _resolve_product_id(nickname: str, process: str) -> str:
+    """[後方互換] 単一 PRODUCT_ID を返す。複数あれば先頭のみ。"""
+    ids = _resolve_product_ids(nickname, process)
+    return ids[0] if ids else ""
 
 
 def _resolve_bin_group(nickname: str) -> str:
@@ -273,9 +287,12 @@ def get_yield_data_merged(
 ) -> ProcessData:
     """
     複数 nickname を同一品種としてマージしたデータを返す。
-    主に改版品種（同じ display_name を持つ複数 nickname）の統合用。
-    各 nickname の DataFrame を concat した後に集計するため、
-    work week が重複していれば自動的に平均/合算される。
+    各 nickname の PRODUCT_ID を全て集めて IN 句で 1 クエリ実行する。
+
+    対応するケース:
+    - 1 nickname に複数 PRODUCT_ID (例: cp_product_id="SCT101A;SCT101B")
+    - 複数 nickname (例: 改版品種で同じ display_name を持つ)
+    - 上記の組み合わせ
     """
     if not nicknames:
         return ProcessData(lots=[], yield_avg=[], fail_bins={})
@@ -285,37 +302,48 @@ def get_yield_data_merged(
         display = resolve_display_name(nicknames[0])
         return _mock_yield_data(display, start_month, end_month, process)
 
-    # 各 nickname を DB クエリして DataFrame を蓄積
-    dfs: list[pd.DataFrame] = []
+    # 全 nickname の PRODUCT_ID を集約し、重複を除去 (順序保持)
+    all_pids: list[str] = []
     for nickname in nicknames:
-        real_product_id = _resolve_product_id(nickname, process)
-        if not real_product_id:
-            continue
-        if process == "CP":
-            df = _query_cp(real_product_id, start_month, end_month, process)
-        elif process == "FT":
-            df = _query_ft(real_product_id, start_month, end_month, process)
-        else:
-            # SLT 等、未実装の工程
-            continue
-        if not df.empty:
-            dfs.append(df)
+        for pid in _resolve_product_ids(nickname, process):
+            if pid not in all_pids:
+                all_pids.append(pid)
 
-    if not dfs:
+    if not all_pids:
+        # この process にはどの nickname も PRODUCT_ID が登録されていない
         return ProcessData(lots=[], yield_avg=[], fail_bins={})
 
-    combined = pd.concat(dfs, ignore_index=True)
-    # 改版品種は同じ bin_group を共有する前提。最初の nickname のグループを採用。
+    # IN 句で 1 クエリにまとめる (重複データを取らない)
+    if process == "CP":
+        df = _query_cp(all_pids, start_month, end_month, process)
+    elif process == "FT":
+        df = _query_ft(all_pids, start_month, end_month, process)
+    else:
+        return ProcessData(lots=[], yield_avg=[], fail_bins={})
+
+    if df.empty:
+        return ProcessData(lots=[], yield_avg=[], fail_bins={})
+
+    # bin_group は最初の nickname のものを採用 (同 display_name 内では共通の想定)
     bin_group = _resolve_bin_group(nicknames[0])
-    combined = _apply_bin_groups(combined, bin_group=bin_group, process=process)
-    return _aggregate_lot_data(combined)
+    df = _apply_bin_groups(df, bin_group=bin_group, process=process)
+    return _aggregate_lot_data(df)
+
+
+def _build_in_clause(product_ids: list[str]) -> tuple[str, dict[str, str]]:
+    """PRODUCT_ID リストから IN 句と bind 変数辞書を生成。"""
+    bind_names = [f"pid{i}" for i in range(len(product_ids))]
+    clause = ", ".join(f":{n}" for n in bind_names)
+    binds = {bind_names[i]: pid for i, pid in enumerate(product_ids)}
+    return clause, binds
 
 
 def _query_cp(
-    product: str, start_month: str, end_month: str, process: str
+    product_ids: list[str], start_month: str, end_month: str, process: str
 ) -> pd.DataFrame:
     """CP: SEMI_CP_BIN_SUM は集計済みなので BIN_COUNT をそのまま使用"""
-    query = """
+    in_clause, pid_binds = _build_in_clause(product_ids)
+    query = f"""
         SELECT
             TO_CHAR(h.CREATE_DATE, 'IYYY"W"IW')           AS lot_id,
             h.WAFER_ID                                     AS wafer_id,
@@ -333,7 +361,7 @@ def _query_cp(
           ON h.SUBSTRATE_ID = b.SUBSTRATE_ID
          AND h.WAFER_ID     = b.WAFER_ID
          AND h.PROCESS      = b.PROCESS
-        WHERE h.PRODUCT_ID  = :product
+        WHERE h.PRODUCT_ID  IN ({in_clause})
           AND h.PROCESS      = :process
           AND h.CREATE_DATE >= TO_DATE(:start_month || '-01', 'YYYY-MM-DD')
           AND h.CREATE_DATE  < ADD_MONTHS(
@@ -346,7 +374,7 @@ def _query_cp(
     return _execute_query(
         query,
         {
-            "product": product,
+            **pid_binds,
             "process": process,
             "start_month": start_month,
             "end_month": end_month,
@@ -355,7 +383,7 @@ def _query_cp(
 
 
 def _query_ft(
-    product: str, start_month: str, end_month: str, process: str
+    product_ids: list[str], start_month: str, end_month: str, process: str
 ) -> pd.DataFrame:
     """
     FT: SEMI_FT_BIN_SUM は CP と同じく集計済みのため BIN_COUNT をそのまま使用。
@@ -363,7 +391,8 @@ def _query_ft(
       - テーブル名が SEMI_FT_HEADER / SEMI_FT_BIN_SUM
       - FT は ASSY_LOT_ID を持つため JOIN キーに含める
     """
-    query = """
+    in_clause, pid_binds = _build_in_clause(product_ids)
+    query = f"""
         SELECT
             TO_CHAR(h.CREATE_DATE, 'IYYY"W"IW')           AS lot_id,
             h.WAFER_ID                                     AS wafer_id,
@@ -382,7 +411,7 @@ def _query_ft(
          AND h.ASSY_LOT_ID  = b.ASSY_LOT_ID
          AND h.WAFER_ID     = b.WAFER_ID
          AND h.PROCESS      = b.PROCESS
-        WHERE h.PRODUCT_ID  = :product
+        WHERE h.PRODUCT_ID  IN ({in_clause})
           AND h.PROCESS      = :process
           AND h.CREATE_DATE >= TO_DATE(:start_month || '-01', 'YYYY-MM-DD')
           AND h.CREATE_DATE  < ADD_MONTHS(
@@ -395,7 +424,7 @@ def _query_ft(
     return _execute_query(
         query,
         {
-            "product": product,
+            **pid_binds,
             "process": process,
             "start_month": start_month,
             "end_month": end_month,
