@@ -29,11 +29,22 @@ export default function ReportView({ data, request }: ReportViewProps) {
     (a, b) => PROCESS_ORDER.indexOf(a) - PROCESS_ORDER.indexOf(b)
   );
 
+  // display_name 一覧 = data.data の最初の process の keys (バックエンドで
+  // display_name でグループ化済み。改版品種は1つにマージされている)
+  const firstProcess = sortedProcesses[0];
+  const displayNames = firstProcess ? Object.keys(data.data[firstProcess]) : [];
+
   const today = new Date().toISOString().slice(0, 10);
-  const isMulti = request.products.length > 1;
-  const titleText = isMulti
-    ? request.products.join(" vs ")
-    : request.products[0];
+  const isMultiDisplay = displayNames.length > 1;
+  const titleText =
+    displayNames.length > 0
+      ? displayNames.join(" vs ")
+      : request.products.join(" vs ");
+
+  // 選択した nicknames と display_name が異なる場合 (= 改版マージ発生時) は明示
+  const showSelectedNicknames =
+    request.products.length !== displayNames.length ||
+    request.products.some((p, i) => p !== displayNames[i]);
 
   return (
     <main style={styles.container}>
@@ -41,10 +52,19 @@ export default function ReportView({ data, request }: ReportViewProps) {
         <div style={styles.breadcrumb}>Reports · Yield Trend</div>
         <h1 style={styles.title}>{titleText}</h1>
         <div style={styles.metaRow}>
-          {isMulti && (
+          {isMultiDisplay && (
             <>
               <span style={styles.metaItem}>
                 <span style={styles.metaLabel}>Products</span>
+                {displayNames.join(" · ")}
+              </span>
+              <span style={styles.metaDivider} />
+            </>
+          )}
+          {showSelectedNicknames && (
+            <>
+              <span style={styles.metaItem}>
+                <span style={styles.metaLabel}>Selected</span>
                 {request.products.join(" · ")}
               </span>
               <span style={styles.metaDivider} />

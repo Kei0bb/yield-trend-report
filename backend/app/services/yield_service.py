@@ -48,6 +48,7 @@ def _load_product_config() -> dict[str, dict[str, str]] | None:
         if not nickname or nickname.startswith("#"):
             continue
         config[nickname] = {
+            "display_name": row.get("display_name", "").strip() or nickname,
             "cp_product_id": row.get("cp_product_id", "").strip(),
             "ft_product_id": row.get("ft_product_id", "").strip(),
             "bin_group": row.get("bin_group", "").strip() or _DEFAULT_BIN_GROUP,
@@ -73,6 +74,26 @@ def _resolve_bin_group(nickname: str) -> str:
     if config is None or nickname not in config:
         return _DEFAULT_BIN_GROUP
     return config[nickname].get("bin_group", _DEFAULT_BIN_GROUP)
+
+
+def resolve_display_name(nickname: str) -> str:
+    """nickname から display_name を解決。未設定なら nickname そのもの。"""
+    config = _load_product_config()
+    if config is None or nickname not in config:
+        return nickname
+    return config[nickname].get("display_name", nickname)
+
+
+def group_by_display_name(nicknames: list[str]) -> dict[str, list[str]]:
+    """
+    nickname のリストを display_name でグループ化。
+    {display_name: [nicknames...]} を返す (順序は入力順に保つ)。
+    """
+    groups: dict[str, list[str]] = {}
+    for nickname in nicknames:
+        display = resolve_display_name(nickname)
+        groups.setdefault(display, []).append(nickname)
+    return groups
 
 
 @lru_cache(maxsize=1)
@@ -243,31 +264,51 @@ _COMMON_COLUMNS = [
 def get_yield_data(
     product: str, start_month: str, end_month: str, process: str
 ) -> ProcessData:
+    """単一 nickname の yield データ取得。後方互換用に残置。"""
+    return get_yield_data_merged([product], start_month, end_month, process)
+
+
+def get_yield_data_merged(
+    nicknames: list[str], start_month: str, end_month: str, process: str
+) -> ProcessData:
     """
-    `product` は UI のニックネーム。product_config.csv で
-    process 別の実 PRODUCT_ID と bin_group に解決される。
+    複数 nickname を同一品種としてマージしたデータを返す。
+    主に改版品種（同じ display_name を持つ複数 nickname）の統合用。
+    各 nickname の DataFrame を concat した後に集計するため、
+    work week が重複していれば自動的に平均/合算される。
     """
+    if not nicknames:
+        return ProcessData(lots=[], yield_avg=[], fail_bins={})
+
     if settings.USE_MOCK_DATA:
-        return _mock_yield_data(product, start_month, end_month, process)
+        # mock では display_name をシードにしてマージ後の見え方を再現
+        display = resolve_display_name(nicknames[0])
+        return _mock_yield_data(display, start_month, end_month, process)
 
-    # nickname → 実 PRODUCT_ID 解決
-    real_product_id = _resolve_product_id(product, process)
-    if not real_product_id:
-        # この process には PRODUCT_ID が登録されていない (例: FT のみ品種)
+    # 各 nickname を DB クエリして DataFrame を蓄積
+    dfs: list[pd.DataFrame] = []
+    for nickname in nicknames:
+        real_product_id = _resolve_product_id(nickname, process)
+        if not real_product_id:
+            continue
+        if process == "CP":
+            df = _query_cp(real_product_id, start_month, end_month, process)
+        elif process == "FT":
+            df = _query_ft(real_product_id, start_month, end_month, process)
+        else:
+            # SLT 等、未実装の工程
+            continue
+        if not df.empty:
+            dfs.append(df)
+
+    if not dfs:
         return ProcessData(lots=[], yield_avg=[], fail_bins={})
 
-    if process == "CP":
-        df = _query_cp(real_product_id, start_month, end_month, process)
-    elif process == "FT":
-        df = _query_ft(real_product_id, start_month, end_month, process)
-    else:
-        # SLT 等、未実装の工程は空データを返す
-        return ProcessData(lots=[], yield_avg=[], fail_bins={})
-
-    # bin_group は nickname から解決 (process は CSV のマッピング検索に利用)
-    bin_group = _resolve_bin_group(product)
-    df = _apply_bin_groups(df, bin_group=bin_group, process=process)
-    return _aggregate_lot_data(df)
+    combined = pd.concat(dfs, ignore_index=True)
+    # 改版品種は同じ bin_group を共有する前提。最初の nickname のグループを採用。
+    bin_group = _resolve_bin_group(nicknames[0])
+    combined = _apply_bin_groups(combined, bin_group=bin_group, process=process)
+    return _aggregate_lot_data(combined)
 
 
 def _query_cp(
