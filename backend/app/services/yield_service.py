@@ -89,69 +89,137 @@ def get_products() -> list[str]:
         release_connection(conn)
 
 
+# 共通カラム順（CP / FT 両方の SELECT 結果がこの順で出る）
+_COMMON_COLUMNS = [
+    "lot_id",
+    "wafer_id",
+    "yield_pct",
+    "gross_die",
+    "raw_bin_code",
+    "bin_name",
+    "bin_fail_count",
+]
+
+
 def get_yield_data(
     product: str, start_month: str, end_month: str, process: str
 ) -> ProcessData:
     if settings.USE_MOCK_DATA:
         return _mock_yield_data(product, start_month, end_month, process)
 
+    if process == "CP":
+        df = _query_cp(product, start_month, end_month, process)
+    elif process == "FT":
+        df = _query_ft(product, start_month, end_month, process)
+    else:
+        # SLT 等、未実装の工程は空データを返す
+        return ProcessData(lots=[], yield_avg=[], fail_bins={})
+
+    # bin_code(数値) → グループ名に置き換え (CP / FT 共通)
+    df = _apply_bin_groups(df)
+    return _aggregate_lot_data(df)
+
+
+def _query_cp(
+    product: str, start_month: str, end_month: str, process: str
+) -> pd.DataFrame:
+    """CP: SEMI_CP_BIN_SUM は集計済みなので BIN_COUNT をそのまま使用"""
+    query = """
+        SELECT
+            TO_CHAR(h.CREATE_DATE, 'IYYY"W"IW')           AS lot_id,
+            h.WAFER_ID                                     AS wafer_id,
+            CASE
+                WHEN h.EFFECTIVE_NUM > 0
+                THEN ROUND(h.PERFECT_PASS_CHIP / h.EFFECTIVE_NUM * 100, 3)
+                ELSE 0
+            END                                            AS yield_pct,
+            h.EFFECTIVE_NUM                                AS gross_die,
+            b.BIN_CODE                                     AS raw_bin_code,
+            b.BIN_NAME                                     AS bin_name,
+            b.BIN_COUNT                                    AS bin_fail_count
+        FROM SEMI_CP_HEADER h
+        JOIN SEMI_CP_BIN_SUM b
+          ON h.SUBSTRATE_ID = b.SUBSTRATE_ID
+         AND h.WAFER_ID     = b.WAFER_ID
+         AND h.PROCESS      = b.PROCESS
+        WHERE h.PRODUCT_ID  = :product
+          AND h.PROCESS      = :process
+          AND h.CREATE_DATE >= TO_DATE(:start_month || '-01', 'YYYY-MM-DD')
+          AND h.CREATE_DATE  < ADD_MONTHS(
+                                  TO_DATE(:end_month || '-01', 'YYYY-MM-DD'), 1)
+          AND h.DEL_FLAG     = 0
+          AND b.DEL_FLAG     = 0
+          AND b.BIN_QUALITY != 'PASS'
+        ORDER BY TO_CHAR(h.CREATE_DATE, 'IYYY"W"IW'), h.WAFER_ID
+    """
+    return _execute_query(
+        query,
+        {
+            "product": product,
+            "process": process,
+            "start_month": start_month,
+            "end_month": end_month,
+        },
+    )
+
+
+def _query_ft(
+    product: str, start_month: str, end_month: str, process: str
+) -> pd.DataFrame:
+    """
+    FT: SEMI_FT_BIN_SUM は CP と同じく集計済みのため BIN_COUNT をそのまま使用。
+    CP との違いは：
+      - テーブル名が SEMI_FT_HEADER / SEMI_FT_BIN_SUM
+      - FT は ASSY_LOT_ID を持つため JOIN キーに含める
+    """
+    query = """
+        SELECT
+            TO_CHAR(h.CREATE_DATE, 'IYYY"W"IW')           AS lot_id,
+            h.WAFER_ID                                     AS wafer_id,
+            CASE
+                WHEN h.EFFECTIVE_NUM > 0
+                THEN ROUND(h.PERFECT_PASS_CHIP / h.EFFECTIVE_NUM * 100, 3)
+                ELSE 0
+            END                                            AS yield_pct,
+            h.EFFECTIVE_NUM                                AS gross_die,
+            b.BIN_CODE                                     AS raw_bin_code,
+            b.BIN_NAME                                     AS bin_name,
+            b.BIN_COUNT                                    AS bin_fail_count
+        FROM SEMI_FT_HEADER h
+        JOIN SEMI_FT_BIN_SUM b
+          ON h.SUBSTRATE_ID = b.SUBSTRATE_ID
+         AND h.ASSY_LOT_ID  = b.ASSY_LOT_ID
+         AND h.WAFER_ID     = b.WAFER_ID
+         AND h.PROCESS      = b.PROCESS
+        WHERE h.PRODUCT_ID  = :product
+          AND h.PROCESS      = :process
+          AND h.CREATE_DATE >= TO_DATE(:start_month || '-01', 'YYYY-MM-DD')
+          AND h.CREATE_DATE  < ADD_MONTHS(
+                                  TO_DATE(:end_month || '-01', 'YYYY-MM-DD'), 1)
+          AND h.DEL_FLAG     = 0
+          AND b.DEL_FLAG     = 0
+          AND b.BIN_QUALITY != 'PASS'
+        ORDER BY TO_CHAR(h.CREATE_DATE, 'IYYY"W"IW'), h.WAFER_ID
+    """
+    return _execute_query(
+        query,
+        {
+            "product": product,
+            "process": process,
+            "start_month": start_month,
+            "end_month": end_month,
+        },
+    )
+
+
+def _execute_query(query: str, params: dict) -> pd.DataFrame:
+    """CP / FT 共通の実行ヘルパー。結果を pandas DataFrame に変換して返す。"""
     conn = get_connection()
     try:
         cursor = conn.cursor()
-        query = """
-            SELECT
-                TO_CHAR(h.CREATE_DATE, 'IYYY"W"IW')           AS lot_id,
-                h.WAFER_ID                                     AS wafer_id,
-                CASE
-                    WHEN h.EFFECTIVE_NUM > 0
-                    THEN ROUND(h.PERFECT_PASS_CHIP / h.EFFECTIVE_NUM * 100, 3)
-                    ELSE 0
-                END                                            AS yield_pct,
-                h.EFFECTIVE_NUM                                AS gross_die,
-                b.BIN_CODE                                     AS raw_bin_code,
-                b.BIN_NAME                                     AS bin_name,
-                b.BIN_COUNT                                    AS bin_fail_count
-            FROM SEMI_CP_HEADER h
-            JOIN SEMI_CP_BIN_SUM b
-              ON h.SUBSTRATE_ID = b.SUBSTRATE_ID
-             AND h.WAFER_ID     = b.WAFER_ID
-             AND h.PROCESS      = b.PROCESS
-            WHERE h.PRODUCT_ID  = :product
-              AND h.PROCESS      = :process
-              AND h.CREATE_DATE >= TO_DATE(:start_month || '-01', 'YYYY-MM-DD')
-              AND h.CREATE_DATE  < ADD_MONTHS(
-                                      TO_DATE(:end_month || '-01', 'YYYY-MM-DD'), 1)
-              AND h.DEL_FLAG     = 0
-              AND b.DEL_FLAG     = 0
-              AND b.BIN_QUALITY != 'PASS'
-            ORDER BY TO_CHAR(h.CREATE_DATE, 'IYYY"W"IW'), h.WAFER_ID
-        """
-        cursor.execute(
-            query,
-            {
-                "product": product,
-                "process": process,
-                "start_month": start_month,
-                "end_month": end_month,
-            },
-        )
-
-        columns = [
-            "lot_id",
-            "wafer_id",
-            "yield_pct",
-            "gross_die",
-            "raw_bin_code",
-            "bin_name",
-            "bin_fail_count",
-        ]
+        cursor.execute(query, params)
         rows = cursor.fetchall()
-        df = pd.DataFrame(rows, columns=columns)
-
-        # bin_code(数値) → グループ名に置き換え
-        df = _apply_bin_groups(df)
-
-        return _aggregate_lot_data(df)
+        return pd.DataFrame(rows, columns=_COMMON_COLUMNS)
     finally:
         release_connection(conn)
 
