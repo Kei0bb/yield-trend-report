@@ -9,8 +9,69 @@ from app.database import get_connection, release_connection
 from app.models.schemas import ProcessData
 
 # backend/ 直下の設定ファイル
-_BIN_GROUP_CSV   = Path(__file__).parent.parent.parent / "bin_group.csv"
-_PRODUCT_LIST_TXT = Path(__file__).parent.parent.parent / "product_list.txt"
+_BACKEND_ROOT       = Path(__file__).parent.parent.parent
+_BIN_GROUP_CSV      = _BACKEND_ROOT / "bin_group.csv"
+_PRODUCT_LIST_TXT   = _BACKEND_ROOT / "product_list.txt"
+_PRODUCT_CONFIG_CSV = _BACKEND_ROOT / "product_config.csv"
+
+# bin_group 未指定時のデフォルト識別子
+_DEFAULT_BIN_GROUP = "default"
+# process 未指定 (旧形式) のワイルドカード
+_ANY_PROCESS = "*"
+
+
+# ──────────────────────────────────────────────────────────────────────
+# Product 設定 (nickname ↔ CP/FT PRODUCT_ID マッピング)
+# ──────────────────────────────────────────────────────────────────────
+
+@lru_cache(maxsize=1)
+def _load_product_config() -> dict[str, dict[str, str]] | None:
+    """
+    product_config.csv を読み込み {nickname: {cp_product_id, ft_product_id, bin_group}} を返す。
+    ファイルがなければ None (= product_list.txt にフォールバック)。
+
+    CSV フォーマット:
+        nickname,cp_product_id,ft_product_id,bin_group
+        Product-A,P12345-A,Q67890-A,main
+    """
+    if not _PRODUCT_CONFIG_CSV.exists():
+        return None
+
+    df = pd.read_csv(_PRODUCT_CONFIG_CSV, dtype=str, comment="#").fillna("")
+    if "nickname" not in df.columns:
+        return None
+
+    config: dict[str, dict[str, str]] = {}
+    for _, row in df.iterrows():
+        nickname = row["nickname"].strip()
+        if not nickname or nickname.startswith("#"):
+            continue
+        config[nickname] = {
+            "cp_product_id": row.get("cp_product_id", "").strip(),
+            "ft_product_id": row.get("ft_product_id", "").strip(),
+            "bin_group": row.get("bin_group", "").strip() or _DEFAULT_BIN_GROUP,
+        }
+    return config if config else None
+
+
+def _resolve_product_id(nickname: str, process: str) -> str:
+    """
+    nickname と process から DB クエリ用の PRODUCT_ID を解決する。
+    product_config.csv がない場合は nickname をそのまま PRODUCT_ID として使用。
+    """
+    config = _load_product_config()
+    if config is None or nickname not in config:
+        return nickname
+    key = f"{process.lower()}_product_id"
+    return config[nickname].get(key, "") or nickname
+
+
+def _resolve_bin_group(nickname: str) -> str:
+    """nickname から bin_group 識別子を解決。なければデフォルト。"""
+    config = _load_product_config()
+    if config is None or nickname not in config:
+        return _DEFAULT_BIN_GROUP
+    return config[nickname].get("bin_group", _DEFAULT_BIN_GROUP)
 
 
 @lru_cache(maxsize=1)
@@ -18,8 +79,6 @@ def _load_product_list() -> list[str] | None:
     """
     product_list.txt を読み込み、表示したい PRODUCT_ID のリストを返す。
     ファイルがなければ None（= DB 全件を使用）。
-    '#' で始まる行・空行はコメントとして無視。
-    サーバー再起動で反映される。
     """
     if not _PRODUCT_LIST_TXT.exists():
         return None
@@ -32,47 +91,114 @@ def _load_product_list() -> list[str] | None:
     return products if products else None
 
 
+# ──────────────────────────────────────────────────────────────────────
+# Bin グループマッピング ((bin_group, process) → {bin_code: bin_group_name})
+# ──────────────────────────────────────────────────────────────────────
+
 @lru_cache(maxsize=1)
-def _load_bin_groups() -> dict[int, str]:
+def _load_bin_groups() -> dict[tuple[str, str], dict[int, str]]:
     """
-    bin_group.csv を読み込み {bin_code(int): bin_group(str)} を返す。
-    ファイルがなければ空辞書（= BIN_NAME をそのまま使用）。
-    CSV を更新した場合はサーバー再起動で反映される。
+    bin_group.csv を読み込み {(bin_group, process): {bin_code: bin_group_name}} を返す。
+    ファイルがなければ空辞書。
+
+    新フォーマット:
+        bin_group,process,bin_code,bin_group_name
+        main,CP,3,Open/Short
+        main,FT,2,DC-Fail
+
+    旧フォーマット (後方互換):
+        bin_code,bin_group
+        3,Open/Short
+        → ('default', '*') グループに格納
     """
     if not _BIN_GROUP_CSV.exists():
         return {}
-    df = pd.read_csv(_BIN_GROUP_CSV, dtype={"bin_code": int, "bin_group": str})
-    return dict(zip(df["bin_code"], df["bin_group"]))
+
+    df = pd.read_csv(_BIN_GROUP_CSV, dtype=str, comment="#").fillna("")
+    if df.empty:
+        return {}
+
+    # 旧フォーマット検出 (bin_group / process カラムなし)
+    if "bin_group_name" not in df.columns and "bin_group" in df.columns and "bin_code" in df.columns:
+        legacy_map = {}
+        for _, row in df.iterrows():
+            code = row["bin_code"].strip()
+            name = row["bin_group"].strip()
+            if code and name:
+                legacy_map[int(code)] = name
+        return {(_DEFAULT_BIN_GROUP, _ANY_PROCESS): legacy_map} if legacy_map else {}
+
+    # 新フォーマット
+    result: dict[tuple[str, str], dict[int, str]] = {}
+    for _, row in df.iterrows():
+        group = (row.get("bin_group", "") or _DEFAULT_BIN_GROUP).strip()
+        proc = (row.get("process", "") or _ANY_PROCESS).strip().upper() or _ANY_PROCESS
+        code = row.get("bin_code", "").strip()
+        name = row.get("bin_group_name", "").strip()
+        if not code or not name:
+            continue
+        result.setdefault((group, proc), {})[int(code)] = name
+    return result
 
 
-def _apply_bin_groups(df: pd.DataFrame) -> pd.DataFrame:
+def _apply_bin_groups(
+    df: pd.DataFrame, bin_group: str = _DEFAULT_BIN_GROUP, process: str = _ANY_PROCESS
+) -> pd.DataFrame:
     """
     raw_bin_code(数値) を CSV のグループ名に置き換えて bin_code 列を作る。
+    マッピング検索順:
+        1. (bin_group, process)         ── 完全一致
+        2. (bin_group, '*')             ── process ワイルドカード
+        3. ('default', '*')             ── 旧フォーマット互換
     マッピングがない bin は bin_name をそのまま使う。
     """
     df = df.copy()
-    mapping = _load_bin_groups()
+    all_mappings = _load_bin_groups()
+    proc_key = (process or _ANY_PROCESS).upper()
+
+    # 候補を優先度順に検索してマージ (完全一致 > ワイルドカード)
+    mapping: dict[int, str] = {}
+    for key in [
+        (bin_group, proc_key),
+        (bin_group, _ANY_PROCESS),
+        (_DEFAULT_BIN_GROUP, _ANY_PROCESS),
+    ]:
+        if key in all_mappings:
+            # 既存キーは上書きしない (より高優先のマッピングを保持)
+            for code, name in all_mappings[key].items():
+                mapping.setdefault(code, name)
+
     if mapping:
-        # vectorized map: マッピングにない bin_code は NaN → bin_name で埋める
         df["bin_code"] = (
             df["raw_bin_code"].astype(int).map(mapping).fillna(df["bin_name"])
         )
     else:
-        # CSV なし → bin_name をそのまま使用
         df["bin_code"] = df["bin_name"]
     return df
 
 
 def get_products() -> list[str]:
+    """
+    UI に表示する品種リストを返す。
+    優先度:
+        1. product_config.csv の nickname (CP/FT 別 PRODUCT_ID 対応)
+        2. product_list.txt のリスト
+        3. DB の SEMI_CP_HEADER.PRODUCT_ID 全件 (mock 時はモック品種)
+    """
+    # product_config.csv は mock / 本番ともに優先 (nickname テストのため)
+    config = _load_product_config()
+    if config is not None:
+        return list(config.keys())
+
     if settings.USE_MOCK_DATA:
         return _mock_products()
 
-    # product_list.txt があればそのリストを返す（DB 問い合わせ不要）
+    # 優先2: product_list.txt
     product_list = _load_product_list()
     if product_list is not None:
         return product_list
 
-    # ファイルなし → DB から全件取得
+    # 優先3: DB 全件
     conn = get_connection()
     try:
         cursor = conn.cursor()
@@ -104,19 +230,30 @@ _COMMON_COLUMNS = [
 def get_yield_data(
     product: str, start_month: str, end_month: str, process: str
 ) -> ProcessData:
+    """
+    `product` は UI のニックネーム。product_config.csv で
+    process 別の実 PRODUCT_ID と bin_group に解決される。
+    """
     if settings.USE_MOCK_DATA:
         return _mock_yield_data(product, start_month, end_month, process)
 
+    # nickname → 実 PRODUCT_ID 解決
+    real_product_id = _resolve_product_id(product, process)
+    if not real_product_id:
+        # この process には PRODUCT_ID が登録されていない (例: FT のみ品種)
+        return ProcessData(lots=[], yield_avg=[], fail_bins={})
+
     if process == "CP":
-        df = _query_cp(product, start_month, end_month, process)
+        df = _query_cp(real_product_id, start_month, end_month, process)
     elif process == "FT":
-        df = _query_ft(product, start_month, end_month, process)
+        df = _query_ft(real_product_id, start_month, end_month, process)
     else:
         # SLT 等、未実装の工程は空データを返す
         return ProcessData(lots=[], yield_avg=[], fail_bins={})
 
-    # bin_code(数値) → グループ名に置き換え (CP / FT 共通)
-    df = _apply_bin_groups(df)
+    # bin_group は nickname から解決 (process は CSV のマッピング検索に利用)
+    bin_group = _resolve_bin_group(product)
+    df = _apply_bin_groups(df, bin_group=bin_group, process=process)
     return _aggregate_lot_data(df)
 
 

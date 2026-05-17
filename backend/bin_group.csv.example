@@ -1,0 +1,26 @@
+bin_group,process,bin_code,bin_group_name
+# ─────────────────────────────────────────────────────────────────
+# Bin マッピング (新フォーマット)
+# ・bin_group       : product_config.csv の bin_group カラムと紐付く識別子
+# ・process         : 'CP' / 'FT' / '*' (全工程共通)
+# ・bin_code        : DB の BIN_CODE (数値)
+# ・bin_group_name  : チャート上の表示名 (同名のbinはグループ化される)
+#
+# マッピング検索順 (優先度高 → 低):
+#   1. (bin_group, 該当process) 完全一致
+#   2. (bin_group, '*')
+#   3. ('default', '*')
+#   4. マッピングなし → DB の BIN_NAME をそのまま使用
+#
+# 旧フォーマット (bin_code,bin_group のみ) も後方互換でサポート
+# ─────────────────────────────────────────────────────────────────
+main,CP,3,Open/Short
+main,CP,5,Open/Short
+main,CP,7,Leakage
+main,CP,9,Functional
+main,CP,11,Parametric
+main,FT,2,DC-Fail
+main,FT,4,Function-Fail
+main,FT,6,Speed
+main_b,CP,3,Open
+main_b,CP,5,Short

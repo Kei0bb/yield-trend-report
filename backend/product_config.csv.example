@@ -1,0 +1,14 @@
+nickname,cp_product_id,ft_product_id,bin_group
+# ─────────────────────────────────────────────────────────────────
+# 製品設定ファイル
+# ・nickname        : UI 表示用ラベル（ユーザーが見る品種名）
+# ・cp_product_id   : CP 工程 DB クエリ用 PRODUCT_ID（空欄なら CP データなし）
+# ・ft_product_id   : FT 工程 DB クエリ用 PRODUCT_ID
+# ・bin_group       : bin_group.csv の bin_group 識別子（空欄→ default）
+#
+# 同じ製品でも CP / FT で PRODUCT_ID が異なる場合に有用。
+# 例: 改版時に FT 側だけ型番が変わるようなケース。
+# ─────────────────────────────────────────────────────────────────
+Product-A,P12345-A,Q67890-A,main
+Product-A-rev2,P12346-A,Q67891-A,main
+Product-B,P12345-B,Q67890-B,main_b

@@ -53,8 +53,9 @@ FONT_FAMILY = "Inter, -apple-system, Segoe UI, Helvetica, Arial, sans-serif"
 
 # PDF layout constants
 MARGIN = 15 * mm
-HEADER_H = 38 * mm   # height of the header band
-FOOTER_H = 10 * mm   # height of the footer band
+HEADER_H = 48 * mm           # header band 全体 (タイトル + 下線 + 余白)
+HEADER_DIVIDER_OFFSET = 14 * mm  # ヘッダー底から下線までの距離 (下線の下に余白を取る)
+FOOTER_H = 10 * mm           # footer band
 
 
 # 品種ごとの色（複数品種比較用）
@@ -453,11 +454,12 @@ def _draw_header(
     c.drawString(MARGIN, meta_y, meta)
     c.restoreState()
 
-    # ── Divider ───────────────────────────────────────────────────────────
-    div_y = page_height - HEADER_H
+    # ── Divider (タイトル直下の下線、下に余白を確保) ─────────────────────
+    # divider はヘッダー底から HEADER_DIVIDER_OFFSET 上に配置 → 下に余白
+    div_y = page_height - HEADER_H + HEADER_DIVIDER_OFFSET
     c.saveState()
-    c.setStrokeColorRGB(0, 0, 0, alpha=0.08)
-    c.setLineWidth(0.5)
+    c.setStrokeColorRGB(0, 0, 0, alpha=0.18)  # より濃く視認性アップ
+    c.setLineWidth(0.8)
     c.line(MARGIN, div_y, page_width - MARGIN, div_y)
     c.restoreState()
 
