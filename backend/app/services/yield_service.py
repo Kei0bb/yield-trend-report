@@ -316,6 +316,10 @@ def get_yield_data(
 def get_yield_data_merged(
     nicknames: list[str], start_month: str, end_month: str, process: str
 ) -> ProcessData:
+    logger.warning(
+        "[YIELD] get_yield_data_merged: nicknames=%s process=%s period=%s..%s mock=%s",
+        nicknames, process, start_month, end_month, settings.USE_MOCK_DATA,
+    )
     """
     複数 nickname を同一品種としてマージしたデータを返す。
     各 nickname の PRODUCT_ID を全て集めて IN 句で 1 クエリ実行する。
@@ -340,7 +344,13 @@ def get_yield_data_merged(
             for pid in _resolve_product_ids(nickname, process):
                 if pid not in all_pids:
                     all_pids.append(pid)
+        logger.warning("[YIELD] resolved PRODUCT_IDs: %s", all_pids)
         if not all_pids:
+            logger.warning(
+                "[YIELD] no PRODUCT_IDs resolved -> empty data. "
+                "Check product_config.csv has %s_product_id for nicknames=%s",
+                process.lower(), nicknames,
+            )
             return ProcessData(lots=[], yield_avg=[], fail_bins={})
 
         if process == "CP":
@@ -494,10 +504,10 @@ def _query_ft(
 
 def _execute_query(query: str, params: dict) -> pd.DataFrame:
     """CP / FT 共通の実行ヘルパー。結果を pandas DataFrame に変換して返す。"""
-    # bind 変数のうち PRODUCT_ID 関連だけ抽出してログ
+    # bind 変数のうち PRODUCT_ID 関連だけ抽出してログ (WARNING でデフォルトでも表示)
     pid_binds = {k: v for k, v in params.items() if k.startswith("pid") or k.startswith("like")}
-    logger.info(
-        "DB query: process=%s start=%s end=%s product_ids=%s",
+    logger.warning(
+        "[DB] query: process=%s start=%s end=%s product_ids=%s",
         params.get("process"), params.get("start_month"), params.get("end_month"), pid_binds,
     )
     conn = get_connection()
@@ -512,7 +522,7 @@ def _execute_query(query: str, params: dict) -> pd.DataFrame:
             )
             raise
         rows = cursor.fetchall()
-        logger.info("DB query returned %d rows", len(rows))
+        logger.warning("[DB] query returned %d rows", len(rows))
         return pd.DataFrame(rows, columns=_COMMON_COLUMNS)
     finally:
         release_connection(conn)
