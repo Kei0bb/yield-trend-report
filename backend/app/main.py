@@ -1,14 +1,27 @@
+import logging
+import sys
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app import logging_config
+# uvicorn は自前の logger しか設定しないため、app 配下の
+# logger 出力が表示されない場合がある。root logger に StreamHandler を追加し
+# app.* の INFO 以上を必ず stderr に出すよう設定する。
+_root = logging.getLogger()
+if not any(isinstance(h, logging.StreamHandler) for h in _root.handlers):
+    _handler = logging.StreamHandler(sys.stderr)
+    _handler.setFormatter(logging.Formatter(
+        "%(asctime)s %(levelname)-8s %(name)s [%(funcName)s] %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    ))
+    _root.addHandler(_handler)
+_root.setLevel(logging.INFO)
+logging.getLogger("app").setLevel(logging.INFO)
+
 from app.config import settings
 from app.database import close_pool, init_pool
 from app.routers import export, yield_data
-
-logging_config.setup(settings.LOG_LEVEL)
 
 
 @asynccontextmanager
