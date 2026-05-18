@@ -50,8 +50,7 @@ htmlcov/
 # PDF output (generated at runtime)
 *.pdf
 
-# 製品設定（環境ごとに管理、サンプルのみコミット）
-backend/product_config.csv
+# 製品設定
 !backend/product_config.csv.example
 
 # bin マッピングは bin_mappings/ 配下に品種別 CSV を配置
