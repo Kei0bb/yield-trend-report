@@ -22,11 +22,19 @@ _PROCESS_SPEC: dict[str, dict] = {
         "header": "SEMI_CP_HEADER",
         "bin_sum": "SEMI_CP_BIN_SUM",
         "join_keys": ["SUBSTRATE_ID", "WAFER_ID", "PROCESS"],
+        "join_type": "JOIN",
     },
     "FT": {
         "header": "SEMI_FT_HEADER",
         "bin_sum": "SEMI_FT_BIN_SUM",
-        "join_keys": ["SUBSTRATE_ID", "ASSY_LOT_ID", "WAFER_ID", "PROCESS"],
+        "join_keys": ["ASSY_LOT_ID", "PRODUCT_ID", "PROCESS"],
+        "join_type": "LEFT OUTER JOIN",
+    },
+    "SLT": {
+        "header": "SEMI_FT_HEADER",
+        "bin_sum": "SEMI_FT_BIN_SUM",
+        "join_keys": ["ASSY_LOT_ID", "PRODUCT_ID", "PROCESS"],
+        "join_type": "LEFT OUTER JOIN",
     },
 }
 
@@ -70,6 +78,7 @@ def query_yield_data(
     product_ids: list[str],
     start_month: str,
     end_month: str,
+    process_values: list[str] | None = None,
 ) -> pd.DataFrame:
     """Execute the yield + bin query for a given process and return a DataFrame.
 
@@ -82,6 +91,13 @@ def query_yield_data(
 
     pid_where, pid_binds = build_product_id_where(product_ids)
     join_clause = " AND ".join(f"h.{k} = b.{k}" for k in spec["join_keys"])
+
+    # Build PROCESS filter: use IN clause when specific sub-processes are requested,
+    # otherwise fall back to exact match on the selected process.
+    pv_list = process_values or [process]
+    pv_names = [f"pv{i}" for i in range(len(pv_list))]
+    pv_binds = dict(zip(pv_names, pv_list))
+    process_where = f"h.PROCESS IN ({', '.join(f':{n}' for n in pv_names)})"
 
     query = f"""
         SELECT
@@ -97,20 +113,19 @@ def query_yield_data(
             b.BIN_NAME                                     AS bin_name,
             b.BIN_COUNT                                    AS bin_fail_count
         FROM {spec['header']} h
-        JOIN {spec['bin_sum']} b
+        {spec['join_type']} {spec['bin_sum']} b
           ON {join_clause}
         WHERE {pid_where}
-          AND h.PROCESS      = :process
+          AND {process_where}
+          AND h.REWORK_NEW   = 0
           AND h.CREATE_DATE >= TO_DATE(:start_month || '-01', 'YYYY-MM-DD')
           AND h.CREATE_DATE  < ADD_MONTHS(
                                   TO_DATE(:end_month || '-01', 'YYYY-MM-DD'), 1)
-          AND h.DEL_FLAG     = 0
-          AND b.DEL_FLAG     = 0
           AND UPPER(TRIM(COALESCE(b.BIN_QUALITY, ''))) <> 'PASS'
           AND UPPER(TRIM(COALESCE(b.BIN_NAME,    ''))) NOT IN ('PASS', 'PASSED', 'OK', 'GOOD')
         ORDER BY lot_id, h.WAFER_ID
     """
-    params = {**pid_binds, "process": process, "start_month": start_month, "end_month": end_month}
+    params = {**pid_binds, **pv_binds, "start_month": start_month, "end_month": end_month}
     return _execute_query(query, params, process, product_ids)
 
 

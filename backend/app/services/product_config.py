@@ -40,6 +40,8 @@ def load_product_config() -> dict[str, dict[str, str]] | None:
             "cp_product_id": row.get("cp_product_id", "").strip(),
             "ft_product_id": row.get("ft_product_id", "").strip(),
             "bin_group": row.get("bin_group", "").strip() or DEFAULT_BIN_GROUP,
+            "ft_processes": row.get("ft_processes", "").strip(),
+            "slt_processes": row.get("slt_processes", "").strip(),
         }
 
     if not config:
@@ -74,6 +76,23 @@ def resolve_display_name(nickname: str) -> str:
     if config is None or nickname not in config:
         return nickname
     return config[nickname].get("display_name", nickname)
+
+
+def resolve_process_filter(nickname: str, process: str) -> list[str] | None:
+    """Return the list of DB PROCESS values to filter for a given nickname + process.
+
+    Returns None when no sub-process filter is configured (use exact process match).
+    Example: ft_processes="FT1;FT2" → ["FT1", "FT2"] when process="FT"
+    """
+    config = load_product_config()
+    if config is None or nickname not in config:
+        return None
+    key = f"{process.lower()}_processes"
+    raw = config[nickname].get(key, "")
+    if not raw:
+        return None
+    values = [v.strip() for v in raw.replace(",", ";").split(";")]
+    return [v for v in values if v] or None
 
 
 def resolve_bin_group(nickname: str) -> str:

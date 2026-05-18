@@ -9,6 +9,7 @@ from app.services.product_config import (
     load_product_config,
     resolve_bin_group,
     resolve_display_name,
+    resolve_process_filter,
     resolve_product_ids,
 )
 from app.services.yield_aggregator import aggregate_lot_data
@@ -83,7 +84,10 @@ def get_yield_data_merged(
             )
             return ProcessData(lots=[], yield_avg=[], fail_bins={})
 
-        df = query_yield_data(process, all_pids, start_month, end_month)
+        # Resolve sub-process filter (e.g. ft_processes="FT1" → only query PROCESS=FT1)
+        process_values = resolve_process_filter(nicknames[0], process)
+
+        df = query_yield_data(process, all_pids, start_month, end_month, process_values=process_values)
 
     if df.empty:
         return ProcessData(lots=[], yield_avg=[], fail_bins={})
