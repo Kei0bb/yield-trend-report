@@ -52,6 +52,43 @@ def debug_config(nickname: str | None = None) -> dict:
     return result
 
 
+@router.get("/debug/probe")
+def debug_probe(nickname: str, process: str, start_month: str, end_month: str) -> dict:
+    """
+    実 DB クエリを叩いて何件返るかをそのまま返す診断エンドポイント。
+    例: /api/debug/probe?nickname=Phoenix&process=FT&start_month=2025-01&end_month=2025-05
+    PDF が空になる原因 (PRODUCT_ID 解決失敗 / SQL 0 行 / 例外) を直接確認。
+    """
+    import traceback
+    from app.config import settings
+    out: dict = {
+        "input": {
+            "nickname": nickname,
+            "process": process,
+            "start_month": start_month,
+            "end_month": end_month,
+        },
+        "use_mock_data": settings.USE_MOCK_DATA,
+        "resolved_product_ids": _resolve_product_ids(nickname, process),
+        "resolved_bin_group": _resolve_bin_group(nickname),
+    }
+    try:
+        proc_data = get_yield_data_merged(
+            nicknames=[nickname],
+            start_month=start_month,
+            end_month=end_month,
+            process=process,
+        )
+        out["lots_count"] = len(proc_data.lots)
+        out["lots_sample"] = proc_data.lots[:5]
+        out["yield_avg_sample"] = proc_data.yield_avg[:5]
+        out["fail_bin_names"] = list(proc_data.fail_bins.keys())
+    except Exception as e:
+        out["error"] = str(e)
+        out["traceback"] = traceback.format_exc()
+    return out
+
+
 @router.post("/yield-data")
 def fetch_yield_data(req: YieldRequest) -> YieldResponse:
     """
