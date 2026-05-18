@@ -270,34 +270,32 @@ def get_yield_data_merged(
     if not nicknames:
         return ProcessData(lots=[], yield_avg=[], fail_bins={})
 
+    # DataFrame 取得 (mock / 本番 共通フォーマット)
     if settings.USE_MOCK_DATA:
-        # mock では display_name をシードにしてマージ後の見え方を再現
+        # mock は display_name をシードに 1 つの DataFrame を生成
         display = resolve_display_name(nicknames[0])
-        return _mock_yield_data(display, start_month, end_month, process)
-
-    # 全 nickname の PRODUCT_ID を集約し、重複を除去 (順序保持)
-    all_pids: list[str] = []
-    for nickname in nicknames:
-        for pid in _resolve_product_ids(nickname, process):
-            if pid not in all_pids:
-                all_pids.append(pid)
-
-    if not all_pids:
-        # この process にはどの nickname も PRODUCT_ID が登録されていない
-        return ProcessData(lots=[], yield_avg=[], fail_bins={})
-
-    # IN 句で 1 クエリにまとめる (重複データを取らない)
-    if process == "CP":
-        df = _query_cp(all_pids, start_month, end_month, process)
-    elif process == "FT":
-        df = _query_ft(all_pids, start_month, end_month, process)
+        df = _mock_yield_dataframe(display, start_month, end_month, process)
     else:
-        return ProcessData(lots=[], yield_avg=[], fail_bins={})
+        # 全 nickname の PRODUCT_ID を集約・重複排除して IN 句で 1 クエリ
+        all_pids: list[str] = []
+        for nickname in nicknames:
+            for pid in _resolve_product_ids(nickname, process):
+                if pid not in all_pids:
+                    all_pids.append(pid)
+        if not all_pids:
+            return ProcessData(lots=[], yield_avg=[], fail_bins={})
+
+        if process == "CP":
+            df = _query_cp(all_pids, start_month, end_month, process)
+        elif process == "FT":
+            df = _query_ft(all_pids, start_month, end_month, process)
+        else:
+            return ProcessData(lots=[], yield_avg=[], fail_bins={})
 
     if df.empty:
         return ProcessData(lots=[], yield_avg=[], fail_bins={})
 
-    # bin_group は最初の nickname のものを採用 (同 display_name 内では共通の想定)
+    # bin_group マッピング適用 → 集計 (mock / 本番 共通)
     bin_group = _resolve_bin_group(nicknames[0])
     df = _apply_bin_groups(df, bin_group=bin_group, process=process)
     return _aggregate_lot_data(df)
@@ -460,32 +458,49 @@ def _mock_products() -> list[str]:
     return ["Product-A", "Product-B", "Product-C"]
 
 
-def _mock_yield_data(
+def _mock_yield_dataframe(
     product: str, start_month: str, end_month: str, process: str
-) -> ProcessData:
+) -> pd.DataFrame:
+    """
+    DB クエリと同じ形式の DataFrame をモックで生成。
+    後段で _apply_bin_groups() / _aggregate_lot_data() を通すため
+    bin_mappings/<group>.csv が mock 環境でも正しく反映される。
+    """
     random.seed(hash(f"{product}-{process}-{start_month}") % 2**32)
 
     num_lots = random.randint(6, 12)
-    # x軸は Work Week 形式（例: 2026W01）
     year = int(start_month[:4])
-    start_week = int(start_month[5:7]) * 4  # 月→週の近似
+    start_week = int(start_month[5:7]) * 4
     lots = [f"{year}W{str(start_week + i).zfill(2)}" for i in range(num_lots)]
 
     base_yield = {"CP": 96.0, "FT": 94.0, "SLT": 92.0}.get(process, 95.0)
-    yield_avg = [round(base_yield + random.uniform(-3, 3), 2) for _ in lots]
 
-    bin_names_map = {
-        "CP": ["Bin3-Open", "Bin5-Short", "Bin7-Leak", "Bin9-Func", "Bin11-Para"],
-        "FT": ["Bin3-DC", "Bin5-Func", "Bin7-Speed", "Bin9-Leak", "Bin11-Scan"],
-        "SLT": ["Bin3-Boot", "Bin5-Stress", "Bin7-Perf", "Bin9-Power", "Bin11-IO"],
+    # process 別の bin_code (DB の BIN_CODE と同じ数値)
+    bin_codes_map = {
+        "CP": [3, 5, 7, 9, 11],
+        "FT": [2, 4, 6, 8],
+        "SLT": [3, 5, 7, 9, 11],
     }
-    bin_names = bin_names_map.get(process, ["Bin3", "Bin5", "Bin7"])
+    # bin_code → 簡易 BIN_NAME (bin_mappings がなければそのまま表示される)
+    bin_name_map = {
+        2: "DC-Fail", 3: "Open/Short", 4: "Function", 5: "Short",
+        6: "Speed", 7: "Leak", 8: "Power", 9: "Functional", 11: "Parametric",
+    }
+    bin_codes = bin_codes_map.get(process, [3, 5, 7])
 
-    fail_bins: dict[str, list[float]] = {}
-    for bin_name in bin_names:
-        base_pct = random.uniform(0.1, 1.5)
-        fail_bins[bin_name] = [
-            round(max(0, base_pct + random.uniform(-0.3, 0.3)), 3) for _ in lots
-        ]
-
-    return ProcessData(lots=lots, yield_avg=yield_avg, fail_bins=fail_bins)
+    rows = []
+    for lot_id in lots:
+        wafer_yield = round(base_yield + random.uniform(-3, 3), 2)
+        gross_die = random.randint(800, 1200)
+        for bin_code in bin_codes:
+            fail_count = max(0, int(gross_die * random.uniform(0.001, 0.015)))
+            rows.append({
+                "lot_id": lot_id,
+                "wafer_id": 1,
+                "yield_pct": wafer_yield,
+                "gross_die": gross_die,
+                "raw_bin_code": bin_code,
+                "bin_name": bin_name_map.get(bin_code, f"Bin{bin_code}"),
+                "bin_fail_count": fail_count,
+            })
+    return pd.DataFrame(rows, columns=_COMMON_COLUMNS)
