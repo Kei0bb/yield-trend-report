@@ -494,11 +494,25 @@ def _query_ft(
 
 def _execute_query(query: str, params: dict) -> pd.DataFrame:
     """CP / FT 共通の実行ヘルパー。結果を pandas DataFrame に変換して返す。"""
+    # bind 変数のうち PRODUCT_ID 関連だけ抽出してログ
+    pid_binds = {k: v for k, v in params.items() if k.startswith("pid") or k.startswith("like")}
+    logger.info(
+        "DB query: process=%s start=%s end=%s product_ids=%s",
+        params.get("process"), params.get("start_month"), params.get("end_month"), pid_binds,
+    )
     conn = get_connection()
     try:
         cursor = conn.cursor()
-        cursor.execute(query, params)
+        try:
+            cursor.execute(query, params)
+        except Exception as e:
+            logger.error(
+                "DB query failed: %s\n--- SQL ---\n%s\n--- params ---\n%s",
+                e, query, params,
+            )
+            raise
         rows = cursor.fetchall()
+        logger.info("DB query returned %d rows", len(rows))
         return pd.DataFrame(rows, columns=_COMMON_COLUMNS)
     finally:
         release_connection(conn)

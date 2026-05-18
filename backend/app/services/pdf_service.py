@@ -519,11 +519,14 @@ def generate_pdf(
     multi = len(products) > 1
     title_label = " vs ".join(products) if multi else products[0]
 
-    # データがある工程のみ対象
+    # データがある工程のみ対象。全工程データ無しの場合は空 PDF を避けるため
+    # リクエスト工程をそのまま使い、データ無しならプレースホルダ表示する。
     processes = [
         p for p, prod_dict in data.items()
         if any(d.lots for d in prod_dict.values())
     ]
+    if not processes:
+        processes = list(data.keys()) or ["CP"]
     total_pages = len(processes)
 
     for page_num, process_name in enumerate(processes, start=1):
@@ -538,27 +541,49 @@ def generate_pdf(
             title_label, start_month, end_month, process_name,
         )
 
-        # 3. Chart
-        if multi:
-            # 複数品種: 品種ごとに Bin chart を生成して横に並べた画像を返す
-            chart_bytes = _create_multi_chart_image(process_name, products, prod_dict)
-        else:
-            chart_bytes = _create_chart_image(process_name, prod_dict[products[0]])
+        # 3. Chart (データ無し / 画像生成失敗時はテキストで代替)
+        has_data = any(prod_dict.get(p) and prod_dict[p].lots for p in products)
+        chart_bytes: bytes | None = None
+        if has_data:
+            try:
+                if multi:
+                    chart_bytes = _create_multi_chart_image(process_name, products, prod_dict)
+                else:
+                    chart_bytes = _create_chart_image(process_name, prod_dict[products[0]])
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).error(
+                    "chart image generation failed for %s: %s", process_name, e,
+                )
+                chart_bytes = None
 
-        img_reader = ImageReader(io.BytesIO(chart_bytes))
         chart_x = MARGIN
         chart_y = FOOTER_H + 2 * mm
         chart_w = page_width - 2 * MARGIN
         chart_h = page_height - HEADER_H - FOOTER_H - 4 * mm
-        c.drawImage(
-            img_reader,
-            chart_x,
-            chart_y,
-            width=chart_w,
-            height=chart_h,
-            preserveAspectRatio=True,
-            anchor="n",
-        )
+
+        if chart_bytes:
+            img_reader = ImageReader(io.BytesIO(chart_bytes))
+            c.drawImage(
+                img_reader,
+                chart_x,
+                chart_y,
+                width=chart_w,
+                height=chart_h,
+                preserveAspectRatio=True,
+                anchor="n",
+            )
+        else:
+            # プレースホルダ
+            c.saveState()
+            c.setFillColorRGB(0.55, 0.53, 0.52)
+            c.setFont("Helvetica", 14)
+            c.drawCentredString(
+                chart_x + chart_w / 2,
+                chart_y + chart_h / 2,
+                f"No data available for {process_name}",
+            )
+            c.restoreState()
 
         # 4. Footer
         _draw_footer(c, page_width, page_num, total_pages)

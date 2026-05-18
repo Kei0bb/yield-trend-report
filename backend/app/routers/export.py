@@ -1,13 +1,17 @@
-from fastapi import APIRouter
+import logging
+import traceback
+
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
 
-from app.models.schemas import YieldRequest
+from app.models.schemas import ProcessData, YieldRequest
 from app.services.yield_service import (
     get_yield_data_merged,
     group_by_display_name,
 )
 from app.services.pdf_service import generate_pdf
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -18,24 +22,37 @@ def export_pdf(req: YieldRequest) -> Response:
     display_names = list(groups.keys())
 
     # data[process][display_name] = ProcessData
+    # 個別の process / product のデータ取得失敗で PDF 全体を 500 にしない
     data: dict = {}
     for process in req.processes:
         data[process] = {}
         for display_name, nicknames in groups.items():
-            data[process][display_name] = get_yield_data_merged(
-                nicknames=nicknames,
-                start_month=req.start_month,
-                end_month=req.end_month,
-                process=process,
-            )
+            try:
+                data[process][display_name] = get_yield_data_merged(
+                    nicknames=nicknames,
+                    start_month=req.start_month,
+                    end_month=req.end_month,
+                    process=process,
+                )
+            except Exception as e:
+                logger.error(
+                    "yield data fetch failed: process=%s display=%s nicknames=%s\n%s",
+                    process, display_name, nicknames, traceback.format_exc(),
+                )
+                # 空データで埋めて他の process / product は処理継続
+                data[process][display_name] = ProcessData(lots=[], yield_avg=[], fail_bins={})
 
     products_label = "_vs_".join(display_names)
-    pdf_bytes = generate_pdf(
-        products=display_names,
-        start_month=req.start_month,
-        end_month=req.end_month,
-        data=data,
-    )
+    try:
+        pdf_bytes = generate_pdf(
+            products=display_names,
+            start_month=req.start_month,
+            end_month=req.end_month,
+            data=data,
+        )
+    except Exception as e:
+        logger.error("generate_pdf failed:\n%s", traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"PDF generation failed: {e}")
 
     filename = f"YieldTrend_{products_label}_{req.start_month}_to_{req.end_month}.pdf"
     return Response(
