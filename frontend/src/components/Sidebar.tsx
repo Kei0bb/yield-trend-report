@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fetchProducts, fetchHealth } from "../api/client";
+import { fetchProducts, fetchHealth, exportPdf } from "../api/client";
 import type { YieldRequest } from "../types";
 
 interface SidebarProps {
@@ -151,11 +151,10 @@ export default function Sidebar({ onGenerate, loading, canPrint }: SidebarProps)
             ...styles.secondaryBtn,
             ...(!canPrint || disabled ? styles.btnDisabled : {}),
           }}
-          onClick={() => window.print()}
+          onClick={() => exportPdf(buildRequest())}
           disabled={!canPrint || disabled}
-          title="ブラウザの印刷ダイアログが開きます。「PDFとして保存」を選択してください。"
         >
-          Export PDF (Print)
+          Export PDF
         </button>
       </div>
 

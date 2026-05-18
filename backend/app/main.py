@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app import logging_config
 from app.config import settings
 from app.database import close_pool, init_pool
-from app.routers import yield_data
+from app.routers import export, yield_data
 
 logging_config.setup(settings.LOG_LEVEL)
 
@@ -34,6 +34,7 @@ app.add_middleware(
 )
 
 app.include_router(yield_data.router, prefix="/api")
+app.include_router(export.router, prefix="/api")
 
 
 @app.get("/health")

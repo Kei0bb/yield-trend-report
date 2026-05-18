@@ -1,11 +1,9 @@
 import { useState } from "react";
 import Sidebar from "./components/Sidebar";
 import ReportView from "./components/ReportView";
-import PrintView from "./components/PrintView";
 import ErrorBanner from "./components/ErrorBanner";
 import { fetchYieldData } from "./api/client";
 import type { YieldRequest, YieldResponse } from "./types";
-import "./print.css";
 
 export default function App() {
   const [data, setData] = useState<YieldResponse | null>(null);
@@ -37,11 +35,8 @@ export default function App() {
       />
       <div style={styles.main}>
         {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
-        <ReportView className="report-view" data={data} request={currentRequest} />
+        <ReportView data={data} request={currentRequest} />
       </div>
-      {data && currentRequest && (
-        <PrintView data={data} request={currentRequest} />
-      )}
     </div>
   );
 }

@@ -62,10 +62,8 @@ export default function YieldChart({ processName, productData }: YieldChartProps
   // ── Single product ──────────────────────────────────────────────
   if (!isMulti) {
     const data = productData[productNames[0]];
-    const avg =
-      data.yield_avg.length > 0
-        ? data.yield_avg.reduce((a, b) => a + b, 0) / data.yield_avg.length
-        : 0;
+    const latestYield =
+      data.yield_avg.length > 0 ? data.yield_avg[data.yield_avg.length - 1] : 0;
 
     const lineTrace: Plotly.Data = {
       x: data.lots,
@@ -102,8 +100,8 @@ export default function YieldChart({ processName, productData }: YieldChartProps
           </div>
           <div style={styles.stats}>
             <div style={styles.statItem}>
-              <div style={styles.statLabel}>Avg yield</div>
-              <div style={styles.statValue}>{avg.toFixed(2)}%</div>
+              <div style={styles.statLabel}>Latest yield</div>
+              <div style={styles.statValue}>{latestYield.toFixed(2)}%</div>
             </div>
           </div>
         </div>
@@ -165,8 +163,8 @@ export default function YieldChart({ processName, productData }: YieldChartProps
         <div style={styles.stats}>
           {productNames.map((product, i) => {
             const d = productData[product];
-            const avg = d.yield_avg.length > 0
-              ? d.yield_avg.reduce((a, b) => a + b, 0) / d.yield_avg.length
+            const latestYield = d.yield_avg.length > 0
+              ? d.yield_avg[d.yield_avg.length - 1]
               : 0;
             return (
               <div key={product} style={styles.statItem}>
@@ -174,7 +172,7 @@ export default function YieldChart({ processName, productData }: YieldChartProps
                   <span style={{ width: 8, height: 8, borderRadius: "50%", background: PRODUCT_COLORS[i % PRODUCT_COLORS.length], flexShrink: 0, display: "inline-block" }} />
                   {product}
                 </div>
-                <div style={styles.statValue}>{avg.toFixed(2)}%</div>
+                <div style={styles.statValue}>{latestYield.toFixed(2)}%</div>
               </div>
             );
           })}
