@@ -10,9 +10,13 @@ ANY_PROCESS = "*"
 DEFAULT_BIN_GROUP = "default"
 
 
+# Processes that share the FT tables — resolve product_id from ft_product_id
+_FT_FAMILY = {"SLT"}
+
+
 @lru_cache(maxsize=None)
 def load_product_config() -> dict[str, dict[str, str]] | None:
-    """Load product_config.csv and return {nickname: {display_name, cp_product_id, ft_product_id, bin_group}}.
+    """Load product_config.csv and return {nickname: {display_name, cp_product_id, ft_product_id, bin_group, ...}}.
 
     Returns None when the file does not exist (falls back to DB enumeration or mock).
     Result is cached for the lifetime of the process; restart server after editing the CSV.
@@ -40,6 +44,8 @@ def load_product_config() -> dict[str, dict[str, str]] | None:
             "cp_product_id": row.get("cp_product_id", "").strip(),
             "ft_product_id": row.get("ft_product_id", "").strip(),
             "bin_group": row.get("bin_group", "").strip() or DEFAULT_BIN_GROUP,
+            "ft_bin_group": row.get("ft_bin_group", "").strip(),
+            "slt_bin_group": row.get("slt_bin_group", "").strip(),
             "ft_processes": row.get("ft_processes", "").strip(),
             "slt_processes": row.get("slt_processes", "").strip(),
         }
@@ -55,6 +61,8 @@ def resolve_product_ids(nickname: str, process: str) -> list[str]:
     """Resolve a nickname + process to a list of DB PRODUCT_IDs.
 
     Supports ';'-delimited multi-ID values and '%' wildcards for LIKE queries.
+    SLT and other FT-family processes fall back to ft_product_id when their own
+    key is absent.
     Returns [nickname] as-is when product_config.csv is absent.
     """
     config = load_product_config()
@@ -63,6 +71,8 @@ def resolve_product_ids(nickname: str, process: str) -> list[str]:
 
     key = f"{process.lower()}_product_id"
     raw = config[nickname].get(key, "")
+    if not raw and process.upper() in _FT_FAMILY:
+        raw = config[nickname].get("ft_product_id", "")
     if not raw:
         return []
 
@@ -95,12 +105,26 @@ def resolve_process_filter(nickname: str, process: str) -> list[str] | None:
     return [v for v in values if v] or None
 
 
-def resolve_bin_group(nickname: str) -> str:
-    """Return the bin_group identifier for a nickname."""
+def resolve_bin_group(nickname: str, process: str = "") -> str:
+    """Return the bin_group identifier for a nickname, optionally process-specific.
+
+    Lookup order:
+    1. <process>_bin_group  (e.g. ft_bin_group, slt_bin_group) — if set
+    2. bin_group            — shared fallback
+    SLT falls back to ft_bin_group before bin_group.
+    """
     config = load_product_config()
     if config is None or nickname not in config:
         return DEFAULT_BIN_GROUP
-    return config[nickname].get("bin_group", DEFAULT_BIN_GROUP)
+    entry = config[nickname]
+    if process:
+        proc_key = f"{process.lower()}_bin_group"
+        specific = entry.get(proc_key, "")
+        if not specific and process.upper() in _FT_FAMILY:
+            specific = entry.get("ft_bin_group", "")
+        if specific:
+            return specific
+    return entry.get("bin_group", "") or DEFAULT_BIN_GROUP
 
 
 def group_by_display_name(nicknames: list[str]) -> dict[str, list[str]]:

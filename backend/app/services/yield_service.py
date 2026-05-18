@@ -60,7 +60,7 @@ def get_yield_data_merged(
     if not nicknames:
         return ProcessData(lots=[], yield_avg=[], fail_bins={})
 
-    bin_group = resolve_bin_group(nicknames[0])
+    bin_group = resolve_bin_group(nicknames[0], process)
 
     if settings.USE_MOCK_DATA:
         display = resolve_display_name(nicknames[0])
