@@ -167,9 +167,16 @@ def _load_bin_mapping(bin_group: str) -> dict[str, dict[int, str]]:
     if df.empty:
         logger.warning("bin mapping file is empty: %s", csv_path)
         return {}
-    if "bin_code" not in df.columns or "bin_group_name" not in df.columns:
+
+    # bin_group_name (推奨) / bin_group (旧) どちらの列名でも OK
+    name_col = (
+        "bin_group_name" if "bin_group_name" in df.columns
+        else "bin_group" if "bin_group" in df.columns
+        else None
+    )
+    if "bin_code" not in df.columns or name_col is None:
         logger.warning(
-            "bin mapping file %s: 必須列 'bin_code' / 'bin_group_name' が不足。"
+            "bin mapping file %s: 必須列が不足 (bin_code と bin_group_name/bin_group のいずれか)。"
             " 検出列=%s",
             csv_path, list(df.columns),
         )
@@ -180,7 +187,7 @@ def _load_bin_mapping(bin_group: str) -> dict[str, dict[int, str]]:
     skipped = 0
     for _, row in df.iterrows():
         code = row.get("bin_code", "").strip()
-        name = row.get("bin_group_name", "").strip()
+        name = row.get(name_col, "").strip()
         if not code or not name:
             skipped += 1
             continue
