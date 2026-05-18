@@ -23,7 +23,7 @@ _PROCESS_SPEC: dict[str, dict] = {
         "bin_sum": "SEMI_CP_BIN_SUM",
         "join_keys": ["SUBSTRATE_ID", "WAFER_ID", "PROCESS"],
         "join_type": "JOIN",
-        "date_col": "CREATE_DATE",
+        "date_col": "MODIFIED_DATE",
     },
     "FT": {
         "header": "SEMI_FT_HEADER",
