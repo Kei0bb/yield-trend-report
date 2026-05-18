@@ -18,6 +18,10 @@ router = APIRouter()
 @router.post("/export-pdf")
 def export_pdf(req: YieldRequest) -> Response:
     """display_name でグループ化してマージ後のデータで PDF を生成。"""
+    logger.warning(
+        "[PDF] export-pdf request: products=%s processes=%s period=%s..%s",
+        req.products, req.processes, req.start_month, req.end_month,
+    )
     groups = group_by_display_name(req.products)
     display_names = list(groups.keys())
 
