@@ -1,0 +1,45 @@
+/* Print-specific styles — applied only during window.print() */
+
+@media print {
+  /* A4 landscape */
+  @page {
+    size: A4 landscape;
+    margin: 12mm 14mm;
+  }
+
+  /* Hide the interactive sidebar and normal report view */
+  body > #root > div > aside,
+  .report-view {
+    display: none !important;
+  }
+
+  /* Show the print view */
+  .print-view {
+    display: block !important;
+  }
+
+  /* Each process page breaks cleanly */
+  .print-page {
+    page-break-after: always;
+    break-after: page;
+  }
+
+  .print-page:last-child {
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+
+  /* Plotly charts: force full width and prevent SVG clipping */
+  .print-chart .js-plotly-plot,
+  .print-chart .plot-container {
+    width: 100% !important;
+    height: 100% !important;
+  }
+}
+
+/* Screen: hide print view so it doesn't appear in the browser */
+@media screen {
+  .print-view {
+    display: none !important;
+  }
+}

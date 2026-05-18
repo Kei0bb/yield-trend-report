@@ -1,23 +1,31 @@
-import os
-from dotenv import load_dotenv
-
-load_dotenv()  # backend/.env を自動読み込み
+from pydantic_settings import BaseSettings
 
 
-class Settings:
-    # ── モード切り替え ─────────────────────────────────────────
-    # .env に USE_MOCK_DATA=true  → Oracle 不要、モックデータで動作（デフォルト）
-    # .env に USE_MOCK_DATA=false → 下記の Oracle 接続設定が有効になる
-    USE_MOCK_DATA: bool = os.getenv("USE_MOCK_DATA", "true").lower() == "true"
+class Settings(BaseSettings):
+    # Mock mode (default true: Oracle not required)
+    USE_MOCK_DATA: bool = True
 
-    # ── Oracle DB 接続（USE_MOCK_DATA=false のときのみ使用）──────
-    # oracledb は Thin モード（Pure Python）がデフォルト。
-    # Oracle Instant Client のインストールは不要。
-    ORACLE_DSN: str = os.getenv("ORACLE_DSN", "localhost:1521/XEPDB1")
-    ORACLE_USER: str = os.getenv("ORACLE_USER", "")
-    ORACLE_PASSWORD: str = os.getenv("ORACLE_PASSWORD", "")
-    ORACLE_MIN_CONNECTIONS: int = int(os.getenv("ORACLE_MIN_CONNECTIONS", "2"))
-    ORACLE_MAX_CONNECTIONS: int = int(os.getenv("ORACLE_MAX_CONNECTIONS", "10"))
+    # Oracle DB connection (used when USE_MOCK_DATA=false)
+    ORACLE_DSN: str = "localhost:1521/XEPDB1"
+    ORACLE_USER: str = ""
+    ORACLE_PASSWORD: str = ""
+    ORACLE_MIN_CONNECTIONS: int = 2
+    ORACLE_MAX_CONNECTIONS: int = 10
+
+    # Log level: DEBUG / INFO / WARNING / ERROR
+    LOG_LEVEL: str = "INFO"
+
+    # CORS allowed origins (comma-separated string or JSON list in .env)
+    CORS_ORIGINS: list[str] = ["http://localhost:5173", "http://localhost:3000"]
+
+    model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+
+    def validate_db_config(self) -> None:
+        if not self.USE_MOCK_DATA and not (self.ORACLE_USER and self.ORACLE_PASSWORD):
+            raise ValueError(
+                "ORACLE_USER and ORACLE_PASSWORD are required when USE_MOCK_DATA=false. "
+                "Set them in backend/.env"
+            )
 
 
 settings = Settings()

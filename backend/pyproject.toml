@@ -9,10 +9,8 @@ dependencies = [
     "oracledb",
     "pandas",
     "plotly",
-    "kaleido",
-    "reportlab",
+    "pydantic-settings",
     "python-dotenv",
-    "pillow",
 ]
 
 [dependency-groups]

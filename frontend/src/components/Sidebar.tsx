@@ -1,45 +1,52 @@
 import { useEffect, useState } from "react";
-import { fetchProducts } from "../api/client";
+import { fetchProducts, fetchHealth } from "../api/client";
 import type { YieldRequest } from "../types";
 
 interface SidebarProps {
   onGenerate: (req: YieldRequest) => void;
-  onExportPdf: (req: YieldRequest) => void;
   loading: boolean;
+  canPrint: boolean;
 }
 
 const PROCESSES = ["CP", "FT", "SLT"];
 
-export default function Sidebar({ onGenerate, onExportPdf, loading }: SidebarProps) {
+function formatYM(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  return `${y}-${m}`;
+}
+
+function addMonths(d: Date, n: number): Date {
+  const r = new Date(d);
+  r.setMonth(r.getMonth() + n);
+  return r;
+}
+
+export default function Sidebar({ onGenerate, loading, canPrint }: SidebarProps) {
   const [products, setProducts] = useState<string[]>([]);
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
-  const [startMonth, setStartMonth] = useState("2026-01");
-  const [endMonth, setEndMonth] = useState("2026-03");
-  const [selectedProcesses, setSelectedProcesses] = useState<string[]>([
-    "CP",
-    "FT",
-    "SLT",
-  ]);
+  const [startMonth, setStartMonth] = useState(() => formatYM(addMonths(new Date(), -2)));
+  const [endMonth, setEndMonth] = useState(() => formatYM(new Date()));
+  const [selectedProcesses, setSelectedProcesses] = useState<string[]>(["CP", "FT", "SLT"]);
+  const [isMock, setIsMock] = useState<boolean | null>(null);
 
   useEffect(() => {
     fetchProducts().then((list) => {
       setProducts(list);
-      // 初期選択: 最初の1品種
       if (list.length > 0) setSelectedProducts([list[0]]);
     });
+    fetchHealth().then((h) => setIsMock(h.mock)).catch(() => setIsMock(null));
   }, []);
 
-  const toggleProduct = (p: string) => {
+  const toggleProduct = (p: string) =>
     setSelectedProducts((prev) =>
       prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]
     );
-  };
 
-  const toggleProcess = (p: string) => {
+  const toggleProcess = (p: string) =>
     setSelectedProcesses((prev) =>
       prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]
     );
-  };
 
   const buildRequest = (): YieldRequest => ({
     products: selectedProducts,
@@ -48,10 +55,7 @@ export default function Sidebar({ onGenerate, onExportPdf, loading }: SidebarPro
     processes: selectedProcesses,
   });
 
-  const disabled =
-    loading ||
-    selectedProducts.length === 0 ||
-    selectedProcesses.length === 0;
+  const disabled = loading || selectedProducts.length === 0 || selectedProcesses.length === 0;
 
   return (
     <aside style={styles.sidebar}>
@@ -79,10 +83,7 @@ export default function Sidebar({ onGenerate, onExportPdf, loading }: SidebarPro
                 key={p}
                 type="button"
                 onClick={() => toggleProduct(p)}
-                style={{
-                  ...styles.chip,
-                  ...(active ? styles.chipActive : {}),
-                }}
+                style={{ ...styles.chip, ...(active ? styles.chipActive : {}) }}
               >
                 {p}
               </button>
@@ -127,10 +128,7 @@ export default function Sidebar({ onGenerate, onExportPdf, loading }: SidebarPro
                 key={p}
                 type="button"
                 onClick={() => toggleProcess(p)}
-                style={{
-                  ...styles.chip,
-                  ...(active ? styles.chipActive : {}),
-                }}
+                style={{ ...styles.chip, ...(active ? styles.chipActive : {}) }}
               >
                 {p}
               </button>
@@ -142,10 +140,7 @@ export default function Sidebar({ onGenerate, onExportPdf, loading }: SidebarPro
       {/* ── Buttons ────────────────────────────────────────────── */}
       <div style={styles.buttons}>
         <button
-          style={{
-            ...styles.primaryBtn,
-            ...(disabled ? styles.btnDisabled : {}),
-          }}
+          style={{ ...styles.primaryBtn, ...(disabled ? styles.btnDisabled : {}) }}
           onClick={() => onGenerate(buildRequest())}
           disabled={disabled}
         >
@@ -154,18 +149,24 @@ export default function Sidebar({ onGenerate, onExportPdf, loading }: SidebarPro
         <button
           style={{
             ...styles.secondaryBtn,
-            ...(disabled ? styles.btnDisabled : {}),
+            ...(!canPrint || disabled ? styles.btnDisabled : {}),
           }}
-          onClick={() => onExportPdf(buildRequest())}
-          disabled={disabled}
+          onClick={() => window.print()}
+          disabled={!canPrint || disabled}
+          title="ブラウザの印刷ダイアログが開きます。「PDFとして保存」を選択してください。"
         >
-          Export PDF
+          Export PDF (Print)
         </button>
       </div>
 
       <div style={styles.footer}>
-        <span style={styles.footerDot} />
-        Mock data mode
+        <span
+          style={{
+            ...styles.footerDot,
+            background: isMock === false ? "var(--notion-blue)" : "var(--green)",
+          }}
+        />
+        {isMock === null ? "Connecting…" : isMock ? "Mock data mode" : "Live DB mode"}
       </div>
     </aside>
   );
@@ -331,7 +332,7 @@ const styles: Record<string, React.CSSProperties> = {
     width: 6,
     height: 6,
     borderRadius: "50%",
-    background: "var(--green)",
     display: "inline-block",
+    transition: "background 300ms",
   },
 };

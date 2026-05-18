@@ -1,18 +1,19 @@
+import logging
+
 from fastapi import APIRouter
 
 from app.models.schemas import YieldRequest, YieldResponse
-from app.services.yield_service import (
-    _BIN_MAPPINGS_DIR,
-    _load_bin_mapping,
-    _load_product_config,
-    _resolve_bin_group,
-    _resolve_product_ids,
-    get_products,
-    get_yield_data_merged,
-    group_by_display_name,
+from app.services.bin_mapping import load_bin_mapping
+from app.services.product_config import (
+    load_product_config,
+    resolve_bin_group,
     resolve_display_name,
+    resolve_product_ids,
 )
+from app.services.yield_service import get_products, get_yield_data_merged, group_by_display_name
+from app.utils.csv_loader import BIN_MAPPINGS_DIR
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -23,30 +24,29 @@ def list_products() -> list[str]:
 
 @router.get("/debug/config")
 def debug_config(nickname: str | None = None) -> dict:
+    """Inspect product config and bin mapping resolution.
+
+    Usage: GET /api/debug/config?nickname=Phoenix
     """
-    設定ファイルの読み込み状況を確認するためのデバッグエンドポイント。
-    `?nickname=Phoenix` のように指定すると、その nickname の
-    bin_group / PRODUCT_ID / bin_mapping 読み込み結果まで全て表示。
-    """
-    config = _load_product_config()
+    config = load_product_config()
     result: dict = {
-        "bin_mappings_dir": str(_BIN_MAPPINGS_DIR),
+        "bin_mappings_dir": str(BIN_MAPPINGS_DIR),
         "bin_mappings_files": sorted(
-            p.name for p in _BIN_MAPPINGS_DIR.glob("*.csv")
-        ) if _BIN_MAPPINGS_DIR.exists() else [],
+            p.name for p in BIN_MAPPINGS_DIR.glob("*.csv")
+        ) if BIN_MAPPINGS_DIR.exists() else [],
         "product_config_loaded": config is not None,
         "product_config_nicknames": list(config.keys()) if config else [],
     }
     if nickname:
-        bin_group = _resolve_bin_group(nickname)
+        bin_group = resolve_bin_group(nickname)
         result["resolved"] = {
             "nickname": nickname,
             "display_name": resolve_display_name(nickname),
             "bin_group": bin_group,
-            "cp_product_ids": _resolve_product_ids(nickname, "CP"),
-            "ft_product_ids": _resolve_product_ids(nickname, "FT"),
+            "cp_product_ids": resolve_product_ids(nickname, "CP"),
+            "ft_product_ids": resolve_product_ids(nickname, "FT"),
             "bin_mapping": {
-                proc: dict(m) for proc, m in _load_bin_mapping(bin_group).items()
+                proc: dict(m) for proc, m in load_bin_mapping(bin_group).items()
             },
         }
     return result
@@ -54,13 +54,15 @@ def debug_config(nickname: str | None = None) -> dict:
 
 @router.get("/debug/probe")
 def debug_probe(nickname: str, process: str, start_month: str, end_month: str) -> dict:
-    """
-    実 DB クエリを叩いて何件返るかをそのまま返す診断エンドポイント。
-    例: /api/debug/probe?nickname=Phoenix&process=FT&start_month=2025-01&end_month=2025-05
-    PDF が空になる原因 (PRODUCT_ID 解決失敗 / SQL 0 行 / 例外) を直接確認。
+    """Run a real DB query and return row counts for diagnosis.
+
+    Usage: GET /api/debug/probe?nickname=Phoenix&process=FT&start_month=2025-01&end_month=2025-05
+    Useful for diagnosing empty data issues (wrong PRODUCT_ID, SQL returning 0 rows, etc.)
     """
     import traceback
+
     from app.config import settings
+
     out: dict = {
         "input": {
             "nickname": nickname,
@@ -69,8 +71,8 @@ def debug_probe(nickname: str, process: str, start_month: str, end_month: str) -
             "end_month": end_month,
         },
         "use_mock_data": settings.USE_MOCK_DATA,
-        "resolved_product_ids": _resolve_product_ids(nickname, process),
-        "resolved_bin_group": _resolve_bin_group(nickname),
+        "resolved_product_ids": resolve_product_ids(nickname, process),
+        "resolved_bin_group": resolve_bin_group(nickname),
     }
     try:
         proc_data = get_yield_data_merged(
@@ -91,13 +93,7 @@ def debug_probe(nickname: str, process: str, start_month: str, end_month: str) -
 
 @router.post("/yield-data")
 def fetch_yield_data(req: YieldRequest) -> YieldResponse:
-    """
-    リクエストの nicknames を display_name でグループ化し、同じ display_name に
-    属する nicknames は 1 つの ProcessData にマージして返す。
-
-    レスポンス構造:
-        data[process][display_name] = ProcessData
-    """
+    """Fetch yield + bin data, merging nicknames that share the same display_name."""
     groups = group_by_display_name(req.products)
 
     data: dict = {}

@@ -58,3 +58,8 @@ backend/product_config.csv
 # 本体 *.csv は環境別管理（gitignore）、サンプル *.csv.example と README はコミット
 backend/bin_mappings/*.csv
 !backend/bin_mappings/*.csv.example
+
+# Verification screenshots / debug images (generated locally)
+/*.png
+/*.jpg
+/*.jpeg

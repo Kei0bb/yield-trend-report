@@ -4,14 +4,15 @@ import YieldChart from "./YieldChart";
 interface ReportViewProps {
   data: YieldResponse | null;
   request: YieldRequest | null;
+  className?: string;
 }
 
 const PROCESS_ORDER = ["CP", "FT", "SLT"];
 
-export default function ReportView({ data, request }: ReportViewProps) {
+export default function ReportView({ data, request, className }: ReportViewProps) {
   if (!data || !request) {
     return (
-      <main style={styles.empty}>
+      <main className={className} style={styles.empty}>
         <div style={styles.emptyCard}>
           <div style={styles.emptyBadge}>Ready</div>
           <h2 style={styles.emptyTitle}>Generate your yield report</h2>
@@ -47,7 +48,7 @@ export default function ReportView({ data, request }: ReportViewProps) {
     request.products.some((p, i) => p !== displayNames[i]);
 
   return (
-    <main style={styles.container}>
+    <main className={className} style={styles.container}>
       <header style={styles.header}>
         <div style={styles.breadcrumb}>Reports · Yield Trend</div>
         <h1 style={styles.title}>{titleText}</h1>

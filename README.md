@@ -19,11 +19,12 @@ Oracle DB から Wafer 単位データを取得し、Lot 毎に集計。CP / FT 
 
 | 機能 | 詳細 |
 |------|------|
-| 製品 / 期間 / 工程フィルター | Product ドロップダウン、開始〜終了月、CP / FT / SLT チップ選択 |
+| 製品 / 期間 / 工程フィルター | Product ドロップダウン、開始〜終了月（今月起点で自動設定）、CP / FT / SLT チップ選択 |
 | 複合チャート | Lot 平均 Yield 折れ線（右 Y 軸）+ 不良 Bin Stacked Bar（左 Y 軸） |
 | Web プレビュー | Plotly でインタラクティブ表示（ズーム / ホバー / 凡例トグル） |
-| PDF エクスポート | A4 横向き、企業ロゴ / CONFIDENTIAL 透かし / ページ番号付き |
+| PDF エクスポート | "Export PDF (Print)" ボタン → ブラウザの印刷ダイアログ → 「PDF として保存」。A4 横向き、CONFIDENTIAL バッジ / ページ番号付き |
 | モックモード | Oracle 不要でモックデータで即起動 (`USE_MOCK_DATA=true`) |
+| 接続状態表示 | サイドバー下部に "Mock data mode" / "Live DB mode" をリアルタイム表示 |
 
 ---
 
@@ -33,13 +34,13 @@ Oracle DB から Wafer 単位データを取得し、Lot 毎に集計。CP / FT 
 - React 19 + TypeScript (Vite)
 - react-plotly.js + plotly.js
 - Notion 風デザイントークン（Inter フォント / warm-white / Notion Blue）
+- ブラウザ印刷 CSS (`@media print`) で PDF 生成（kaleido 不要）
 
 ### Backend
 - Python 3.13 + FastAPI + uvicorn
-- oracledb（Oracle DB 公式 Python ドライバ）
+- oracledb（Oracle DB 公式 Python ドライバ、Thin モード — Instant Client 不要）
 - pandas（Wafer → Lot 集計）
-- Plotly + kaleido（PDF 用チャート画像生成）
-- ReportLab（A4 横 PDF 組み立て）
+- pydantic-settings（型付き設定管理 + 起動時バリデーション）
 
 ---
 
@@ -49,32 +50,44 @@ Oracle DB から Wafer 単位データを取得し、Lot 毎に集計。CP / FT 
 Report_gen/
 ├── backend/
 │   ├── app/
-│   │   ├── main.py             # FastAPI アプリ本体・CORS 設定
-│   │   ├── config.py           # 環境変数読み込み（Settings クラス）
-│   │   ├── database.py         # Oracle 接続プール管理
+│   │   ├── main.py               # FastAPI アプリ本体・CORS 設定
+│   │   ├── config.py             # pydantic-settings（環境変数 + .env 読み込み）
+│   │   ├── database.py           # Oracle 接続プール管理
+│   │   ├── logging_config.py     # LOG_LEVEL env で制御する統一ログ設定
 │   │   ├── models/
-│   │   │   └── schemas.py      # Pydantic スキーマ
+│   │   │   └── schemas.py        # Pydantic スキーマ
 │   │   ├── routers/
-│   │   │   ├── yield_data.py   # GET /api/products, POST /api/yield-data
-│   │   │   └── export.py       # POST /api/export-pdf
-│   │   └── services/
-│   │       ├── yield_service.py  # データ取得・集計ロジック
-│   │       └── pdf_service.py    # PDF 生成ロジック
-│   ├── requirements.txt
-│   └── .env                    # ← gitignore 済み（下記テンプレート参照）
+│   │   │   └── yield_data.py     # GET /api/products, POST /api/yield-data, debug endpoints
+│   │   ├── services/
+│   │   │   ├── yield_service.py  # オーケストレータ（薄いエントリポイント）
+│   │   │   ├── product_config.py # product_config.csv 読み込み・nickname 解決（lru_cache）
+│   │   │   ├── bin_mapping.py    # bin_mappings/*.csv 読み込み・Bin コード変換（lru_cache）
+│   │   │   ├── yield_queries.py  # Oracle SQL ビルダ + 実行（CP/FT 統合）
+│   │   │   ├── yield_aggregator.py # DataFrame → ProcessData 集計
+│   │   │   └── mock_data.py      # モックデータ生成
+│   │   └── utils/
+│   │       └── csv_loader.py     # CSV 読み込み共通ヘルパー・パス定数
+│   ├── bin_mappings/             # 製品別 Bin マッピング CSV（*.csv.example を参照）
+│   ├── product_config.csv        # 製品設定（*.csv.example を参照）
+│   ├── pyproject.toml
+│   └── .env                      # ← gitignore 済み（下記テンプレート参照）
 ├── frontend/
 │   └── src/
 │       ├── App.tsx
-│       ├── index.css           # Notion デザイントークン（CSS 変数）
-│       ├── api/client.ts       # axios API クライアント
+│       ├── theme.ts              # BIN_COLORS / PRODUCT_COLORS / FONT_FAMILY（共通定数）
+│       ├── print.css             # @media print — A4 横 PDF レイアウト
+│       ├── index.css             # Notion デザイントークン（CSS 変数）
+│       ├── api/client.ts         # axios API クライアント
 │       ├── components/
-│       │   ├── Sidebar.tsx     # フィルターパネル
-│       │   ├── ReportView.tsx  # レポートメイン表示
-│       │   ├── YieldChart.tsx  # 複合チャートカード
-│       │   └── PlotlyChart.tsx # react-plotly.js CJS 互換ラッパー
-│       └── types/index.ts      # TypeScript 型定義
+│       │   ├── Sidebar.tsx       # フィルターパネル
+│       │   ├── ReportView.tsx    # レポートメイン表示
+│       │   ├── YieldChart.tsx    # 複合チャートカード
+│       │   ├── PlotlyChart.tsx   # react-plotly.js CJS 互換ラッパー
+│       │   ├── PrintView.tsx     # 印刷専用レイアウト（@media print で表示）
+│       │   └── ErrorBanner.tsx   # インラインエラー表示
+│       └── types/index.ts        # TypeScript 型定義
 └── docs/
-    └── specs/                  # 設計ドキュメント
+    └── specs/                    # 設計ドキュメント
 ```
 
 ---
@@ -98,9 +111,6 @@ uv sync
 
 # モックデータで起動（Oracle 不要）
 uv run uvicorn app.main:app --reload --port 8000
-
-# または環境変数を明示して起動
-USE_MOCK_DATA=true uv run uvicorn app.main:app --reload --port 8000
 ```
 
 API ドキュメントは http://localhost:8000/docs で確認できます。
@@ -122,6 +132,9 @@ npm run dev
 `backend/.env` を作成して設定します（`.env.example` を参照）：
 
 ```env
+# モックデータ切り替え（true = Oracle 不要）
+USE_MOCK_DATA=true
+
 # Oracle DB 接続（USE_MOCK_DATA=false のときのみ使用）
 ORACLE_DSN=hostname:1521/SERVICE_NAME
 ORACLE_USER=your_user
@@ -129,11 +142,21 @@ ORACLE_PASSWORD=your_password
 ORACLE_MIN_CONNECTIONS=2
 ORACLE_MAX_CONNECTIONS=10
 
-# モックデータ切り替え（true = Oracle 不要）
-USE_MOCK_DATA=true
+# ログレベル（DEBUG / INFO / WARNING / ERROR）
+LOG_LEVEL=INFO
+
+# CORS 許可オリジン（JSON 配列形式）
+CORS_ORIGINS=["http://localhost:5173"]
 ```
 
-> ⚠️ `.env` は `.gitignore` に含まれています。絶対に Git に追加しないでください。
+> **注意**: `USE_MOCK_DATA=false` のとき `ORACLE_USER` / `ORACLE_PASSWORD` が未設定だと起動時にエラーになります。
+
+`frontend/.env`（任意）:
+
+```env
+# バックエンドの API URL（末尾スラッシュなし）
+VITE_API_BASE_URL=http://localhost:8000/api
+```
 
 ---
 
@@ -141,64 +164,77 @@ USE_MOCK_DATA=true
 
 | メソッド | パス | 説明 |
 |----------|------|------|
-| `GET` | `/health` | ヘルスチェック |
+| `GET` | `/health` | ヘルスチェック（`mock: true/false` 付き） |
 | `GET` | `/api/products` | 製品一覧取得 |
 | `POST` | `/api/yield-data` | Yield + Bin データ取得 |
-| `POST` | `/api/export-pdf` | PDF バイナリ取得 |
+| `GET` | `/api/debug/config` | 設定ファイル読み込み状況の確認 |
+| `GET` | `/api/debug/probe` | 実 DB クエリの診断（行数・エラー確認） |
 
 ### `POST /api/yield-data` リクエスト例
 
 ```json
 {
-  "product": "Product-A",
+  "products": ["Product-A"],
   "start_month": "2026-01",
   "end_month": "2026-03",
-  "processes": ["CP", "FT", "SLT"]
+  "processes": ["CP", "FT"]
 }
 ```
 
 ---
 
-## PDF カスタマイズ
+## PDF エクスポート
 
-`backend/app/services/pdf_service.py` 冒頭の定数を編集するだけで本番環境に対応できます：
+サーバ側での画像生成（kaleido）は使用しません。  
+ブラウザの印刷機能を利用するため、**Windows 環境でも安定して動作します**。
 
-```python
-# ── 本番環境で差し替える箇所 ──────────────────────────────
-COMPANY_NAME = "Acme Semiconductor"      # フッター左・ロゴ下テキスト
-LOGO_PATH: str | None = None             # 企業ロゴ画像パス（None = テキストプレースホルダー）
-CONFIDENTIAL = True                      # False にすると透かし・バッジを非表示
-# ──────────────────────────────────────────────────────────
-```
+1. "Generate Report" でチャートを表示
+2. "Export PDF (Print)" ボタンをクリック → ブラウザの印刷ダイアログが開く
+3. 送信先を「PDF として保存」に変更して保存
 
-### ロゴ画像を使う場合
-
-```python
-LOGO_PATH = "/path/to/company_logo.png"  # PNG / JPEG 対応
-```
-
-ロゴは A4 横の左上（20mm × 12mm 以内）に自動フィットします。
+印刷レイアウトは A4 横向きに最適化されており、工程ごとに 1 ページ出力されます。
 
 ---
 
 ## Oracle DB テーブル仕様
 
 ```sql
-CREATE TABLE wafer_test_results (
-    lot_id          VARCHAR2(20)   NOT NULL,
-    wafer_id        VARCHAR2(20)   NOT NULL,
-    product_name    VARCHAR2(50)   NOT NULL,
-    test_process    VARCHAR2(10)   NOT NULL,   -- 'CP' / 'FT' / 'SLT'
-    test_month      VARCHAR2(7)    NOT NULL,   -- 'YYYY-MM'
-    yield_pct       NUMBER(6,3)    NOT NULL,   -- 例: 95.420
-    gross_die       NUMBER(10)     NOT NULL,
-    bin_code        VARCHAR2(20)   NOT NULL,   -- 例: 'Bin3-Open'
-    bin_fail_count  NUMBER(10)     NOT NULL
-);
+-- CP テスト結果
+SEMI_CP_HEADER   -- ヘッダ（LOT / WAFER / PRODUCT / CREATE_DATE / YIELD 等）
+SEMI_CP_BIN_SUM  -- Bin 集計（BIN_CODE / BIN_NAME / BIN_COUNT）
+
+-- FT テスト結果
+SEMI_FT_HEADER   -- ヘッダ（CP に加え ASSY_LOT_ID を含む）
+SEMI_FT_BIN_SUM  -- Bin 集計（同上）
 ```
 
-> Wafer 単位で複数行（bin_code ごと）登録。アプリ側で Lot 毎に集計します。  
-> Bin 不良率 = `bin_fail_count / gross_die × 100`
+データは Wafer 単位（bin_code ごとに複数行）。アプリ側で Lot 毎に集計します。  
+`lot_id` は `CREATE_DATE` から ISO 年週形式（`IYYY"W"IW`）で生成されます。  
+Bin 不良率 = `BIN_COUNT / EFFECTIVE_NUM × 100`
+
+---
+
+## デバッグ
+
+### ログレベルの変更
+
+```env
+LOG_LEVEL=DEBUG  # DB クエリ・Bin マッピング読み込みの詳細が表示される
+```
+
+### 設定確認エンドポイント
+
+```bash
+# product_config.csv と bin_mappings/ の読み込み状況
+curl http://localhost:8000/api/debug/config?nickname=Product-A
+
+# 実 DB クエリを叩いて行数を確認（空データの原因調査に有効）
+curl "http://localhost:8000/api/debug/probe?nickname=Product-A&process=FT&start_month=2025-01&end_month=2025-05"
+```
+
+### CSV キャッシュのリセット
+
+`product_config.csv` や `bin_mappings/*.csv` を編集した場合は、バックエンドを再起動してください（`lru_cache` でプロセス起動時にのみ読み込まれます）。
 
 ---
 
@@ -215,8 +251,9 @@ After=network.target
 User=appuser
 WorkingDirectory=/opt/yield-report/backend
 Environment="USE_MOCK_DATA=false"
+Environment="LOG_LEVEL=INFO"
 EnvironmentFile=/opt/yield-report/backend/.env
-ExecStart=/opt/yield-report/backend/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
+ExecStart=/opt/yield-report/backend/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
 Restart=always
 
 [Install]
@@ -227,19 +264,18 @@ WantedBy=multi-user.target
 
 ```bash
 cd frontend
-npm run build          # dist/ に静的ファイル生成
-# → nginx / Apache で dist/ を配信
+
+# 本番 API URL を指定してビルド
+VITE_API_BASE_URL=http://your-server:8000/api npm run build
+# → dist/ を nginx / Apache で配信
 ```
 
 ### CORS 設定
 
-`backend/app/main.py` の `allow_origins` に本番 URL を追加：
+`backend/.env` の `CORS_ORIGINS` に本番 URL を追加：
 
-```python
-allow_origins=[
-    "http://localhost:5173",
-    "https://your-internal-server.example.com",  # ← 追加
-],
+```env
+CORS_ORIGINS=["http://localhost:5173", "https://your-internal-server.example.com"]
 ```
 
 ---

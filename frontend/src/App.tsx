@@ -1,35 +1,28 @@
 import { useState } from "react";
 import Sidebar from "./components/Sidebar";
 import ReportView from "./components/ReportView";
-import { fetchYieldData, exportPdf } from "./api/client";
+import PrintView from "./components/PrintView";
+import ErrorBanner from "./components/ErrorBanner";
+import { fetchYieldData } from "./api/client";
 import type { YieldRequest, YieldResponse } from "./types";
+import "./print.css";
 
 export default function App() {
   const [data, setData] = useState<YieldResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [currentRequest, setCurrentRequest] = useState<YieldRequest | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const handleGenerate = async (req: YieldRequest) => {
     setLoading(true);
+    setError(null);
     try {
       const res = await fetchYieldData(req);
       setData(res);
       setCurrentRequest(req);
     } catch (err) {
       console.error("Failed to fetch yield data:", err);
-      alert("Failed to fetch data. Check if the backend is running.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleExportPdf = async (req: YieldRequest) => {
-    setLoading(true);
-    try {
-      await exportPdf(req);
-    } catch (err) {
-      console.error("Failed to export PDF:", err);
-      alert("Failed to export PDF. Check if the backend is running.");
+      setError("データ取得に失敗しました。バックエンドが起動しているか確認してください。");
     } finally {
       setLoading(false);
     }
@@ -39,10 +32,16 @@ export default function App() {
     <div style={styles.app}>
       <Sidebar
         onGenerate={handleGenerate}
-        onExportPdf={handleExportPdf}
         loading={loading}
+        canPrint={data !== null}
       />
-      <ReportView data={data} request={currentRequest} />
+      <div style={styles.main}>
+        {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
+        <ReportView className="report-view" data={data} request={currentRequest} />
+      </div>
+      {data && currentRequest && (
+        <PrintView data={data} request={currentRequest} />
+      )}
     </div>
   );
 }
@@ -54,5 +53,11 @@ const styles: Record<string, React.CSSProperties> = {
     background: "var(--warm-white)",
     fontFamily: "var(--font-sans)",
     color: "var(--gray-700)",
+  },
+  main: {
+    flex: 1,
+    display: "flex",
+    flexDirection: "column",
+    minWidth: 0,
   },
 };
