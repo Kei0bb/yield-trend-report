@@ -1,4 +1,4 @@
-nickname,display_name,cp_product_id,ft_product_id,bin_group
+nickname,display_name,cp_product_id,ft_product_id,bin_group,ft_bin_group,slt_bin_group,ft_processes,slt_processes
 # ─────────────────────────────────────────────────────────────────
 # 製品設定ファイル
 # ・nickname        : UI で選択する一意な識別子
@@ -13,8 +13,18 @@ nickname,display_name,cp_product_id,ft_product_id,bin_group
 #                       例: "SC0G29AP3-ES%" → SC0G29AP3-ES, SC0G29AP3-ES-9Q1, ... 全部マッチ
 #                       例: "%-ES-9A2"      → 末尾 -ES-9A2 のもの全部
 #                       例: "SCT101%;SCT102%" → 複数 LIKE パターンも併用可
-# ・ft_product_id   : FT DB クエリ用 PRODUCT_ID (同上、LIKE も使用可)
+# ・ft_product_id   : FT/SLT DB クエリ用 PRODUCT_ID（同上、LIKE も使用可）
+#                     SLT は slt_product_id カラムがなければ ft_product_id を使用
 # ・bin_group       : bin_mappings/<bin_group>.csv のファイル名（拡張子なし）
+#                     CP/FT/SLT 共通の bin マッピングを指定
+# ・ft_bin_group    : FT用 bin マッピング（空欄なら bin_group を使用）
+# ・slt_bin_group   : SLT用 bin マッピング（空欄なら ft_bin_group → bin_group の順で使用）
+# ・ft_processes    : FT選択時にクエリする PROCESS 値（';'区切り複数可）
+#                     空欄の場合は PROCESS='FT' のみ
+#                     例: "FT1"      → PROCESS IN ('FT1')
+#                     例: "FT1;FT2" → PROCESS IN ('FT1','FT2')
+# ・slt_processes   : SLT選択時にクエリする PROCESS 値（同上）
+#                     空欄の場合は PROCESS='SLT' のみ
 #
 # 想定パターン:
 #   (a) 改版で CP/FT 型番が変わるが同じ製品として扱いたい
@@ -23,11 +33,15 @@ nickname,display_name,cp_product_id,ft_product_id,bin_group
 #   (b) 1 つの製品で CP 側に複数の PRODUCT_ID が存在する (例: SCT101A/B)
 #       → 1 nickname の cp_product_id を ';' 区切りで複数指定
 #         (UI 上は 1 チップ、内部で IN 句クエリ)
+#   (c) FT の小工程（FT1 のみ）を表示したい
+#       → ft_processes カラムに "FT1" と記載
 # ─────────────────────────────────────────────────────────────────
-Product-A,Product-A,P12345-A,Q67890-A,main
-Product-A-rev2,Product-A,P12346-A,Q67891-A,main
-Product-B,Product-B,P12345-B,Q67890-B,main_b
-SCT101,SCT101,SCT101A;SCT101B,SC0G29A,main
+Product-A,Product-A,P12345-A,Q67890-A,main,,,,
+Product-A-rev2,Product-A,P12346-A,Q67891-A,main,,,,
+Product-B,Product-B,P12345-B,Q67890-B,main_b,,,,
+SCT101,SCT101,SCT101A;SCT101B,SC0G29A,main,,,,
 # LIKE パターン例: FT 側に末尾バリエーション (SC0G29AP3-ES, -ES-9Q1, -ES-9W1, ...) が
 # 存在する場合は SC0G29AP3% で一括取得できる
-Phoenix,Phoenix,SCT101A;SCT101B,SC0G29AP3%,Phoenix
+Phoenix,Phoenix,SCT101A;SCT101B,SC0G29AP3%,Phoenix,,,,
+# 小工程フィルタ例: FT1 のみ表示
+# ProductX,ProductX,PX001,QX001,main,,,FT1,
