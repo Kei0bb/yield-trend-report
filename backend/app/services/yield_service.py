@@ -1,7 +1,23 @@
+import logging
 import random
 from pathlib import Path
 
 import pandas as pd
+
+logger = logging.getLogger(__name__)
+
+
+def _read_csv_robust(path: Path) -> pd.DataFrame:
+    """
+    CSV を堅牢に読み込むヘルパー。
+    - utf-8-sig: Excel が付加する BOM を自動除去
+    - 列名の前後空白を strip
+    - '#' コメント行を無視
+    - 全カラムを文字列として読み込み NaN を空文字に
+    """
+    df = pd.read_csv(path, dtype=str, comment="#", encoding="utf-8-sig").fillna("")
+    df.columns = [c.strip() for c in df.columns]
+    return df
 
 from app.config import settings
 from app.database import get_connection, release_connection
@@ -35,8 +51,14 @@ def _load_product_config() -> dict[str, dict[str, str]] | None:
     if not _PRODUCT_CONFIG_CSV.exists():
         return None
 
-    df = pd.read_csv(_PRODUCT_CONFIG_CSV, dtype=str, comment="#").fillna("")
+    df = _read_csv_robust(_PRODUCT_CONFIG_CSV)
     if "nickname" not in df.columns:
+        logger.warning(
+            "product_config.csv: 'nickname' 列が見つかりません。"
+            "ヘッダー行が正しいか、CSV エンコーディングが UTF-8 か確認してください。"
+            " 検出列=%s",
+            list(df.columns),
+        )
         return None
 
     config: dict[str, dict[str, str]] = {}
@@ -134,21 +156,50 @@ def _load_bin_mapping(bin_group: str) -> dict[str, dict[int, str]]:
         # 旧フォーマット (backend/bin_group.csv) フォールバック
         if bin_group == _DEFAULT_BIN_GROUP:
             return _load_legacy_bin_groups()
+        logger.warning(
+            "bin mapping file not found: %s  "
+            "(product_config.csv の bin_group 列の値とファイル名を確認してください)",
+            csv_path,
+        )
         return {}
 
-    df = pd.read_csv(csv_path, dtype=str, comment="#").fillna("")
-    if df.empty or "bin_code" not in df.columns or "bin_group_name" not in df.columns:
+    df = _read_csv_robust(csv_path)
+    if df.empty:
+        logger.warning("bin mapping file is empty: %s", csv_path)
+        return {}
+    if "bin_code" not in df.columns or "bin_group_name" not in df.columns:
+        logger.warning(
+            "bin mapping file %s: 必須列 'bin_code' / 'bin_group_name' が不足。"
+            " 検出列=%s",
+            csv_path, list(df.columns),
+        )
         return {}
 
     result: dict[str, dict[int, str]] = {}
     has_process_col = "process" in df.columns
+    skipped = 0
     for _, row in df.iterrows():
         code = row.get("bin_code", "").strip()
         name = row.get("bin_group_name", "").strip()
         if not code or not name:
+            skipped += 1
+            continue
+        try:
+            code_int = int(code)
+        except ValueError:
+            logger.warning(
+                "bin mapping file %s: bin_code が数値として解釈できません: %r",
+                csv_path, code,
+            )
+            skipped += 1
             continue
         proc = (row.get("process", "").strip().upper() if has_process_col else "") or _ANY_PROCESS
-        result.setdefault(proc, {})[int(code)] = name
+        result.setdefault(proc, {})[code_int] = name
+
+    logger.info(
+        "loaded bin mapping %s: %d entries (%d skipped)",
+        csv_path.name, sum(len(m) for m in result.values()), skipped,
+    )
     return result
 
 
@@ -159,7 +210,7 @@ def _load_legacy_bin_groups() -> dict[str, dict[int, str]]:
     """
     if not _BIN_GROUP_CSV.exists():
         return {}
-    df = pd.read_csv(_BIN_GROUP_CSV, dtype=str, comment="#").fillna("")
+    df = _read_csv_robust(_BIN_GROUP_CSV)
     if df.empty or "bin_code" not in df.columns:
         return {}
     name_col = "bin_group_name" if "bin_group_name" in df.columns else "bin_group"
