@@ -1,5 +1,4 @@
 import random
-from functools import lru_cache
 from pathlib import Path
 
 import pandas as pd
@@ -24,7 +23,6 @@ _ANY_PROCESS = "*"
 # Product 設定 (nickname ↔ CP/FT PRODUCT_ID マッピング)
 # ──────────────────────────────────────────────────────────────────────
 
-@lru_cache(maxsize=1)
 def _load_product_config() -> dict[str, dict[str, str]] | None:
     """
     product_config.csv を読み込み {nickname: {cp_product_id, ft_product_id, bin_group}} を返す。
@@ -114,7 +112,6 @@ def group_by_display_name(nicknames: list[str]) -> dict[str, list[str]]:
 #   bin_mappings/<bin_group>.csv を読み込んで {process: {bin_code: bin_group_name}} を返す
 # ──────────────────────────────────────────────────────────────────────
 
-@lru_cache(maxsize=32)
 def _load_bin_mapping(bin_group: str) -> dict[str, dict[int, str]]:
     """
     bin_mappings/<bin_group>.csv を読み込み {process: {bin_code: bin_group_name}} を返す。
