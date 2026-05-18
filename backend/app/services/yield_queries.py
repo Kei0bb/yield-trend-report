@@ -23,18 +23,21 @@ _PROCESS_SPEC: dict[str, dict] = {
         "bin_sum": "SEMI_CP_BIN_SUM",
         "join_keys": ["SUBSTRATE_ID", "WAFER_ID", "PROCESS"],
         "join_type": "JOIN",
+        "date_col": "CREATE_DATE",
     },
     "FT": {
         "header": "SEMI_FT_HEADER",
         "bin_sum": "SEMI_FT_BIN_SUM",
         "join_keys": ["ASSY_LOT_ID", "PRODUCT_ID", "PROCESS"],
         "join_type": "LEFT OUTER JOIN",
+        "date_col": "MODIFIED_DATE",
     },
     "SLT": {
         "header": "SEMI_FT_HEADER",
         "bin_sum": "SEMI_FT_BIN_SUM",
         "join_keys": ["ASSY_LOT_ID", "PRODUCT_ID", "PROCESS"],
         "join_type": "LEFT OUTER JOIN",
+        "date_col": "MODIFIED_DATE",
     },
 }
 
@@ -99,9 +102,10 @@ def query_yield_data(
     pv_binds = dict(zip(pv_names, pv_list))
     process_where = f"h.PROCESS IN ({', '.join(f':{n}' for n in pv_names)})"
 
+    date_col = spec["date_col"]
     query = f"""
         SELECT
-            TO_CHAR(h.CREATE_DATE, 'IYYY"W"IW')           AS lot_id,
+            TO_CHAR(h.{date_col}, 'IYYY"W"IW')            AS lot_id,
             h.WAFER_ID                                     AS wafer_id,
             CASE
                 WHEN h.EFFECTIVE_NUM > 0
@@ -118,8 +122,8 @@ def query_yield_data(
         WHERE {pid_where}
           AND {process_where}
           AND h.REWORK_NEW   = 0
-          AND h.CREATE_DATE >= TO_DATE(:start_month || '-01', 'YYYY-MM-DD')
-          AND h.CREATE_DATE  < ADD_MONTHS(
+          AND h.{date_col}  >= TO_DATE(:start_month || '-01', 'YYYY-MM-DD')
+          AND h.{date_col}   < ADD_MONTHS(
                                   TO_DATE(:end_month || '-01', 'YYYY-MM-DD'), 1)
           AND UPPER(TRIM(COALESCE(b.BIN_QUALITY, ''))) <> 'PASS'
           AND UPPER(TRIM(COALESCE(b.BIN_NAME,    ''))) NOT IN ('PASS', 'PASSED', 'OK', 'GOOD')
