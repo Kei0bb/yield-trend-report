@@ -138,7 +138,7 @@ export default function YieldChart({ processName, productData }: YieldChartProps
       data.yield_avg.length > 0
         ? data.yield_avg.reduce((a, b) => a + b, 0) / data.yield_avg.length
         : 0;
-    const { traces, layout, binNames } = buildSingleProductChart(
+    const { traces, layout } = buildSingleProductChart(
       data,
       "#0075de",
       yieldRange,
@@ -168,14 +168,6 @@ export default function YieldChart({ processName, productData }: YieldChartProps
             <div style={styles.statItem}>
               <div style={styles.statLabel}>Avg yield</div>
               <div style={styles.statValue}>{avg.toFixed(2)}%</div>
-            </div>
-            <div style={styles.statItem}>
-              <div style={styles.statLabel}>Lots</div>
-              <div style={styles.statValue}>{data.lots.length}</div>
-            </div>
-            <div style={styles.statItem}>
-              <div style={styles.statLabel}>Bins</div>
-              <div style={styles.statValue}>{binNames.length}</div>
             </div>
           </div>
         </div>

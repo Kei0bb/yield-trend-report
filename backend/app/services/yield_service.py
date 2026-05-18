@@ -359,19 +359,48 @@ def get_yield_data_merged(
     return _aggregate_lot_data(df)
 
 
-def _build_in_clause(product_ids: list[str]) -> tuple[str, dict[str, str]]:
-    """PRODUCT_ID リストから IN 句と bind 変数辞書を生成。"""
-    bind_names = [f"pid{i}" for i in range(len(product_ids))]
-    clause = ", ".join(f":{n}" for n in bind_names)
-    binds = {bind_names[i]: pid for i, pid in enumerate(product_ids)}
-    return clause, binds
+def _build_product_id_where(product_ids: list[str]) -> tuple[str, dict[str, str]]:
+    """
+    PRODUCT_ID リストから WHERE 句フラグメントと bind 変数辞書を生成。
+    - '%' を含む値は LIKE で検索 (前方/後方/部分一致)
+    - それ以外は IN (...) で完全一致
+    両方が混在する場合は OR で結合。
+
+    例:
+        ["SCT101A", "SCT101B"]            → "h.PRODUCT_ID IN (:pid0, :pid1)"
+        ["SC0G29AP3-ES%"]                 → "h.PRODUCT_ID LIKE :like0"
+        ["SCT101A", "SC0G29AP3%"]         → "(h.PRODUCT_ID IN (:pid0) OR h.PRODUCT_ID LIKE :like0)"
+    """
+    exacts = [pid for pid in product_ids if "%" not in pid]
+    likes = [pid for pid in product_ids if "%" in pid]
+    binds: dict[str, str] = {}
+    conditions: list[str] = []
+
+    if exacts:
+        names = [f"pid{i}" for i in range(len(exacts))]
+        clause = ", ".join(f":{n}" for n in names)
+        conditions.append(f"h.PRODUCT_ID IN ({clause})")
+        for n, pid in zip(names, exacts):
+            binds[n] = pid
+
+    for i, pat in enumerate(likes):
+        bind_name = f"like{i}"
+        conditions.append(f"h.PRODUCT_ID LIKE :{bind_name}")
+        binds[bind_name] = pat
+
+    if not conditions:
+        # 空の場合 → 何もマッチしない条件 (1=0)
+        return "1=0", {}
+    if len(conditions) == 1:
+        return conditions[0], binds
+    return "(" + " OR ".join(conditions) + ")", binds
 
 
 def _query_cp(
     product_ids: list[str], start_month: str, end_month: str, process: str
 ) -> pd.DataFrame:
     """CP: SEMI_CP_BIN_SUM は集計済みなので BIN_COUNT をそのまま使用"""
-    in_clause, pid_binds = _build_in_clause(product_ids)
+    pid_where, pid_binds = _build_product_id_where(product_ids)
     query = f"""
         SELECT
             TO_CHAR(h.CREATE_DATE, 'IYYY"W"IW')           AS lot_id,
@@ -390,14 +419,15 @@ def _query_cp(
           ON h.SUBSTRATE_ID = b.SUBSTRATE_ID
          AND h.WAFER_ID     = b.WAFER_ID
          AND h.PROCESS      = b.PROCESS
-        WHERE h.PRODUCT_ID  IN ({in_clause})
+        WHERE {pid_where}
           AND h.PROCESS      = :process
           AND h.CREATE_DATE >= TO_DATE(:start_month || '-01', 'YYYY-MM-DD')
           AND h.CREATE_DATE  < ADD_MONTHS(
                                   TO_DATE(:end_month || '-01', 'YYYY-MM-DD'), 1)
           AND h.DEL_FLAG     = 0
           AND b.DEL_FLAG     = 0
-          AND b.BIN_QUALITY != 'PASS'
+          AND UPPER(TRIM(COALESCE(b.BIN_QUALITY, ''))) <> 'PASS'
+          AND UPPER(TRIM(COALESCE(b.BIN_NAME,    ''))) NOT IN ('PASS', 'PASSED', 'OK', 'GOOD')
         ORDER BY TO_CHAR(h.CREATE_DATE, 'IYYY"W"IW'), h.WAFER_ID
     """
     return _execute_query(
@@ -420,7 +450,7 @@ def _query_ft(
       - テーブル名が SEMI_FT_HEADER / SEMI_FT_BIN_SUM
       - FT は ASSY_LOT_ID を持つため JOIN キーに含める
     """
-    in_clause, pid_binds = _build_in_clause(product_ids)
+    pid_where, pid_binds = _build_product_id_where(product_ids)
     query = f"""
         SELECT
             TO_CHAR(h.CREATE_DATE, 'IYYY"W"IW')           AS lot_id,
@@ -440,14 +470,15 @@ def _query_ft(
          AND h.ASSY_LOT_ID  = b.ASSY_LOT_ID
          AND h.WAFER_ID     = b.WAFER_ID
          AND h.PROCESS      = b.PROCESS
-        WHERE h.PRODUCT_ID  IN ({in_clause})
+        WHERE {pid_where}
           AND h.PROCESS      = :process
           AND h.CREATE_DATE >= TO_DATE(:start_month || '-01', 'YYYY-MM-DD')
           AND h.CREATE_DATE  < ADD_MONTHS(
                                   TO_DATE(:end_month || '-01', 'YYYY-MM-DD'), 1)
           AND h.DEL_FLAG     = 0
           AND b.DEL_FLAG     = 0
-          AND b.BIN_QUALITY != 'PASS'
+          AND UPPER(TRIM(COALESCE(b.BIN_QUALITY, ''))) <> 'PASS'
+          AND UPPER(TRIM(COALESCE(b.BIN_NAME,    ''))) NOT IN ('PASS', 'PASSED', 'OK', 'GOOD')
         ORDER BY TO_CHAR(h.CREATE_DATE, 'IYYY"W"IW'), h.WAFER_ID
     """
     return _execute_query(
