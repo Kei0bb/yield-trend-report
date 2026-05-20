@@ -63,3 +63,4 @@ backend/bin_mappings/*.csv
 /*.png
 /*.jpg
 /*.jpeg
+*.png

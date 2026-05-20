@@ -24,9 +24,9 @@ from app.models.schemas import ProcessData
 # ---------------------------------------------------------------------------
 # Branding  ← production で差し替えてください
 # ---------------------------------------------------------------------------
-COMPANY_NAME: str = "Acme Semiconductor"          # ← 企業名
-LOGO_PATH: str | None = None                       # ← ロゴ画像の絶対パス (PNG/JPG) | None = mock
-CONFIDENTIAL: bool = True                          # ← False にすると透かし非表示
+COMPANY_NAME: str = "Socionext"          # ← 企業名
+LOGO_PATH: str = "D:/Otsuki/projects/Yield_report/backend/assets/logo.png"                       # ← ロゴ画像の絶対パス (PNG/JPG) | None = mock
+CONFIDENTIAL: bool = True                     # ← False にすると透かし非表示
 
 # ---------------------------------------------------------------------------
 # Design tokens (Notion-inspired)
@@ -46,7 +46,7 @@ BIN_COLORS = [
     "#005bab",  # active blue
 ]
 
-YIELD_LINE_COLOR = "#0075de"
+YIELD_LINE_COLOR = "#292929"
 TEXT_COLOR = "#37352f"
 SUBTEXT_COLOR = "#615d59"
 FONT_FAMILY = "Inter, -apple-system, Segoe UI, Helvetica, Arial, sans-serif"
@@ -99,7 +99,7 @@ def _create_chart_image(
         y=proc_data.yield_avg,
         name="Yield (%)",
         mode="lines+markers",
-        line=dict(color=YIELD_LINE_COLOR, width=2.5, shape="spline"),
+        line=dict(color=YIELD_LINE_COLOR, width=2),
         marker=dict(size=7, color=YIELD_LINE_COLOR),
         yaxis="y2",
     ))
@@ -108,7 +108,7 @@ def _create_chart_image(
         barmode="stack",
         font=dict(family=FONT_FAMILY, size=12, color=TEXT_COLOR),
         xaxis=dict(
-            title=dict(text="Work Week", font=dict(size=11, color=SUBTEXT_COLOR)),
+            title=dict(text="Week", font=dict(size=11, color=SUBTEXT_COLOR)),
             tickangle=-30,
             tickfont=dict(size=11, color=SUBTEXT_COLOR),
             gridcolor="rgba(0,0,0,0.04)",
@@ -119,6 +119,7 @@ def _create_chart_image(
             side="left",
             rangemode="tozero",
             tickfont=dict(size=11, color=SUBTEXT_COLOR),
+            showticklabels=False,
             gridcolor="rgba(0,0,0,0.04)",
             zerolinecolor="rgba(0,0,0,0.08)",
         ),
@@ -126,8 +127,8 @@ def _create_chart_image(
             title=dict(text="Yield (%)", font=dict(size=11, color=SUBTEXT_COLOR)),
             side="right",
             overlaying="y",
-            range=[80, 100],
             tickfont=dict(size=11, color=SUBTEXT_COLOR),
+            showticklabels=False,
             showgrid=False,
         ),
         legend=dict(
@@ -206,7 +207,7 @@ def _create_multi_chart_image(
                 y=proc_data.yield_avg,
                 name=f"Yield · {product}",
                 mode="lines+markers",
-                line=dict(color=color, width=2.5, shape="spline"),
+                line=dict(color=color, width=2),
                 marker=dict(size=6, color=color),
                 legendgroup=f"yield_{product}",
                 hovertemplate=f"<b>{product}</b> @ %{{x}}<br>Yield: %{{y:.2f}}%<extra></extra>",
@@ -266,7 +267,7 @@ def _create_comparison_chart_image(
 ) -> bytes:
     """複数品種比較: 品種ごとの Yield line を重ね描き"""
     # Y 軸範囲を動的計算（余白 ±2%）
-    all_yields = [v for d in product_data.values() for v in d.yield_avg]
+    all_yields = [v for d in product_data.values() for v in d.yield_avg if v is not None]
     y_min = min(all_yields) if all_yields else 80
     y_max = max(all_yields) if all_yields else 100
     y_pad = max((y_max - y_min) * 0.5, 2)
@@ -281,7 +282,7 @@ def _create_comparison_chart_image(
             y=proc_data.yield_avg,
             name=product,
             mode="lines+markers",
-            line=dict(color=color, width=2.5, shape="spline"),
+            line=dict(color=color, width=2),
             marker=dict(size=7, color=color),
         ))
 
@@ -368,7 +369,7 @@ def _draw_confidential_watermark(
     c.setFont("Helvetica-Bold", 72)
     c.translate(page_width / 2, page_height / 2)
     c.rotate(math.degrees(math.atan2(page_height, page_width)))  # diagonal angle
-    c.drawCentredString(0, 0, "CONFIDENTIAL")
+    c.drawCentredString(0, 0, "SOCIONEXT CONFIDENTIAL")
     c.restoreState()
 
 
@@ -391,7 +392,7 @@ def _draw_header(
 
     # ── CONFIDENTIAL badge (right) ────────────────────────────────────────
     if CONFIDENTIAL:
-        badge_w = 30 * mm
+        badge_w = 40 * mm
         badge_h = 5.5 * mm
         badge_x = page_width - MARGIN - badge_w
         badge_y = top - badge_h - 1 * mm
@@ -401,7 +402,7 @@ def _draw_header(
         c.roundRect(badge_x, badge_y, badge_w, badge_h, 2, stroke=0, fill=1)
         c.setFillColorRGB(1, 1, 1)
         c.setFont("Helvetica-Bold", 7)
-        c.drawCentredString(badge_x + badge_w / 2, badge_y + 1.8 * mm, "CONFIDENTIAL")
+        c.drawCentredString(badge_x + badge_w / 2, badge_y + 1.8 * mm, "SOCIONEXT CONFIDENTIAL")
         c.restoreState()
 
     # Generated date (right, below badge)
@@ -432,7 +433,7 @@ def _draw_header(
     c.setFont("Helvetica-Bold", chip_font_size)
     chip_w = c.stringWidth(chip_text, "Helvetica-Bold", chip_font_size) + chip_padding_x * 2
     chip_x = MARGIN + c.stringWidth(product, "Helvetica-Bold", 18) + 3 * mm
-    chip_y = title_y + 1 * mm
+    chip_y = title_y
     c.setFillColorRGB(0.95, 0.97, 1.0)
     c.setStrokeColorRGB(0.04, 0.46, 0.91, alpha=0.5)
     c.setLineWidth(0.6)
@@ -442,13 +443,13 @@ def _draw_header(
     c.restoreState()
 
     # ── Meta row ──────────────────────────────────────────────────────────
-    meta_y = title_y - 5.5 * mm
+    meta_y = title_y - 6 * mm
     c.saveState()
     c.setFont("Helvetica", 8.5)
     c.setFillColorRGB(0.38, 0.36, 0.35)
     meta = (
         f"Product  {product}"
-        f"   ·   Period  {start_month} → {end_month}"
+        f"   ·   Period  {start_month} to {end_month}"
         f"   ·   Process  {process_name}"
     )
     c.drawString(MARGIN, meta_y, meta)
@@ -484,10 +485,6 @@ def _draw_footer(
         page_width / 2, y,
         f"Page {current_page} of {total_pages}",
     )
-
-    # Right: report title
-    c.drawRightString(page_width - MARGIN, y, "Yield Trend Report  ·  Internal Use Only")
-    c.restoreState()
 
     # Thin top rule for footer
     c.saveState()
@@ -533,7 +530,7 @@ def generate_pdf(
         prod_dict = data[process_name]
 
         # 1. Watermark
-        _draw_confidential_watermark(c, page_width, page_height)
+        #_draw_confidential_watermark(c, page_width, page_height)
 
         # 2. Header
         _draw_header(
