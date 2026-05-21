@@ -25,7 +25,7 @@ from app.models.schemas import ProcessData
 # Branding  ← production で差し替えてください
 # ---------------------------------------------------------------------------
 COMPANY_NAME: str = "Socionext"          # ← 企業名
-LOGO_PATH: str = "D:/Otsuki/projects/Yield_report/backend/assets/logo.png"                       # ← ロゴ画像の絶対パス (PNG/JPG) | None = mock
+LOGO_PATH: str | None = str(Path(__file__).resolve().parents[2] / "assets" / "logo.png")  # ← ロゴ画像パス (PNG/JPG) | None = mock
 CONFIDENTIAL: bool = True                     # ← False にすると透かし非表示
 
 # ---------------------------------------------------------------------------
@@ -256,68 +256,6 @@ def _create_multi_chart_image(
         width=width,
         height=height,
     )
-    return fig.to_image(format="png", scale=2)
-
-
-def _create_comparison_chart_image(
-    process_name: str,
-    product_data: dict[str, ProcessData],
-    width: int = 1000,
-    height: int = 460,
-) -> bytes:
-    """複数品種比較: 品種ごとの Yield line を重ね描き"""
-    # Y 軸範囲を動的計算（余白 ±2%）
-    all_yields = [v for d in product_data.values() for v in d.yield_avg if v is not None]
-    y_min = min(all_yields) if all_yields else 80
-    y_max = max(all_yields) if all_yields else 100
-    y_pad = max((y_max - y_min) * 0.5, 2)
-    y_range = [max(0, y_min - y_pad), min(100, y_max + y_pad)]
-
-    fig = go.Figure()
-
-    for i, (product, proc_data) in enumerate(product_data.items()):
-        color = PRODUCT_COLORS[i % len(PRODUCT_COLORS)]
-        fig.add_trace(go.Scatter(
-            x=proc_data.lots,
-            y=proc_data.yield_avg,
-            name=product,
-            mode="lines+markers",
-            line=dict(color=color, width=2),
-            marker=dict(size=7, color=color),
-        ))
-
-    fig.update_layout(
-        font=dict(family=FONT_FAMILY, size=12, color=TEXT_COLOR),
-        xaxis=dict(
-            title=dict(text="Work Week", font=dict(size=11, color=SUBTEXT_COLOR)),
-            tickangle=-30,
-            tickfont=dict(size=11, color=SUBTEXT_COLOR),
-            gridcolor="rgba(0,0,0,0.05)",
-            linecolor="rgba(0,0,0,0.1)",
-        ),
-        yaxis=dict(
-            title=dict(text="Yield (%)", font=dict(size=11, color=SUBTEXT_COLOR)),
-            range=y_range,
-            tickfont=dict(size=11, color=SUBTEXT_COLOR),
-            gridcolor="rgba(0,0,0,0.05)",
-            zerolinecolor="rgba(0,0,0,0.08)",
-        ),
-        legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=-0.38,
-            xanchor="center",
-            x=0.5,
-            font=dict(size=11, color=SUBTEXT_COLOR, family=FONT_FAMILY),
-            bgcolor="rgba(0,0,0,0)",
-        ),
-        margin=dict(l=60, r=60, t=20, b=110),
-        plot_bgcolor="#ffffff",
-        paper_bgcolor="#ffffff",
-        width=width,
-        height=height,
-    )
-
     return fig.to_image(format="png", scale=2)
 
 
