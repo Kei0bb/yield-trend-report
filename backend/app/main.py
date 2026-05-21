@@ -1,9 +1,12 @@
 import logging
 import sys
 from contextlib import asynccontextmanager
+from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 # uvicorn は自前の logger しか設定しないため、app 配下の
 # logger 出力が表示されない場合がある。root logger に StreamHandler を追加し
@@ -53,3 +56,32 @@ app.include_router(export.router, prefix="/api")
 @app.get("/health")
 def health_check():
     return {"status": "ok", "mock": settings.USE_MOCK_DATA}
+
+
+# ---------------------------------------------------------------------------
+# Frontend (SPA) — serve the built React app from frontend/dist
+# Build with: cd frontend && npm run build
+# ---------------------------------------------------------------------------
+FRONTEND_DIST = Path(__file__).resolve().parents[2] / "frontend" / "dist"
+
+if FRONTEND_DIST.exists():
+    assets_dir = FRONTEND_DIST / "assets"
+    if assets_dir.exists():
+        app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
+
+    @app.get("/{full_path:path}")
+    def spa_fallback(full_path: str):
+        # Reject API/health requests that fell through (they should be handled above)
+        if full_path.startswith(("api/", "health")):
+            raise HTTPException(status_code=404, detail="Not found")
+        # Serve real files (favicon.ico, vite.svg, etc.) if they exist at dist root
+        candidate = FRONTEND_DIST / full_path
+        if full_path and candidate.is_file():
+            return FileResponse(candidate)
+        # Otherwise return index.html so React Router can handle the route
+        return FileResponse(FRONTEND_DIST / "index.html")
+else:
+    logging.getLogger("app").warning(
+        "Frontend not built: %s not found. Run 'cd frontend && npm run build' to enable SPA serving.",
+        FRONTEND_DIST,
+    )

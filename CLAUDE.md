@@ -4,28 +4,40 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Development Commands
 
-### Backend
+### Single-server mode (recommended)
+FastAPI serves both the API and the built React frontend on port 8000.
+
 ```bash
-cd backend
-
-# Install dependencies (uv manages venv automatically)
-uv sync
-
-# Run with mock data (no Oracle DB required)
-uv run uvicorn app.main:app --reload --port 8000
-
-# Run against real Oracle DB
-USE_MOCK_DATA=false uv run uvicorn app.main:app --reload --port 8000
-```
-
-API docs: http://localhost:8000/docs
-
-### Frontend
-```bash
+# 1. Build the frontend once (re-run after frontend changes)
 cd frontend
 npm install
-npm run dev        # http://localhost:5173
-npm run build      # production build → dist/
+npm run build
+
+# 2. Start the single server
+cd ../backend
+uv sync
+uv run uvicorn app.main:app --port 8000
+
+# Real Oracle DB:
+USE_MOCK_DATA=false uv run uvicorn app.main:app --port 8000
+```
+
+Open http://localhost:8000 — UI + API + `/docs` all served from one process.
+
+### Two-server mode (frontend HMR for development)
+Use only when actively developing frontend with hot-reload.
+
+```bash
+# Terminal 1
+cd backend && uv run uvicorn app.main:app --reload --port 8000
+
+# Terminal 2
+cd frontend && npm run dev    # http://localhost:5173 (Vite proxies /api → :8000)
+```
+
+### Other frontend commands
+```bash
+cd frontend
 npm run lint       # ESLint
 ```
 

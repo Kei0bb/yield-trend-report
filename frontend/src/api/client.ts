@@ -2,7 +2,7 @@ import axios from "axios";
 import type { YieldRequest, YieldResponse } from "../types";
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api",
+  baseURL: import.meta.env.VITE_API_BASE_URL ?? "/api",
 });
 
 export async function fetchProducts(): Promise<string[]> {
@@ -29,7 +29,7 @@ export async function exportPdf(req: YieldRequest): Promise<void> {
 
 export async function fetchHealth(): Promise<{ status: string; mock: boolean }> {
   const res = await api.get<{ status: string; mock: boolean }>("/health", {
-    baseURL: import.meta.env.VITE_API_BASE_URL?.replace("/api", "") ?? "http://localhost:8000",
+    baseURL: import.meta.env.VITE_API_BASE_URL?.replace("/api", "") ?? "",
   });
   return res.data;
 }
