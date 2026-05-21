@@ -101,29 +101,46 @@ Report_gen/
 > **Oracle Instant Client は不要です。**  
 > `oracledb` は Thin モード（Pure Python）がデフォルトのため、クライアントライブラリのインストールなしで Oracle DB に接続できます。
 
-### 1. バックエンド起動
+### 推奨: 1 サーバー構成（FastAPI がフロントも配信）
 
 ```bash
-cd backend
-
-# 依存パッケージ一括インストール（Python 3.13 の venv も自動作成）
-uv sync
-
-# モックデータで起動（Oracle 不要）
-uv run uvicorn app.main:app --reload --port 8000
-```
-
-API ドキュメントは http://localhost:8000/docs で確認できます。
-
-### 2. フロントエンド起動
-
-```bash
+# 1. フロントエンドを 1 回ビルド（フロント変更時のみ再ビルド）
 cd frontend
 npm install
-npm run dev
+npm run build
+
+# 2. バックエンド起動（これだけで UI + API + /docs が立ち上がる）
+cd ../backend
+uv sync
+uv run uvicorn app.main:app --port 8000
 ```
 
-ブラウザで http://localhost:5173 を開きます。
+ブラウザで http://localhost:8000 を開きます。
+
+- UI: http://localhost:8000
+- API ドキュメント: http://localhost:8000/docs
+- ヘルスチェック: http://localhost:8000/health
+
+実 Oracle DB を使う場合:
+```bash
+USE_MOCK_DATA=false uv run uvicorn app.main:app --port 8000
+```
+
+### 開発者向け: 2 サーバー構成（フロント HMR を有効化）
+
+フロントエンドのコードを編集しながら即座にブラウザへ反映させたい場合のみ使用します。
+HMR (Hot Module Replacement) = ファイル保存と同時にブラウザの該当箇所だけ差し替えて再表示する Vite の機能。
+ブラウザの再読み込み・状態リセット不要で、UI 開発を高速化するためのものです。
+
+```bash
+# Terminal 1
+cd backend && uv run uvicorn app.main:app --reload --port 8000
+
+# Terminal 2
+cd frontend && npm run dev    # → http://localhost:5173
+```
+
+`npm run dev` 側で開くと、Vite が `/api` を自動で `localhost:8000` にプロキシします。
 
 ---
 
@@ -146,6 +163,7 @@ ORACLE_MAX_CONNECTIONS=10
 LOG_LEVEL=INFO
 
 # CORS 許可オリジン（JSON 配列形式）
+# 1 サーバー構成では同一オリジンのため不要。2 サーバー構成（npm run dev）で使う場合のみ設定
 CORS_ORIGINS=["http://localhost:5173"]
 ```
 
@@ -154,8 +172,9 @@ CORS_ORIGINS=["http://localhost:5173"]
 `frontend/.env`（任意）:
 
 ```env
-# バックエンドの API URL（末尾スラッシュなし）
-VITE_API_BASE_URL=http://localhost:8000/api
+# バックエンドの API URL を上書きしたい場合のみ設定（通常は不要）
+# デフォルトは "/api"（同一オリジン相対パス）
+# VITE_API_BASE_URL=http://other-server:8000/api
 ```
 
 ---
@@ -240,11 +259,22 @@ curl "http://localhost:8000/api/debug/probe?nickname=Product-A&process=FT&start_
 
 ## 社内サーバーへのデプロイ
 
-### バックエンド（systemd 例）
+1 サーバー構成のため、フロントを事前ビルドし FastAPI から配信します。
+nginx / Apache などの静的配信サーバーは不要です。
+
+### 1. フロントエンドをビルド
+
+```bash
+cd frontend
+npm install
+npm run build   # → frontend/dist/
+```
+
+### 2. バックエンドを systemd で常駐起動
 
 ```ini
 [Unit]
-Description=Yield Trend Report API
+Description=Yield Trend Report
 After=network.target
 
 [Service]
@@ -260,23 +290,7 @@ Restart=always
 WantedBy=multi-user.target
 ```
 
-### フロントエンド（静的ビルド）
-
-```bash
-cd frontend
-
-# 本番 API URL を指定してビルド
-VITE_API_BASE_URL=http://your-server:8000/api npm run build
-# → dist/ を nginx / Apache で配信
-```
-
-### CORS 設定
-
-`backend/.env` の `CORS_ORIGINS` に本番 URL を追加：
-
-```env
-CORS_ORIGINS=["http://localhost:5173", "https://your-internal-server.example.com"]
-```
+ブラウザから `http://your-internal-server:8000/` でアクセス可能。UI・API ともに同一サーバーから配信されるため CORS 設定は基本不要です。
 
 ---
 
