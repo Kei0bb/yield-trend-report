@@ -10,7 +10,7 @@ class YieldRequest(BaseModel):
 
 class ProcessData(BaseModel):
     lots: list[str]
-    yield_avg: list[float]
+    yield_avg: list[float | None]  # None = no data for that week
     fail_bins: dict[str, list[float]]  # bin_name -> per-lot bin%
 
 

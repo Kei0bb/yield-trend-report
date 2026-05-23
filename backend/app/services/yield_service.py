@@ -5,15 +5,20 @@ from app.models.schemas import ProcessData
 from app.services.bin_mapping import apply_bin_groups
 from app.services.mock_data import mock_products, mock_yield_dataframe
 from app.services.product_config import (
-    group_by_display_name,
     load_product_config,
     resolve_bin_group,
     resolve_display_name,
     resolve_process_filter,
     resolve_product_ids,
 )
-from app.services.yield_aggregator import aggregate_lot_data
+from app.services.yield_aggregator import (
+    aggregate_lot_data,
+    anchor_from_end_month,
+    latest_iso_weeks,
+)
 from app.services.yield_queries import query_yield_data
+
+FIXED_WEEK_COUNT = 12
 
 logger = logging.getLogger(__name__)
 
@@ -57,8 +62,14 @@ def get_yield_data_merged(
     SQL statement. Nicknames sharing the same display_name represent revision variants
     of the same product and should be merged this way.
     """
+    target_lots = latest_iso_weeks(anchor_from_end_month(end_month), FIXED_WEEK_COUNT)
+
     if not nicknames:
-        return ProcessData(lots=[], yield_avg=[], fail_bins={})
+        return ProcessData(
+            lots=target_lots,
+            yield_avg=[None] * len(target_lots),
+            fail_bins={},
+        )
 
     bin_group = resolve_bin_group(nicknames[0], process)
 
@@ -82,7 +93,11 @@ def get_yield_data_merged(
                 "No PRODUCT_IDs resolved for nicknames=%s process=%s — check product_config.csv",
                 nicknames, process,
             )
-            return ProcessData(lots=[], yield_avg=[], fail_bins={})
+            return ProcessData(
+                lots=target_lots,
+                yield_avg=[None] * len(target_lots),
+                fail_bins={},
+            )
 
         # Resolve sub-process filter (e.g. ft_processes="FT1" → only query PROCESS=FT1)
         process_values = resolve_process_filter(nicknames[0], process)
@@ -90,7 +105,11 @@ def get_yield_data_merged(
         df = query_yield_data(process, all_pids, start_month, end_month, process_values=process_values)
 
     if df.empty:
-        return ProcessData(lots=[], yield_avg=[], fail_bins={})
+        return ProcessData(
+            lots=target_lots,
+            yield_avg=[None] * len(target_lots),
+            fail_bins={},
+        )
 
     df = apply_bin_groups(df, bin_group=bin_group, process=process)
-    return aggregate_lot_data(df)
+    return aggregate_lot_data(df, target_lots=target_lots)

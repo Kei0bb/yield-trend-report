@@ -5,10 +5,8 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
 
 from app.models.schemas import ProcessData, YieldRequest
-from app.services.yield_service import (
-    get_yield_data_merged,
-    group_by_display_name,
-)
+from app.services.product_config import group_by_display_name
+from app.services.yield_service import get_yield_data_merged
 from app.services.pdf_service import generate_pdf
 
 logger = logging.getLogger(__name__)
@@ -38,7 +36,7 @@ def export_pdf(req: YieldRequest) -> Response:
                     end_month=req.end_month,
                     process=process,
                 )
-            except Exception as e:
+            except Exception:
                 logger.error(
                     "yield data fetch failed: process=%s display=%s nicknames=%s\n%s",
                     process, display_name, nicknames, traceback.format_exc(),

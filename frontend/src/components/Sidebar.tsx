@@ -25,8 +25,6 @@ function addMonths(d: Date, n: number): Date {
 export default function Sidebar({ onGenerate, loading, canPrint }: SidebarProps) {
   const [products, setProducts] = useState<string[]>([]);
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
-  const [startMonth, setStartMonth] = useState(() => formatYM(addMonths(new Date(), -2)));
-  const [endMonth, setEndMonth] = useState(() => formatYM(new Date()));
   const [selectedProcesses, setSelectedProcesses] = useState<string[]>(["CP", "FT", "SLT"]);
   const [isMock, setIsMock] = useState<boolean | null>(null);
 
@@ -48,19 +46,34 @@ export default function Sidebar({ onGenerate, loading, canPrint }: SidebarProps)
       prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]
     );
 
-  const buildRequest = (): YieldRequest => ({
-    products: selectedProducts,
-    start_month: startMonth,
-    end_month: endMonth,
-    processes: selectedProcesses,
-  });
+  const buildRequest = (): YieldRequest => {
+    const now = new Date();
+    return {
+      products: selectedProducts,
+      start_month: formatYM(addMonths(now, -2)),  // 3-month window ending this month
+      end_month: formatYM(now),
+      processes: selectedProcesses,
+    };
+  };
 
   const disabled = loading || selectedProducts.length === 0 || selectedProcesses.length === 0;
 
   return (
     <aside style={styles.sidebar}>
       <div style={styles.brand}>
-        <div style={styles.brandMark}>Y</div>
+        <img
+          src="/logo.png"
+          alt="Logo"
+          style={styles.brandLogo}
+          onError={(e) => {
+            // Logo file missing — fall back to a styled "Y" mark.
+            const img = e.currentTarget;
+            const fallback = img.nextElementSibling as HTMLElement | null;
+            img.style.display = "none";
+            if (fallback) fallback.style.display = "flex";
+          }}
+        />
+        <div style={{ ...styles.brandMark, display: "none" }}>Y</div>
         <div>
           <div style={styles.brandTitle}>Yield Trend</div>
           <div style={styles.brandSub}>Report Generator</div>
@@ -95,26 +108,6 @@ export default function Sidebar({ onGenerate, loading, canPrint }: SidebarProps)
             複数選択時は Yield ラインを重ね比較します
           </div>
         )}
-      </div>
-
-      {/* ── Period ─────────────────────────────────────────────── */}
-      <div style={styles.field}>
-        <label style={styles.label}>Period</label>
-        <div style={styles.periodRow}>
-          <input
-            type="month"
-            style={styles.input}
-            value={startMonth}
-            onChange={(e) => setStartMonth(e.target.value)}
-          />
-          <span style={styles.tilde}>→</span>
-          <input
-            type="month"
-            style={styles.input}
-            value={endMonth}
-            onChange={(e) => setEndMonth(e.target.value)}
-          />
-        </div>
       </div>
 
       {/* ── Test Process ───────────────────────────────────────── */}
@@ -196,12 +189,18 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 8,
     background: "var(--notion-blue)",
     color: "var(--white)",
-    display: "flex",
     alignItems: "center",
     justifyContent: "center",
     fontWeight: 700,
     fontSize: 16,
     letterSpacing: "-0.02em",
+  },
+  brandLogo: {
+    height: 32,
+    width: "auto",
+    maxWidth: 120,
+    objectFit: "contain",
+    display: "block",
   },
   brandTitle: {
     fontSize: 14,
@@ -245,25 +244,6 @@ const styles: Record<string, React.CSSProperties> = {
     color: "var(--gray-400)",
     lineHeight: 1.4,
     paddingLeft: 2,
-  },
-  input: {
-    background: "var(--white)",
-    color: "var(--gray-700)",
-    border: "var(--border-whisper)",
-    borderRadius: 6,
-    padding: "7px 10px",
-    fontSize: 13,
-    flex: 1,
-    minWidth: 0,
-  },
-  periodRow: {
-    display: "flex",
-    alignItems: "center",
-    gap: 6,
-  },
-  tilde: {
-    color: "var(--gray-400)",
-    fontSize: 12,
   },
   chipGroup: {
     display: "flex",

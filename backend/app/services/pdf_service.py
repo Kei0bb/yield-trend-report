@@ -8,8 +8,7 @@ Branding configuration — swap these out for production:
 """
 
 import io
-import math
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 import plotly.graph_objects as go
@@ -127,6 +126,7 @@ def _create_chart_image(
             title=dict(text="Yield (%)", font=dict(size=11, color=SUBTEXT_COLOR)),
             side="right",
             overlaying="y",
+            range=[0, 102],  # 0-100 fixed; +2 margin so points at 100 aren't clipped
             tickfont=dict(size=11, color=SUBTEXT_COLOR),
             showticklabels=False,
             showgrid=False,
@@ -161,12 +161,8 @@ def _create_multi_chart_image(
     複数（改版）品種: 同一チャートに grouped stacked bar + 品種別 Yield line
     Work Week ごとに品種別 Bin stack を横に並べ、Yield ラインを重ね描き。
     """
-    # 共通 yield スケール
-    all_yields = [v for p in products for v in product_data[p].yield_avg]
-    y_min = min(all_yields) if all_yields else 80
-    y_max = max(all_yields) if all_yields else 100
-    y_pad = max((y_max - y_min) * 0.5, 2)
-    y_range = [max(0, y_min - y_pad), min(100, y_max + y_pad)]
+    # Yield scale fixed at 0-100 with a small top margin so points at 100 don't clip.
+    y_range = [0, 102]
 
     # 全 bin 名のユニオン
     all_bin_names: list[str] = []
@@ -296,21 +292,6 @@ def _draw_logo(c: canvas.Canvas, x: float, y: float, h: float) -> None:
         c.restoreState()
 
 
-def _draw_confidential_watermark(
-    c: canvas.Canvas, page_width: float, page_height: float
-) -> None:
-    """Draw a diagonal CONFIDENTIAL watermark across the center of the page."""
-    if not CONFIDENTIAL:
-        return
-    c.saveState()
-    c.setFillColorRGB(0.6, 0.0, 0.0, alpha=0.055)
-    c.setFont("Helvetica-Bold", 72)
-    c.translate(page_width / 2, page_height / 2)
-    c.rotate(math.degrees(math.atan2(page_height, page_width)))  # diagonal angle
-    c.drawCentredString(0, 0, "SOCIONEXT CONFIDENTIAL")
-    c.restoreState()
-
-
 def _draw_header(
     c: canvas.Canvas,
     page_width: float,
@@ -324,32 +305,17 @@ def _draw_header(
     top = page_height - MARGIN
 
     # ── Logo (left) ──────────────────────────────────────────────────────
-    logo_h = 9 * mm
-    logo_y = top - logo_h
+    logo_h = 12 * mm
+    logo_y = top - logo_h + 3 * mm  # nudge upward into the top margin
     _draw_logo(c, MARGIN, logo_y, logo_h)
 
-    # ── CONFIDENTIAL badge (right) ────────────────────────────────────────
-    if CONFIDENTIAL:
-        badge_w = 40 * mm
-        badge_h = 5.5 * mm
-        badge_x = page_width - MARGIN - badge_w
-        badge_y = top - badge_h - 1 * mm
-        c.saveState()
-        c.setFillColorRGB(0.88, 0.0, 0.0, alpha=0.9)
-        c.setLineWidth(0)
-        c.roundRect(badge_x, badge_y, badge_w, badge_h, 2, stroke=0, fill=1)
-        c.setFillColorRGB(1, 1, 1)
-        c.setFont("Helvetica-Bold", 7)
-        c.drawCentredString(badge_x + badge_w / 2, badge_y + 1.8 * mm, "SOCIONEXT CONFIDENTIAL")
-        c.restoreState()
-
-    # Generated date (right, below badge)
+    # Generated date (right, top)
     c.saveState()
     c.setFillColorRGB(0.47, 0.46, 0.45)
     c.setFont("Helvetica", 7.5)
     c.drawRightString(
         page_width - MARGIN,
-        top - logo_h - 0.5 * mm,
+        top - 1.5 * mm,
         f"Generated  {date.today().isoformat()}",
     )
     c.restoreState()
@@ -385,9 +351,11 @@ def _draw_header(
     c.saveState()
     c.setFont("Helvetica", 8.5)
     c.setFillColorRGB(0.38, 0.36, 0.35)
+    today = date.today()
+    period_start = today - timedelta(days=90)
     meta = (
         f"Product  {product}"
-        f"   ·   Period  {start_month} to {end_month}"
+        f"   ·   Period  {period_start.isoformat()} to {today.isoformat()}"
         f"   ·   Process  {process_name}"
     )
     c.drawString(MARGIN, meta_y, meta)
@@ -423,6 +391,20 @@ def _draw_footer(
         page_width / 2, y,
         f"Page {current_page} of {total_pages}",
     )
+
+    # Right: CONFIDENTIAL badge (moved from header)
+    if CONFIDENTIAL:
+        badge_w = 40 * mm
+        badge_h = 5.5 * mm
+        badge_x = page_width - MARGIN - badge_w
+        badge_y = y - 1.4 * mm
+        c.setFillColorRGB(0.88, 0.0, 0.0, alpha=0.9)
+        c.setLineWidth(0)
+        c.roundRect(badge_x, badge_y, badge_w, badge_h, 2, stroke=0, fill=1)
+        c.setFillColorRGB(1, 1, 1)
+        c.setFont("Helvetica-Bold", 7)
+        c.drawCentredString(badge_x + badge_w / 2, badge_y + 1.8 * mm, "SOCIONEXT CONFIDENTIAL")
+    c.restoreState()
 
     # Thin top rule for footer
     c.saveState()
@@ -467,16 +449,13 @@ def generate_pdf(
     for page_num, process_name in enumerate(processes, start=1):
         prod_dict = data[process_name]
 
-        # 1. Watermark
-        #_draw_confidential_watermark(c, page_width, page_height)
-
-        # 2. Header
+        # 1. Header
         _draw_header(
             c, page_width, page_height,
             title_label, start_month, end_month, process_name,
         )
 
-        # 3. Chart (データ無し / 画像生成失敗時はテキストで代替)
+        # 2. Chart (データ無し / 画像生成失敗時はテキストで代替)
         has_data = any(prod_dict.get(p) and prod_dict[p].lots for p in products)
         chart_bytes: bytes | None = None
         if has_data:
@@ -520,7 +499,7 @@ def generate_pdf(
             )
             c.restoreState()
 
-        # 4. Footer
+        # 3. Footer
         _draw_footer(c, page_width, page_num, total_pages)
 
         c.showPage()

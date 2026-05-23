@@ -44,14 +44,8 @@ export default function YieldChart({ processName, productData }: YieldChartProps
   const productNames = Object.keys(productData);
   const isMulti = productNames.length > 1;
 
-  const allYields = productNames.flatMap((p) => productData[p].yield_avg);
-  const yMin = allYields.length > 0 ? Math.min(...allYields) : 80;
-  const yMax = allYields.length > 0 ? Math.max(...allYields) : 100;
-  const yPad = Math.max((yMax - yMin) * 0.5, 2);
-  const yieldRange: [number, number] = [
-    Math.max(0, Math.floor(yMin - yPad)),
-    Math.min(100, Math.ceil(yMax + yPad)),
-  ];
+  // Yield axis fixed at 0-100 with a small top margin so points at 100 don't clip.
+  const yieldRange: [number, number] = [0, 102];
 
   const allBinNames = Array.from(
     new Set(productNames.flatMap((p) => Object.keys(productData[p].fail_bins)))
@@ -62,8 +56,8 @@ export default function YieldChart({ processName, productData }: YieldChartProps
   // ── Single product ──────────────────────────────────────────────
   if (!isMulti) {
     const data = productData[productNames[0]];
-    const latestYield =
-      data.yield_avg.length > 0 ? data.yield_avg[data.yield_avg.length - 1] : 0;
+    const lastNonNull = [...data.yield_avg].reverse().find((v): v is number => v != null);
+    const latestYield = lastNonNull ?? 0;
 
     const lineTrace: Plotly.Data = {
       x: data.lots,
@@ -163,9 +157,8 @@ export default function YieldChart({ processName, productData }: YieldChartProps
         <div style={styles.stats}>
           {productNames.map((product, i) => {
             const d = productData[product];
-            const latestYield = d.yield_avg.length > 0
-              ? d.yield_avg[d.yield_avg.length - 1]
-              : 0;
+            const lastNonNull = [...d.yield_avg].reverse().find((v): v is number => v != null);
+            const latestYield = lastNonNull ?? 0;
             return (
               <div key={product} style={styles.statItem}>
                 <div style={{ ...styles.statLabel, display: "flex", alignItems: "center", gap: 4, justifyContent: "flex-end" }}>

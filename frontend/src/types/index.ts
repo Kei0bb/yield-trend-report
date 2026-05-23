@@ -7,7 +7,7 @@ export interface YieldRequest {
 
 export interface ProcessData {
   lots: string[];
-  yield_avg: number[];
+  yield_avg: (number | null)[];
   fail_bins: Record<string, number[]>;
 }
 

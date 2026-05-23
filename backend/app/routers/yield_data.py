@@ -5,12 +5,13 @@ from fastapi import APIRouter
 from app.models.schemas import YieldRequest, YieldResponse
 from app.services.bin_mapping import load_bin_mapping
 from app.services.product_config import (
+    group_by_display_name,
     load_product_config,
     resolve_bin_group,
     resolve_display_name,
     resolve_product_ids,
 )
-from app.services.yield_service import get_products, get_yield_data_merged, group_by_display_name
+from app.services.yield_service import get_products, get_yield_data_merged
 from app.utils.csv_loader import BIN_MAPPINGS_DIR
 
 logger = logging.getLogger(__name__)

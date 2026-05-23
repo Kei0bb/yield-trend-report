@@ -2,6 +2,7 @@ import random
 
 import pandas as pd
 
+from app.services.yield_aggregator import anchor_from_end_month, latest_iso_weeks
 from app.services.yield_queries import COMMON_COLUMNS
 
 _BIN_CODES_BY_PROCESS: dict[str, list[int]] = {
@@ -29,12 +30,8 @@ def mock_yield_dataframe(product: str, start_month: str, end_month: str, process
     making it easier to test UI behaviour reproducibly.
     Bin mapping CSVs are applied downstream (as with real data), so they work in mock mode too.
     """
-    random.seed(hash(f"{product}-{process}-{start_month}") % 2**32)
-
-    num_lots = random.randint(6, 12)
-    year = int(start_month[:4])
-    start_week = int(start_month[5:7]) * 4
-    lots = [f"{year}W{str(start_week + i).zfill(2)}" for i in range(num_lots)]
+    random.seed(hash(f"{product}-{process}-{end_month}") % 2**32)
+    lots = latest_iso_weeks(anchor_from_end_month(end_month), 12)
 
     base_yield = _BASE_YIELD.get(process, 95.0)
     bin_codes = _BIN_CODES_BY_PROCESS.get(process, [3, 5, 7])

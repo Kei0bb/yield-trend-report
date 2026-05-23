@@ -35,6 +35,11 @@ export default function ReportView({ data, request }: ReportViewProps) {
   const displayNames = firstProcess ? Object.keys(data.data[firstProcess]) : [];
 
   const today = new Date().toISOString().slice(0, 10);
+  const periodStart = (() => {
+    const d = new Date();
+    d.setMonth(d.getMonth() - 3);
+    return d.toISOString().slice(0, 10);
+  })();
   const isMultiDisplay = displayNames.length > 1;
   const titleText =
     displayNames.length > 0
@@ -72,7 +77,7 @@ export default function ReportView({ data, request }: ReportViewProps) {
           )}
           <span style={styles.metaItem}>
             <span style={styles.metaLabel}>Period</span>
-            {request.start_month} → {request.end_month}
+            {periodStart} → {today}
           </span>
           <span style={styles.metaDivider} />
           <span style={styles.metaItem}>

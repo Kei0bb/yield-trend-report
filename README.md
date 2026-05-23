@@ -19,10 +19,10 @@ Oracle DB から Wafer 単位データを取得し、Lot 毎に集計。CP / FT 
 
 | 機能 | 詳細 |
 |------|------|
-| 製品 / 期間 / 工程フィルター | Product ドロップダウン、開始〜終了月（今月起点で自動設定）、CP / FT / SLT チップ選択 |
-| 複合チャート | Lot 平均 Yield 折れ線（右 Y 軸）+ 不良 Bin Stacked Bar（左 Y 軸） |
+| 製品 / 工程フィルター | Product チップ選択、CP / FT / SLT チップ選択（期間は直近 3 ヶ月固定） |
+| 複合チャート | Lot 平均 Yield 折れ線（右 Y 軸）+ 不良 Bin Stacked Bar（左 Y 軸）。週単位で必ず最新 12 ISO 週分を表示 |
 | Web プレビュー | Plotly でインタラクティブ表示（ズーム / ホバー / 凡例トグル） |
-| PDF エクスポート | "Export PDF (Print)" ボタン → ブラウザの印刷ダイアログ → 「PDF として保存」。A4 横向き、CONFIDENTIAL バッジ / ページ番号付き |
+| PDF エクスポート | "Export PDF" ボタンでサーバー生成（ReportLab + Plotly→kaleido）。A4 横向き、ロゴ / CONFIDENTIAL バッジ / ページ番号付き |
 | モックモード | Oracle 不要でモックデータで即起動 (`USE_MOCK_DATA=true`) |
 | 接続状態表示 | サイドバー下部に "Mock data mode" / "Live DB mode" をリアルタイム表示 |
 
@@ -34,13 +34,13 @@ Oracle DB から Wafer 単位データを取得し、Lot 毎に集計。CP / FT 
 - React 19 + TypeScript (Vite)
 - react-plotly.js + plotly.js
 - Notion 風デザイントークン（Inter フォント / warm-white / Notion Blue）
-- ブラウザ印刷 CSS (`@media print`) で PDF 生成（kaleido 不要）
 
 ### Backend
 - Python 3.13 + FastAPI + uvicorn
 - oracledb（Oracle DB 公式 Python ドライバ、Thin モード — Instant Client 不要）
 - pandas（Wafer → Lot 集計）
 - pydantic-settings（型付き設定管理 + 起動時バリデーション）
+- ReportLab + Plotly (kaleido) — サーバーサイド PDF 生成
 
 ---
 
@@ -62,20 +62,24 @@ Report_gen/
 │   │   │   ├── yield_service.py  # オーケストレータ（薄いエントリポイント）
 │   │   │   ├── product_config.py # product_config.csv 読み込み・nickname 解決（lru_cache）
 │   │   │   ├── bin_mapping.py    # bin_mappings/*.csv 読み込み・Bin コード変換（lru_cache）
-│   │   │   ├── yield_queries.py  # Oracle SQL ビルダ + 実行（CP/FT 統合）
-│   │   │   ├── yield_aggregator.py # DataFrame → ProcessData 集計
+│   │   │   ├── yield_queries.py  # Oracle SQL ビルダ + 実行（CP/FT/SLT 統合）
+│   │   │   ├── yield_aggregator.py # DataFrame → ProcessData 集計（最新 12 週パディング）
+│   │   │   ├── pdf_service.py    # ReportLab + Plotly→PNG で PDF 生成
 │   │   │   └── mock_data.py      # モックデータ生成
 │   │   └── utils/
 │   │       └── csv_loader.py     # CSV 読み込み共通ヘルパー・パス定数
 │   ├── bin_mappings/             # 製品別 Bin マッピング CSV（*.csv.example を参照）
 │   ├── product_config.csv        # 製品設定（*.csv.example を参照）
+│   ├── assets/logo.png           # PDF / フロント右上で使用するロゴ（未配置時は placeholder）
 │   ├── pyproject.toml
 │   └── .env                      # ← gitignore 済み（下記テンプレート参照）
 ├── frontend/
+│   ├── public/
+│   │   ├── favicon.svg
+│   │   └── logo.png              # フロント左上ロゴ（未配置時は "Y" マークにフォールバック）
 │   └── src/
 │       ├── App.tsx
 │       ├── theme.ts              # BIN_COLORS / PRODUCT_COLORS / FONT_FAMILY（共通定数）
-│       ├── print.css             # @media print — A4 横 PDF レイアウト
 │       ├── index.css             # Notion デザイントークン（CSS 変数）
 │       ├── api/client.ts         # axios API クライアント
 │       ├── components/
@@ -83,7 +87,6 @@ Report_gen/
 │       │   ├── ReportView.tsx    # レポートメイン表示
 │       │   ├── YieldChart.tsx    # 複合チャートカード
 │       │   ├── PlotlyChart.tsx   # react-plotly.js CJS 互換ラッパー
-│       │   ├── PrintView.tsx     # 印刷専用レイアウト（@media print で表示）
 │       │   └── ErrorBanner.tsx   # インラインエラー表示
 │       └── types/index.ts        # TypeScript 型定義
 └── docs/
@@ -204,14 +207,14 @@ CORS_ORIGINS=["http://localhost:5173"]
 
 ## PDF エクスポート
 
-サーバ側での画像生成（kaleido）は使用しません。  
-ブラウザの印刷機能を利用するため、**Windows 環境でも安定して動作します**。
+サーバーサイドで生成します（ReportLab + Plotly→PNG via kaleido）。
 
 1. "Generate Report" でチャートを表示
-2. "Export PDF (Print)" ボタンをクリック → ブラウザの印刷ダイアログが開く
-3. 送信先を「PDF として保存」に変更して保存
+2. "Export PDF" ボタンをクリック → ブラウザに PDF がダウンロードされる
 
-印刷レイアウトは A4 横向きに最適化されており、工程ごとに 1 ページ出力されます。
+A4 横向き、工程ごとに 1 ページ。ロゴは `backend/assets/logo.png` を参照（未配置時はプレースホルダ）。
+CONFIDENTIAL バッジは各ページのフッター右下に表示されます。
+社名・ロゴ・透かしの ON/OFF は `backend/app/services/pdf_service.py` の `COMPANY_NAME` / `LOGO_PATH` / `CONFIDENTIAL` で切り替えられます。
 
 ---
 
