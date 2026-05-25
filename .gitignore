@@ -65,5 +65,10 @@ backend/bin_mappings/*.csv
 /*.jpeg
 *.png
 
-# Local AI assistant context (per-developer, not for shared repo)
+# Local AI assistant context / scratch dirs (per-developer, not for shared repo)
 CLAUDE.md
+.claude/
+.playwright-mcp/
+.superpowers/
+backend/README.md
+frontend/README.md
