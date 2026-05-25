@@ -53,7 +53,7 @@ FONT_FAMILY = "Inter, -apple-system, Segoe UI, Helvetica, Arial, sans-serif"
 # PDF layout constants
 MARGIN = 15 * mm
 HEADER_H = 48 * mm           # header band 全体 (タイトル + 下線 + 余白)
-HEADER_DIVIDER_OFFSET = 14 * mm  # ヘッダー底から下線までの距離 (下線の下に余白を取る)
+HEADER_DIVIDER_OFFSET = 4 * mm  # ヘッダー底から下線までの距離 (タイトル + meta row の下に配置)
 FOOTER_H = 10 * mm           # footer band
 
 
@@ -309,17 +309,6 @@ def _draw_header(
     logo_y = top - logo_h + 3 * mm  # nudge upward into the top margin
     _draw_logo(c, MARGIN, logo_y, logo_h)
 
-    # Generated date (right, top)
-    c.saveState()
-    c.setFillColorRGB(0.47, 0.46, 0.45)
-    c.setFont("Helvetica", 7.5)
-    c.drawRightString(
-        page_width - MARGIN,
-        top - 1.5 * mm,
-        f"Generated  {date.today().isoformat()}",
-    )
-    c.restoreState()
-
     # ── Product title ─────────────────────────────────────────────────────
     title_y = top - logo_h - 7.5 * mm
     c.saveState()
@@ -377,14 +366,14 @@ def _draw_footer(
     current_page: int,
     total_pages: int,
 ) -> None:
-    """Draw footer with page number and company name."""
+    """Draw footer with generated date, page number, and confidential mark."""
     y = FOOTER_H - 3 * mm
 
-    # Left: company name
+    # Left: generated date (moved from header right)
     c.saveState()
     c.setFont("Helvetica", 7.5)
     c.setFillColorRGB(0.63, 0.61, 0.60)
-    c.drawString(MARGIN, y, COMPANY_NAME)
+    c.drawString(MARGIN, y, f"Generated  {date.today().isoformat()}")
 
     # Center: page number
     c.drawCentredString(
@@ -392,18 +381,11 @@ def _draw_footer(
         f"Page {current_page} of {total_pages}",
     )
 
-    # Right: CONFIDENTIAL badge (moved from header)
+    # Right: CONFIDENTIAL — red text only (no fill background)
     if CONFIDENTIAL:
-        badge_w = 40 * mm
-        badge_h = 5.5 * mm
-        badge_x = page_width - MARGIN - badge_w
-        badge_y = y - 1.4 * mm
-        c.setFillColorRGB(0.88, 0.0, 0.0, alpha=0.9)
-        c.setLineWidth(0)
-        c.roundRect(badge_x, badge_y, badge_w, badge_h, 2, stroke=0, fill=1)
-        c.setFillColorRGB(1, 1, 1)
-        c.setFont("Helvetica-Bold", 7)
-        c.drawCentredString(badge_x + badge_w / 2, badge_y + 1.8 * mm, "SOCIONEXT CONFIDENTIAL")
+        c.setFillColorRGB(0.78, 0.0, 0.0)
+        c.setFont("Helvetica-Bold", 8)
+        c.drawRightString(page_width - MARGIN, y, "SOCIONEXT CONFIDENTIAL")
     c.restoreState()
 
     # Thin top rule for footer
