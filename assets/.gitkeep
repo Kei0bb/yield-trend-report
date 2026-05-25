@@ -1,0 +1,4 @@
+# Place `logo.png` here. It is shared by:
+#   - backend (PDF header) — see backend/app/services/pdf_service.py LOGO_PATH
+#   - frontend (sidebar brand) — served via backend at GET /logo.png
+# Logo files themselves are gitignored (see .gitignore *.png rule).

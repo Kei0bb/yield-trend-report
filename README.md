@@ -70,13 +70,13 @@ Report_gen/
 │   │       └── csv_loader.py     # CSV 読み込み共通ヘルパー・パス定数
 │   ├── bin_mappings/             # 製品別 Bin マッピング CSV（*.csv.example を参照）
 │   ├── product_config.csv        # 製品設定（*.csv.example を参照）
-│   ├── assets/logo.png           # PDF / フロント右上で使用するロゴ（未配置時は placeholder）
 │   ├── pyproject.toml
 │   └── .env                      # ← gitignore 済み（下記テンプレート参照）
+├── assets/
+│   └── logo.png                  # PDF + フロント左上で共有（未配置時はそれぞれ placeholder / "Y" マークへフォールバック）
 ├── frontend/
 │   ├── public/
-│   │   ├── favicon.svg
-│   │   └── logo.png              # フロント左上ロゴ（未配置時は "Y" マークにフォールバック）
+│   │   └── favicon.svg
 │   └── src/
 │       ├── App.tsx
 │       ├── theme.ts              # BIN_COLORS / PRODUCT_COLORS / FONT_FAMILY（共通定数）

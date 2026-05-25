@@ -24,7 +24,7 @@ from app.models.schemas import ProcessData
 # Branding  ← production で差し替えてください
 # ---------------------------------------------------------------------------
 COMPANY_NAME: str = "Socionext"          # ← 企業名
-LOGO_PATH: str | None = str(Path(__file__).resolve().parents[2] / "assets" / "logo.png")  # ← ロゴ画像パス (PNG/JPG) | None = mock
+LOGO_PATH: str | None = str(Path(__file__).resolve().parents[3] / "assets" / "logo.png")  # ← project-root/assets/logo.png (backend/frontend 共通) | None = mock
 CONFIDENTIAL: bool = True                     # ← False にすると透かし非表示
 
 # ---------------------------------------------------------------------------

@@ -64,3 +64,6 @@ backend/bin_mappings/*.csv
 /*.jpg
 /*.jpeg
 *.png
+
+# Local AI assistant context (per-developer, not for shared repo)
+CLAUDE.md

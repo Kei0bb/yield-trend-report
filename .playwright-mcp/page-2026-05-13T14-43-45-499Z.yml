@@ -1,0 +1,294 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - complementary [ref=e4]:
+      - generic [ref=e5]:
+        - generic [ref=e6]: "Y"
+        - generic [ref=e7]:
+          - generic [ref=e8]: Yield Trend
+          - generic [ref=e9]: Report Generator
+      - generic [ref=e10]:
+        - generic [ref=e11]:
+          - text: Product
+          - generic [ref=e38]: 2 selected
+        - generic [ref=e12]:
+          - button "Product-A" [ref=e13] [cursor=pointer]
+          - button "Product-B" [ref=e14] [cursor=pointer]
+          - button "Product-C" [ref=e15] [cursor=pointer]
+        - generic [ref=e39]: 複数選択時は Yield ラインを重ね比較します
+      - generic [ref=e16]:
+        - generic [ref=e17]: Period
+        - generic [ref=e18]:
+          - textbox [ref=e19]: 2026-01
+          - generic [ref=e20]: →
+          - textbox [ref=e21]: 2026-03
+      - generic [ref=e22]:
+        - generic [ref=e23]: Test Process
+        - generic [ref=e24]:
+          - button "CP" [ref=e25] [cursor=pointer]
+          - button "FT" [ref=e26] [cursor=pointer]
+          - button "SLT" [ref=e27] [cursor=pointer]
+      - generic [ref=e28]:
+        - button "Generate Report" [ref=e29] [cursor=pointer]
+        - button "Export PDF" [ref=e30] [cursor=pointer]
+      - generic [ref=e31]: Mock data mode
+    - main [ref=e33]:
+      - generic [ref=e40]:
+        - generic [ref=e41]: Reports · Yield Trend
+        - heading "Product-A vs Product-B" [level=1] [ref=e42]
+        - generic [ref=e43]:
+          - generic [ref=e44]:
+            - generic [ref=e45]: Products
+            - text: Product-A · Product-B
+          - generic [ref=e47]:
+            - generic [ref=e48]: Period
+            - text: 2026-01 → 2026-03
+          - generic [ref=e50]:
+            - generic [ref=e51]: Processes
+            - text: CP · FT · SLT
+          - generic [ref=e53]:
+            - generic [ref=e54]: Generated
+            - text: 2026-05-13
+      - generic [ref=e55]:
+        - generic [ref=e56]:
+          - generic [ref=e57]:
+            - generic [ref=e58]:
+              - generic [ref=e59]: CP
+              - heading "Yield Trend — Revision Comparison" [level=3] [ref=e60]
+              - generic [ref=e61]: Work Week ごとに品種別 Bin stack を横に並べ、Yield ラインを重ねて表示
+            - generic [ref=e62]:
+              - generic [ref=e63]:
+                - generic [ref=e64]: Product-A
+                - generic [ref=e66]: 96.03%
+              - generic [ref=e67]:
+                - generic [ref=e68]: Product-B
+                - generic [ref=e70]: 96.20%
+          - generic [ref=e73]:
+            - img:
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: 2026W04
+                    - generic:
+                      - generic: 2026W05
+                    - generic:
+                      - generic: 2026W06
+                    - generic:
+                      - generic: 2026W07
+                    - generic:
+                      - generic: 2026W08
+                    - generic:
+                      - generic: 2026W09
+                    - generic:
+                      - generic: 2026W10
+                    - generic:
+                      - generic: 2026W11
+                    - generic:
+                      - generic: 2026W12
+                    - generic:
+                      - generic: 2026W13
+                  - generic:
+                    - generic:
+                      - generic: "0"
+                    - generic:
+                      - generic: "1"
+                    - generic:
+                      - generic: "2"
+                    - generic:
+                      - generic: "3"
+                    - generic:
+                      - generic: "4"
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic: "92"
+                      - generic:
+                        - generic: "94"
+                      - generic:
+                        - generic: "96"
+                      - generic:
+                        - generic: "98"
+                      - generic:
+                        - generic: "100"
+            - img:
+              - generic:
+                - generic [ref=e93]:
+                  - generic [ref=e96]: Bin3-Open
+                  - generic [ref=e104]: Bin5-Short
+                  - generic [ref=e112]: Bin7-Leak
+                  - generic [ref=e120]: Bin9-Func
+                  - generic [ref=e128]: Bin11-Para
+                  - generic [ref=e136]: Yield · Product-A
+                  - generic [ref=e144]: Yield · Product-B
+                - generic:
+                  - generic: Work Week
+                - generic:
+                  - generic: Fail Bin (%)
+                - generic:
+                  - generic: Yield (%)
+            - img
+        - generic [ref=e150]:
+          - generic [ref=e151]:
+            - generic [ref=e152]:
+              - generic [ref=e153]: FT
+              - heading "Yield Trend — Revision Comparison" [level=3] [ref=e154]
+              - generic [ref=e155]: Work Week ごとに品種別 Bin stack を横に並べ、Yield ラインを重ねて表示
+            - generic [ref=e156]:
+              - generic [ref=e157]:
+                - generic [ref=e158]: Product-A
+                - generic [ref=e160]: 93.56%
+              - generic [ref=e161]:
+                - generic [ref=e162]: Product-B
+                - generic [ref=e164]: 93.42%
+          - generic [ref=e167]:
+            - img:
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: 2026W04
+                    - generic:
+                      - generic: 2026W05
+                    - generic:
+                      - generic: 2026W06
+                    - generic:
+                      - generic: 2026W07
+                    - generic:
+                      - generic: 2026W08
+                    - generic:
+                      - generic: 2026W09
+                    - generic:
+                      - generic: 2026W10
+                    - generic:
+                      - generic: 2026W11
+                  - generic:
+                    - generic:
+                      - generic: "0"
+                    - generic:
+                      - generic: "1"
+                    - generic:
+                      - generic: "2"
+                    - generic:
+                      - generic: "3"
+                    - generic:
+                      - generic: "4"
+                    - generic:
+                      - generic: "5"
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic: "88"
+                      - generic:
+                        - generic: "90"
+                      - generic:
+                        - generic: "92"
+                      - generic:
+                        - generic: "94"
+                      - generic:
+                        - generic: "96"
+                      - generic:
+                        - generic: "98"
+                      - generic:
+                        - generic: "100"
+            - img:
+              - generic:
+                - generic [ref=e187]:
+                  - generic [ref=e190]: Bin3-DC
+                  - generic [ref=e198]: Bin5-Func
+                  - generic [ref=e206]: Bin7-Speed
+                  - generic [ref=e214]: Bin9-Leak
+                  - generic [ref=e222]: Bin11-Scan
+                  - generic [ref=e230]: Yield · Product-A
+                  - generic [ref=e238]: Yield · Product-B
+                - generic:
+                  - generic: Work Week
+                - generic:
+                  - generic: Fail Bin (%)
+                - generic:
+                  - generic: Yield (%)
+            - img
+        - generic [ref=e244]:
+          - generic [ref=e245]:
+            - generic [ref=e246]:
+              - generic [ref=e247]: SLT
+              - heading "Yield Trend — Revision Comparison" [level=3] [ref=e248]
+              - generic [ref=e249]: Work Week ごとに品種別 Bin stack を横に並べ、Yield ラインを重ねて表示
+            - generic [ref=e250]:
+              - generic [ref=e251]:
+                - generic [ref=e252]: Product-A
+                - generic [ref=e254]: 91.80%
+              - generic [ref=e255]:
+                - generic [ref=e256]: Product-B
+                - generic [ref=e258]: 92.22%
+          - generic [ref=e261]:
+            - img:
+              - generic:
+                - generic:
+                  - generic:
+                    - generic:
+                      - generic: 2026W04
+                    - generic:
+                      - generic: 2026W05
+                    - generic:
+                      - generic: 2026W06
+                    - generic:
+                      - generic: 2026W07
+                    - generic:
+                      - generic: 2026W08
+                    - generic:
+                      - generic: 2026W09
+                    - generic:
+                      - generic: 2026W10
+                    - generic:
+                      - generic: 2026W11
+                    - generic:
+                      - generic: 2026W12
+                    - generic:
+                      - generic: 2026W13
+                  - generic:
+                    - generic:
+                      - generic: "0"
+                    - generic:
+                      - generic: "1"
+                    - generic:
+                      - generic: "2"
+                    - generic:
+                      - generic: "3"
+                    - generic:
+                      - generic: "4"
+                    - generic:
+                      - generic: "5"
+                  - generic:
+                    - generic:
+                      - generic:
+                        - generic: "86"
+                      - generic:
+                        - generic: "88"
+                      - generic:
+                        - generic: "90"
+                      - generic:
+                        - generic: "92"
+                      - generic:
+                        - generic: "94"
+                      - generic:
+                        - generic: "96"
+                      - generic:
+                        - generic: "98"
+            - img:
+              - generic:
+                - generic [ref=e281]:
+                  - generic [ref=e284]: Bin3-Boot
+                  - generic [ref=e292]: Bin5-Stress
+                  - generic [ref=e300]: Bin7-Perf
+                  - generic [ref=e308]: Bin9-Power
+                  - generic [ref=e316]: Bin11-IO
+                  - generic [ref=e324]: Yield · Product-A
+                  - generic [ref=e332]: Yield · Product-B
+                - generic:
+                  - generic: Work Week
+                - generic:
+                  - generic: Fail Bin (%)
+                - generic:
+                  - generic: Yield (%)
+            - img
+  - img [ref=e338]

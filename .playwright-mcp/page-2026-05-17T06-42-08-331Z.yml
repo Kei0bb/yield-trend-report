@@ -1,0 +1,37 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]: "Y"
+      - generic [ref=e7]:
+        - generic [ref=e8]: Yield Trend
+        - generic [ref=e9]: Report Generator
+    - generic [ref=e10]:
+      - generic [ref=e11]:
+        - text: Product
+        - generic [ref=e38]: 2 selected
+      - generic [ref=e12]:
+        - button "Product-A" [ref=e13] [cursor=pointer]
+        - button "Product-A-rev2" [active] [ref=e14] [cursor=pointer]
+        - button "Product-B" [ref=e15] [cursor=pointer]
+      - generic [ref=e39]: 複数選択時は Yield ラインを重ね比較します
+    - generic [ref=e16]:
+      - generic [ref=e17]: Period
+      - generic [ref=e18]:
+        - textbox [ref=e19]: 2026-01
+        - generic [ref=e20]: →
+        - textbox [ref=e21]: 2026-03
+    - generic [ref=e22]:
+      - generic [ref=e23]: Test Process
+      - generic [ref=e24]:
+        - button "CP" [ref=e25] [cursor=pointer]
+        - button "FT" [ref=e26] [cursor=pointer]
+        - button "SLT" [ref=e27] [cursor=pointer]
+    - generic [ref=e28]:
+      - button "Generate Report" [ref=e29] [cursor=pointer]
+      - button "Export PDF" [ref=e30] [cursor=pointer]
+    - generic [ref=e31]: Mock data mode
+  - main [ref=e33]:
+    - generic [ref=e34]:
+      - generic [ref=e35]: Ready
+      - heading "Generate your yield report" [level=2] [ref=e36]
+      - paragraph [ref=e37]: Pick a product (or multiple to compare), period, and test process on the left, then hit Generate Report to see lot-level yield trends and failure-bin breakdown per process.

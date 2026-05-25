@@ -1,0 +1,188 @@
+<h2>Web Page Layout</h2>
+<p class="subtitle">レポート作成・確認・PDF出力のページ全体レイアウト案</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>サイドバー + メインエリア（推奨）</h3>
+      <div class="mockup" style="margin-top:12px;">
+        <div class="mockup-header">Yield Trend Report Generator</div>
+        <div class="mockup-body" style="padding:0;display:flex;min-height:320px;">
+          <!-- Sidebar -->
+          <div style="width:220px;background:#12121f;padding:16px;border-right:1px solid #2a2a4a;flex-shrink:0;">
+            <div style="margin-bottom:16px;">
+              <div style="color:#8892b0;font-size:10px;text-transform:uppercase;margin-bottom:6px;">Product</div>
+              <div style="background:#1a1a2e;border:1px solid #2a2a4a;border-radius:4px;padding:6px 10px;color:#ccd6f6;font-size:12px;">Product-A ▾</div>
+            </div>
+            <div style="margin-bottom:16px;">
+              <div style="color:#8892b0;font-size:10px;text-transform:uppercase;margin-bottom:6px;">Period</div>
+              <div style="display:flex;gap:4px;">
+                <div style="background:#1a1a2e;border:1px solid #2a2a4a;border-radius:4px;padding:6px 8px;color:#ccd6f6;font-size:11px;flex:1;">2026-01</div>
+                <div style="color:#8892b0;font-size:11px;padding:6px 2px;">~</div>
+                <div style="background:#1a1a2e;border:1px solid #2a2a4a;border-radius:4px;padding:6px 8px;color:#ccd6f6;font-size:11px;flex:1;">2026-03</div>
+              </div>
+            </div>
+            <div style="margin-bottom:16px;">
+              <div style="color:#8892b0;font-size:10px;text-transform:uppercase;margin-bottom:6px;">Test Process</div>
+              <div style="display:flex;flex-direction:column;gap:4px;">
+                <label style="color:#ccd6f6;font-size:12px;display:flex;align-items:center;gap:6px;">
+                  <span style="display:inline-block;width:14px;height:14px;border:1px solid #64ffda;border-radius:3px;background:#64ffda;text-align:center;line-height:14px;font-size:9px;color:#0a0a1a;">✓</span> CP
+                </label>
+                <label style="color:#ccd6f6;font-size:12px;display:flex;align-items:center;gap:6px;">
+                  <span style="display:inline-block;width:14px;height:14px;border:1px solid #64ffda;border-radius:3px;background:#64ffda;text-align:center;line-height:14px;font-size:9px;color:#0a0a1a;">✓</span> FT
+                </label>
+                <label style="color:#ccd6f6;font-size:12px;display:flex;align-items:center;gap:6px;">
+                  <span style="display:inline-block;width:14px;height:14px;border:1px solid #64ffda;border-radius:3px;background:#64ffda;text-align:center;line-height:14px;font-size:9px;color:#0a0a1a;">✓</span> SLT
+                </label>
+              </div>
+            </div>
+            <div style="margin-top:20px;display:flex;flex-direction:column;gap:8px;">
+              <div style="background:#64ffda;color:#0a0a1a;border-radius:4px;padding:8px;text-align:center;font-size:12px;font-weight:600;cursor:pointer;">Generate Report</div>
+              <div style="background:transparent;border:1px solid #64ffda;color:#64ffda;border-radius:4px;padding:8px;text-align:center;font-size:12px;cursor:pointer;">📄 Export PDF</div>
+            </div>
+          </div>
+          <!-- Main Content -->
+          <div style="flex:1;padding:16px;overflow:auto;">
+            <!-- CP Chart -->
+            <div style="background:#1a1a2e;border-radius:8px;padding:12px;margin-bottom:12px;">
+              <div style="color:#ccd6f6;font-size:13px;font-weight:600;margin-bottom:8px;">CP Yield Trend</div>
+              <svg width="100%" height="60" viewBox="0 0 350 60">
+                <rect x="10" y="25" width="25" height="12" fill="#ef5350" rx="1" opacity="0.8"/>
+                <rect x="10" y="37" width="25" height="8" fill="#ff7043" rx="1" opacity="0.8"/>
+                <rect x="50" y="28" width="25" height="10" fill="#ef5350" rx="1" opacity="0.8"/>
+                <rect x="50" y="38" width="25" height="6" fill="#ff7043" rx="1" opacity="0.8"/>
+                <rect x="90" y="22" width="25" height="14" fill="#ef5350" rx="1" opacity="0.8"/>
+                <rect x="90" y="36" width="25" height="9" fill="#ff7043" rx="1" opacity="0.8"/>
+                <rect x="130" y="30" width="25" height="8" fill="#ef5350" rx="1" opacity="0.8"/>
+                <rect x="130" y="38" width="25" height="5" fill="#ff7043" rx="1" opacity="0.8"/>
+                <rect x="170" y="26" width="25" height="11" fill="#ef5350" rx="1" opacity="0.8"/>
+                <rect x="170" y="37" width="25" height="7" fill="#ff7043" rx="1" opacity="0.8"/>
+                <rect x="210" y="24" width="25" height="13" fill="#ef5350" rx="1" opacity="0.8"/>
+                <rect x="210" y="37" width="25" height="8" fill="#ff7043" rx="1" opacity="0.8"/>
+                <polyline points="22,18 62,15 102,22 142,12 182,16 222,20" fill="none" stroke="#64b5f6" stroke-width="2"/>
+              </svg>
+            </div>
+            <!-- FT Chart -->
+            <div style="background:#1a1a2e;border-radius:8px;padding:12px;margin-bottom:12px;">
+              <div style="color:#ccd6f6;font-size:13px;font-weight:600;margin-bottom:8px;">FT Yield Trend</div>
+              <svg width="100%" height="60" viewBox="0 0 350 60">
+                <rect x="10" y="28" width="25" height="10" fill="#ef5350" rx="1" opacity="0.8"/>
+                <rect x="10" y="38" width="25" height="7" fill="#ab47bc" rx="1" opacity="0.8"/>
+                <rect x="50" y="25" width="25" height="12" fill="#ef5350" rx="1" opacity="0.8"/>
+                <rect x="50" y="37" width="25" height="8" fill="#ab47bc" rx="1" opacity="0.8"/>
+                <rect x="90" y="30" width="25" height="9" fill="#ef5350" rx="1" opacity="0.8"/>
+                <rect x="90" y="39" width="25" height="5" fill="#ab47bc" rx="1" opacity="0.8"/>
+                <rect x="130" y="27" width="25" height="11" fill="#ef5350" rx="1" opacity="0.8"/>
+                <rect x="130" y="38" width="25" height="6" fill="#ab47bc" rx="1" opacity="0.8"/>
+                <rect x="170" y="32" width="25" height="8" fill="#ef5350" rx="1" opacity="0.8"/>
+                <rect x="170" y="40" width="25" height="4" fill="#ab47bc" rx="1" opacity="0.8"/>
+                <rect x="210" y="29" width="25" height="10" fill="#ef5350" rx="1" opacity="0.8"/>
+                <rect x="210" y="39" width="25" height="6" fill="#ab47bc" rx="1" opacity="0.8"/>
+                <polyline points="22,20 62,18 102,14 142,16 182,10 222,13" fill="none" stroke="#64b5f6" stroke-width="2"/>
+              </svg>
+            </div>
+            <!-- SLT Chart -->
+            <div style="background:#1a1a2e;border-radius:8px;padding:12px;">
+              <div style="color:#ccd6f6;font-size:13px;font-weight:600;margin-bottom:8px;">SLT Yield Trend</div>
+              <svg width="100%" height="60" viewBox="0 0 350 60">
+                <rect x="10" y="30" width="25" height="9" fill="#ef5350" rx="1" opacity="0.8"/>
+                <rect x="10" y="39" width="25" height="6" fill="#42a5f5" rx="1" opacity="0.8"/>
+                <rect x="50" y="27" width="25" height="11" fill="#ef5350" rx="1" opacity="0.8"/>
+                <rect x="50" y="38" width="25" height="7" fill="#42a5f5" rx="1" opacity="0.8"/>
+                <rect x="90" y="32" width="25" height="8" fill="#ef5350" rx="1" opacity="0.8"/>
+                <rect x="90" y="40" width="25" height="5" fill="#42a5f5" rx="1" opacity="0.8"/>
+                <rect x="130" y="29" width="25" height="10" fill="#ef5350" rx="1" opacity="0.8"/>
+                <rect x="130" y="39" width="25" height="6" fill="#42a5f5" rx="1" opacity="0.8"/>
+                <rect x="170" y="33" width="25" height="7" fill="#ef5350" rx="1" opacity="0.8"/>
+                <rect x="170" y="40" width="25" height="4" fill="#42a5f5" rx="1" opacity="0.8"/>
+                <rect x="210" y="31" width="25" height="9" fill="#ef5350" rx="1" opacity="0.8"/>
+                <rect x="210" y="40" width="25" height="5" fill="#42a5f5" rx="1" opacity="0.8"/>
+                <polyline points="22,22 62,19 102,16 142,18 182,12 222,15" fill="none" stroke="#64b5f6" stroke-width="2"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p style="margin-top:8px;color:#8892b0;font-size:13px;">左サイドバーにフィルター、右メインエリアにCP/FT/SLTのチャートを縦に並べる。常にフィルターが見えて操作しやすい。</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>トップバー + フルワイドチャート</h3>
+      <div class="mockup" style="margin-top:12px;">
+        <div class="mockup-header">Yield Trend Report Generator</div>
+        <div class="mockup-body" style="padding:0;min-height:320px;">
+          <!-- Top filter bar -->
+          <div style="background:#12121f;padding:12px 16px;border-bottom:1px solid #2a2a4a;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="color:#8892b0;font-size:10px;">Product:</span>
+              <div style="background:#1a1a2e;border:1px solid #2a2a4a;border-radius:4px;padding:4px 8px;color:#ccd6f6;font-size:11px;">Product-A ▾</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span style="color:#8892b0;font-size:10px;">Period:</span>
+              <div style="background:#1a1a2e;border:1px solid #2a2a4a;border-radius:4px;padding:4px 8px;color:#ccd6f6;font-size:11px;">2026-01</div>
+              <span style="color:#8892b0;font-size:10px;">~</span>
+              <div style="background:#1a1a2e;border:1px solid #2a2a4a;border-radius:4px;padding:4px 8px;color:#ccd6f6;font-size:11px;">2026-03</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <label style="color:#ccd6f6;font-size:11px;display:flex;align-items:center;gap:4px;">
+                <span style="display:inline-block;width:12px;height:12px;border:1px solid #64ffda;border-radius:2px;background:#64ffda;text-align:center;line-height:12px;font-size:8px;color:#0a0a1a;">✓</span> CP
+              </label>
+              <label style="color:#ccd6f6;font-size:11px;display:flex;align-items:center;gap:4px;">
+                <span style="display:inline-block;width:12px;height:12px;border:1px solid #64ffda;border-radius:2px;background:#64ffda;text-align:center;line-height:12px;font-size:8px;color:#0a0a1a;">✓</span> FT
+              </label>
+              <label style="color:#ccd6f6;font-size:11px;display:flex;align-items:center;gap:4px;">
+                <span style="display:inline-block;width:12px;height:12px;border:1px solid #64ffda;border-radius:2px;background:#64ffda;text-align:center;line-height:12px;font-size:8px;color:#0a0a1a;">✓</span> SLT
+              </label>
+            </div>
+            <div style="margin-left:auto;display:flex;gap:6px;">
+              <div style="background:#64ffda;color:#0a0a1a;border-radius:4px;padding:5px 12px;font-size:11px;font-weight:600;">Generate</div>
+              <div style="border:1px solid #64ffda;color:#64ffda;border-radius:4px;padding:5px 12px;font-size:11px;">PDF</div>
+            </div>
+          </div>
+          <!-- Charts - Tab style -->
+          <div style="padding:16px;">
+            <div style="display:flex;gap:0;margin-bottom:12px;">
+              <div style="background:#64ffda;color:#0a0a1a;padding:6px 16px;font-size:11px;font-weight:600;border-radius:4px 4px 0 0;">CP</div>
+              <div style="background:#1a1a2e;color:#8892b0;padding:6px 16px;font-size:11px;border-radius:4px 4px 0 0;border:1px solid #2a2a4a;border-bottom:none;">FT</div>
+              <div style="background:#1a1a2e;color:#8892b0;padding:6px 16px;font-size:11px;border-radius:4px 4px 0 0;border:1px solid #2a2a4a;border-bottom:none;">SLT</div>
+            </div>
+            <div style="background:#1a1a2e;border-radius:0 8px 8px 8px;padding:16px;">
+              <svg width="100%" height="100" viewBox="0 0 500 100">
+                <rect x="15" y="40" width="35" height="15" fill="#ef5350" rx="1" opacity="0.8"/>
+                <rect x="15" y="55" width="35" height="10" fill="#ff7043" rx="1" opacity="0.8"/>
+                <rect x="15" y="65" width="35" height="8" fill="#ffca28" rx="1" opacity="0.8"/>
+                <rect x="70" y="45" width="35" height="12" fill="#ef5350" rx="1" opacity="0.8"/>
+                <rect x="70" y="57" width="35" height="8" fill="#ff7043" rx="1" opacity="0.8"/>
+                <rect x="70" y="65" width="35" height="6" fill="#ffca28" rx="1" opacity="0.8"/>
+                <rect x="125" y="38" width="35" height="16" fill="#ef5350" rx="1" opacity="0.8"/>
+                <rect x="125" y="54" width="35" height="10" fill="#ff7043" rx="1" opacity="0.8"/>
+                <rect x="125" y="64" width="35" height="8" fill="#ffca28" rx="1" opacity="0.8"/>
+                <rect x="180" y="48" width="35" height="10" fill="#ef5350" rx="1" opacity="0.8"/>
+                <rect x="180" y="58" width="35" height="7" fill="#ff7043" rx="1" opacity="0.8"/>
+                <rect x="180" y="65" width="35" height="5" fill="#ffca28" rx="1" opacity="0.8"/>
+                <rect x="235" y="42" width="35" height="13" fill="#ef5350" rx="1" opacity="0.8"/>
+                <rect x="235" y="55" width="35" height="9" fill="#ff7043" rx="1" opacity="0.8"/>
+                <rect x="235" y="64" width="35" height="6" fill="#ffca28" rx="1" opacity="0.8"/>
+                <rect x="290" y="46" width="35" height="11" fill="#ef5350" rx="1" opacity="0.8"/>
+                <rect x="290" y="57" width="35" height="8" fill="#ff7043" rx="1" opacity="0.8"/>
+                <rect x="290" y="65" width="35" height="5" fill="#ffca28" rx="1" opacity="0.8"/>
+                <polyline points="32,28 87,24 142,32 197,20 252,26 307,22" fill="none" stroke="#64b5f6" stroke-width="2.5"/>
+                <circle cx="32" cy="28" r="3" fill="#64b5f6"/>
+                <circle cx="87" cy="24" r="3" fill="#64b5f6"/>
+                <circle cx="142" cy="32" r="3" fill="#64b5f6"/>
+                <circle cx="197" cy="20" r="3" fill="#64b5f6"/>
+                <circle cx="252" cy="26" r="3" fill="#64b5f6"/>
+                <circle cx="307" cy="22" r="3" fill="#64b5f6"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p style="margin-top:8px;color:#8892b0;font-size:13px;">上部にフィルターバー、チャートはタブ切替でフルワイド表示。チャートが大きく見える。一度に1工程のみ表示。</p>
+    </div>
+  </div>
+</div>

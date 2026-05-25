@@ -58,6 +58,18 @@ def health_check():
     return {"status": "ok", "mock": settings.USE_MOCK_DATA}
 
 
+# Shared logo (used by PDF + frontend). Served as /logo.png from project-root/assets.
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+SHARED_LOGO = PROJECT_ROOT / "assets" / "logo.png"
+
+
+@app.get("/logo.png")
+def serve_logo():
+    if SHARED_LOGO.is_file():
+        return FileResponse(SHARED_LOGO, media_type="image/png")
+    raise HTTPException(status_code=404, detail="logo not found")
+
+
 # ---------------------------------------------------------------------------
 # Frontend (SPA) — serve the built React app from frontend/dist
 # Build with: cd frontend && npm run build
