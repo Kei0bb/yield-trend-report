@@ -116,7 +116,7 @@ def _create_chart_image(
         yaxis=dict(
             title=dict(text="Fail Bin (%)", font=dict(size=11, color=SUBTEXT_COLOR)),
             side="left",
-            rangemode="tozero",
+            range=[0, 102],  # 0-100 fixed + margin
             tickfont=dict(size=11, color=SUBTEXT_COLOR),
             showticklabels=False,
             gridcolor="rgba(0,0,0,0.04)",
@@ -213,7 +213,7 @@ def _create_multi_chart_image(
 
     fig.update_yaxes(
         title_text="Fail Bin (%)",
-        rangemode="tozero",
+        range=[0, 102],  # 0-100 fixed + margin
         tickfont=dict(size=11, color=SUBTEXT_COLOR),
         gridcolor="rgba(0,0,0,0.04)",
         secondary_y=False,
