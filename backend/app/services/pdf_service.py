@@ -313,7 +313,7 @@ def _draw_header(
     div_y = page_height - HEADER_H + HEADER_DIVIDER_OFFSET
 
     # ── Product title (left, baseline aligned just above the divider) ────
-    title_y = div_y + 1.5 * mm
+    title_y = div_y + 3.5 * mm
     c.saveState()
     c.setFillColorRGB(0.13, 0.12, 0.11)
     c.setFont("Helvetica-Bold", 18)
