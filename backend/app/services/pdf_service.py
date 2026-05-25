@@ -309,15 +309,18 @@ def _draw_header(
     logo_y = top - logo_h + 3 * mm  # nudge upward into the top margin
     _draw_logo(c, MARGIN, logo_y, logo_h)
 
-    # ── Product title ─────────────────────────────────────────────────────
-    title_y = top - logo_h - 7.5 * mm
+    # ── Divider (header base) ────────────────────────────────────────────
+    div_y = page_height - HEADER_H + HEADER_DIVIDER_OFFSET
+
+    # ── Product title (left, baseline aligned just above the divider) ────
+    title_y = div_y + 1.5 * mm
     c.saveState()
     c.setFillColorRGB(0.13, 0.12, 0.11)
     c.setFont("Helvetica-Bold", 18)
     c.drawString(MARGIN, title_y, product)
     c.restoreState()
 
-    # Process chip
+    # Process chip (right of title)
     chip_text = process_name
     chip_font_size = 7.5
     chip_padding_x = 3.5 * mm
@@ -335,8 +338,7 @@ def _draw_header(
     c.drawString(chip_x + chip_padding_x, chip_y + 1.4 * mm, chip_text)
     c.restoreState()
 
-    # ── Meta row ──────────────────────────────────────────────────────────
-    meta_y = title_y - 6 * mm
+    # ── Meta row (right-aligned, same baseline as title) ─────────────────
     c.saveState()
     c.setFont("Helvetica", 8.5)
     c.setFillColorRGB(0.38, 0.36, 0.35)
@@ -347,12 +349,10 @@ def _draw_header(
         f"   ·   Period  {period_start.isoformat()} to {today.isoformat()}"
         f"   ·   Process  {process_name}"
     )
-    c.drawString(MARGIN, meta_y, meta)
+    c.drawRightString(page_width - MARGIN, title_y, meta)
     c.restoreState()
 
-    # ── Divider (タイトル直下の下線、下に余白を確保) ─────────────────────
-    # divider はヘッダー底から HEADER_DIVIDER_OFFSET 上に配置 → 下に余白
-    div_y = page_height - HEADER_H + HEADER_DIVIDER_OFFSET
+    # ── Draw divider line ────────────────────────────────────────────────
     c.saveState()
     c.setStrokeColorRGB(0, 0, 0, alpha=0.18)  # より濃く視認性アップ
     c.setLineWidth(0.8)
