@@ -51,3 +51,58 @@ def resolve_config(nickname: str, config: dict) -> dict:
     defaults = config.get("defaults", {})
     override = config.get("overrides", {}).get(nickname, {})
     return _deep_merge(defaults, override)
+
+
+def evaluate(lots: list, config: dict) -> list[dict]:
+    """Compare the latest lot against the prior lots and return warning dicts.
+
+    `lots` is ordered oldest→newest. Each lot exposes `.yield_pct` and
+    `.bin_breakdown` (items with `.bin_name`, `.percent`, `.bin_codes`).
+    `config` is a resolved threshold dict (see resolve_config).
+    Returns [] when there is no latest+past pair to compare.
+    """
+    if len(lots) < 2:
+        return []
+
+    latest, past = lots[-1], lots[:-1]
+    warnings: list[dict] = []
+
+    # --- B: yield drop vs past average ---
+    yd = config.get("yield_drop", {})
+    min_lots = yd.get("min_lots", 3)
+    threshold = yd.get("threshold_pct", 3.0)
+    if len(past) >= min_lots:
+        past_avg = sum(l.yield_pct for l in past) / len(past)
+        drop = past_avg - latest.yield_pct
+        if drop >= threshold:
+            warnings.append({
+                "type": "yield_drop",
+                "message": f"前期比 -{drop:.1f}% (閾値 -{threshold:.1f}%)",
+                "severity": "warn",
+            })
+
+    # --- C: fail-bin surge vs past average per bin ---
+    bs = config.get("bin_surge", {})
+    multiplier = bs.get("multiplier", 2.0)
+    min_percent = bs.get("min_percent", 1.0)
+    past_pct: dict[str, list[float]] = {}
+    bin_codes_by_name: dict[str, list[int]] = {}
+    for lot in past:
+        for b in lot.bin_breakdown:
+            past_pct.setdefault(b.bin_name, []).append(b.percent)
+            bin_codes_by_name.setdefault(b.bin_name, b.bin_codes)
+    for b in latest.bin_breakdown:
+        history = past_pct.get(b.bin_name)
+        if not history:
+            continue
+        avg = sum(history) / len(history)
+        if avg >= min_percent and b.percent >= avg * multiplier:
+            codes = b.bin_codes or bin_codes_by_name.get(b.bin_name, [])
+            warnings.append({
+                "type": "bin_surge",
+                "message": f"{b.bin_name} が過去平均の {b.percent / avg:.1f}倍",
+                "severity": "warn",
+                "bin_code": codes[0] if codes else None,
+            })
+
+    return warnings
