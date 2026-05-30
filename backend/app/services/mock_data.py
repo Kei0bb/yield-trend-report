@@ -1,4 +1,5 @@
 import random
+from datetime import date, timedelta
 
 import pandas as pd
 
@@ -53,3 +54,55 @@ def mock_yield_dataframe(product: str, start_month: str, end_month: str, process
             })
 
     return pd.DataFrame(rows, columns=COMMON_COLUMNS)
+
+
+def mock_lot_dataframe(product: str, process: str, months: int = 6) -> pd.DataFrame:
+    """Generate lot-granular mock data (multiple lots per week) for Dashboard/Explore.
+
+    Deterministic per (product, process, months). Columns superset COMMON_COLUMNS
+    with an added 'lot_date' (ISO string). The newest lot of each series gets a
+    deliberate yield dip + bin spike so anomaly detection is exercised in mock mode.
+    """
+    random.seed(hash(f"lot-{product}-{process}-{months}") % 2**32)
+    base_yield = _BASE_YIELD.get(process, 95.0)
+    bin_codes = _BIN_CODES_BY_PROCESS.get(process, [3, 5, 7])
+
+    today = date.today()
+    start = today - timedelta(days=months * 30)
+
+    rows: list[dict] = []
+    seq = 0
+    cur = start
+    all_dates: list[date] = []
+    while cur <= today:
+        for _ in range(random.randint(1, 3)):
+            all_dates.append(cur)
+        cur += timedelta(weeks=1)
+
+    for i, lot_date in enumerate(all_dates):
+        seq += 1
+        is_latest = i == len(all_dates) - 1
+        wafer_yield = round(base_yield + random.uniform(-2, 2), 2)
+        if is_latest:
+            wafer_yield = round(base_yield - 6.0, 2)
+        lot_id = f"{product[:4].upper()}-{lot_date.strftime('%Y%m%d')}-{seq:03d}"
+        for wafer_id in range(1, random.randint(3, 6)):
+            gross_die = random.randint(800, 1200)
+            for bin_code in bin_codes:
+                rate = random.uniform(0.001, 0.012)
+                if is_latest and bin_code == bin_codes[0]:
+                    rate *= 4.0
+                fail_count = max(0, int(gross_die * rate))
+                rows.append({
+                    "lot_id": lot_id,
+                    "lot_date": lot_date.isoformat(),
+                    "wafer_id": wafer_id,
+                    "yield_pct": wafer_yield,
+                    "gross_die": gross_die,
+                    "raw_bin_code": bin_code,
+                    "bin_name": _BIN_NAMES.get(bin_code, f"Bin{bin_code}"),
+                    "bin_fail_count": fail_count,
+                })
+
+    columns = COMMON_COLUMNS + ["lot_date"]
+    return pd.DataFrame(rows, columns=columns)
