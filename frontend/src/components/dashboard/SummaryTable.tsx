@@ -47,7 +47,7 @@ export default function SummaryTable({ rows }: Props) {
       <tbody>
         {sorted.map((r) => {
           const warn = r.warnings.length > 0;
-          const deltaColor = r.delta == null ? "#888" : r.delta < 0 ? "#b13a2a" : "#2f8a3e";
+          const deltaColor = r.delta == null ? "var(--gray-400)" : r.delta < 0 ? "var(--red)" : "var(--green)";
           return (
             <tr
               key={`${r.nickname}-${r.process}`}
@@ -65,7 +65,7 @@ export default function SummaryTable({ rows }: Props) {
               <td style={styles.td}>
                 <Sparkline
                   values={r.sparkline.map((p) => p.yield_pct)}
-                  color={warn ? "#b13a2a" : "#3a7bbf"}
+                  color={warn ? "#e03e3e" : "#0075de"}
                 />
               </td>
               <td style={styles.tdLeft}>
@@ -82,13 +82,13 @@ export default function SummaryTable({ rows }: Props) {
 }
 
 const styles: Record<string, React.CSSProperties> = {
-  table: { width: "100%", borderCollapse: "collapse", fontSize: 13 },
-  th: { textAlign: "right", padding: "8px 12px", background: "#f3efe4", cursor: "pointer", color: "#5a5547", fontWeight: 600, borderBottom: "1px solid #e6e1d4" },
-  thLeft: { textAlign: "left", padding: "8px 12px", background: "#f3efe4", cursor: "pointer", color: "#5a5547", fontWeight: 600, borderBottom: "1px solid #e6e1d4" },
-  tr: { cursor: "pointer", borderBottom: "1px solid #eee" },
-  trWarn: { background: "#fff8e6" },
-  td: { textAlign: "right", padding: "8px 12px" },
-  tdLeft: { textAlign: "left", padding: "8px 12px" },
-  proc: { color: "#888" },
-  badge: { display: "inline-block", background: "#fff2d6", color: "#a06800", fontSize: 11, padding: "1px 6px", borderRadius: 10, marginRight: 4 },
+  table: { width: "100%", borderCollapse: "collapse", fontSize: 13, color: "var(--gray-700)" },
+  th: { textAlign: "right", padding: "10px 14px", background: "var(--warm-white)", cursor: "pointer", color: "var(--gray-500)", fontWeight: 600, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.04em", borderBottom: "var(--border-whisper)" },
+  thLeft: { textAlign: "left", padding: "10px 14px", background: "var(--warm-white)", cursor: "pointer", color: "var(--gray-500)", fontWeight: 600, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.04em", borderBottom: "var(--border-whisper)" },
+  tr: { cursor: "pointer", borderBottom: "var(--border-soft)" },
+  trWarn: { background: "rgba(224, 62, 62, 0.05)" },
+  td: { textAlign: "right", padding: "10px 14px", fontVariantNumeric: "tabular-nums" },
+  tdLeft: { textAlign: "left", padding: "10px 14px" },
+  proc: { color: "var(--gray-400)" },
+  badge: { display: "inline-block", background: "rgba(224, 62, 62, 0.1)", color: "var(--red)", fontSize: 11, fontWeight: 500, padding: "2px 8px", borderRadius: 999, marginRight: 4 },
 };

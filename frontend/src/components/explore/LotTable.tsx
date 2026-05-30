@@ -45,11 +45,11 @@ export default function LotTable({ lots, availableBins, format }: Props) {
 }
 
 const styles: Record<string, React.CSSProperties> = {
-  table: { width: "100%", borderCollapse: "collapse", fontSize: 12, marginTop: 20 },
-  th: { textAlign: "right", padding: "6px 8px", background: "#f3efe4", borderBottom: "1px solid #e6e1d4", whiteSpace: "nowrap" },
-  thLeft: { textAlign: "left", padding: "6px 8px", background: "#f3efe4", borderBottom: "1px solid #e6e1d4" },
-  td: { textAlign: "right", padding: "5px 8px", borderBottom: "1px solid #eee" },
-  tdLeft: { textAlign: "left", padding: "5px 8px", borderBottom: "1px solid #eee" },
-  warn: { background: "#fff8e6" },
-  badge: { display: "inline-block", background: "#fff2d6", color: "#a06800", fontSize: 10, padding: "1px 5px", borderRadius: 8, marginRight: 4 },
+  table: { width: "100%", borderCollapse: "collapse", fontSize: 12, color: "var(--gray-700)" },
+  th: { textAlign: "right", padding: "8px 10px", background: "var(--warm-white)", borderBottom: "var(--border-whisper)", whiteSpace: "nowrap", color: "var(--gray-500)", fontWeight: 600, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.03em" },
+  thLeft: { textAlign: "left", padding: "8px 10px", background: "var(--warm-white)", borderBottom: "var(--border-whisper)", color: "var(--gray-500)", fontWeight: 600, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.03em" },
+  td: { textAlign: "right", padding: "6px 10px", borderBottom: "var(--border-soft)", fontVariantNumeric: "tabular-nums" },
+  tdLeft: { textAlign: "left", padding: "6px 10px", borderBottom: "var(--border-soft)" },
+  warn: { background: "rgba(224, 62, 62, 0.05)" },
+  badge: { display: "inline-block", background: "rgba(224, 62, 62, 0.1)", color: "var(--red)", fontSize: 10, fontWeight: 500, padding: "2px 7px", borderRadius: 999, marginRight: 4 },
 };
