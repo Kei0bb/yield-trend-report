@@ -14,6 +14,7 @@ dependencies = [
     "pillow",
     "pydantic-settings",
     "python-dotenv",
+    "pyyaml",
 ]
 
 [dependency-groups]
@@ -21,3 +22,7 @@ dev = [
     "pytest",
     "httpx",   # FastAPI TestClient に必要
 ]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

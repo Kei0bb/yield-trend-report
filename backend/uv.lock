@@ -1055,6 +1055,7 @@ dependencies = [
     { name = "plotly" },
     { name = "pydantic-settings" },
     { name = "python-dotenv" },
+    { name = "pyyaml" },
     { name = "reportlab" },
     { name = "uvicorn", extra = ["standard"] },
 ]
@@ -1075,6 +1076,7 @@ requires-dist = [
     { name = "plotly" },
     { name = "pydantic-settings" },
     { name = "python-dotenv" },
+    { name = "pyyaml" },
     { name = "reportlab" },
     { name = "uvicorn", extras = ["standard"] },
 ]
