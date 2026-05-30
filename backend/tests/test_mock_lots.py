@@ -19,3 +19,14 @@ def test_mock_lot_dataframe_deterministic():
     a = mock_lot_dataframe("Product-A", "FT", months=6)
     b = mock_lot_dataframe("Product-A", "FT", months=6)
     assert a.equals(b)
+
+
+def test_mock_lot_dataframe_seed_is_process_stable():
+    # Seeding goes through a stable md5 hash (not the salted built-in hash()),
+    # so a known input must always reduce to the same seed across processes.
+    import hashlib
+
+    key = "lot-Product-A-FT-6"
+    expected_seed = int(hashlib.md5(key.encode()).hexdigest(), 16) % 2**32
+    # Guard against accidentally reverting to the salted builtin hash().
+    assert expected_seed == 3594895343

@@ -1,3 +1,4 @@
+import hashlib
 import random
 from datetime import date, timedelta
 
@@ -59,11 +60,14 @@ def mock_yield_dataframe(product: str, start_month: str, end_month: str, process
 def mock_lot_dataframe(product: str, process: str, months: int = 6) -> pd.DataFrame:
     """Generate lot-granular mock data (multiple lots per week) for Dashboard/Explore.
 
-    Deterministic per (product, process, months). Columns superset COMMON_COLUMNS
-    with an added 'lot_date' (ISO string). The newest lot of each series gets a
-    deliberate yield dip + bin spike so anomaly detection is exercised in mock mode.
+    Deterministic per (product, process, months) — seeded via a stable hash so
+    the same inputs reproduce across process restarts. Columns superset
+    COMMON_COLUMNS with an added 'lot_date' (ISO string). The newest lot of each
+    series gets a deliberate yield dip + bin spike so anomaly detection is
+    exercised in mock mode.
     """
-    random.seed(hash(f"lot-{product}-{process}-{months}") % 2**32)
+    key = f"lot-{product}-{process}-{months}"
+    random.seed(int(hashlib.md5(key.encode()).hexdigest(), 16) % 2**32)
     base_yield = _BASE_YIELD.get(process, 95.0)
     bin_codes = _BIN_CODES_BY_PROCESS.get(process, [3, 5, 7])
 
