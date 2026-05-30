@@ -1,5 +1,8 @@
 import axios from "axios";
-import type { YieldRequest, YieldResponse } from "../types";
+import type {
+  YieldRequest, YieldResponse,
+  DashboardSummaryResponse, ExploreLotsResponse,
+} from "../types";
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL ?? "/api",
@@ -31,5 +34,28 @@ export async function fetchHealth(): Promise<{ status: string; mock: boolean }> 
   const res = await api.get<{ status: string; mock: boolean }>("/health", {
     baseURL: import.meta.env.VITE_API_BASE_URL?.replace("/api", "") ?? "",
   });
+  return res.data;
+}
+
+export async function fetchDashboardSummary(
+  months = 6, process = "all"
+): Promise<DashboardSummaryResponse> {
+  const res = await api.get<DashboardSummaryResponse>("/dashboard/summary", {
+    params: { months, process },
+  });
+  return res.data;
+}
+
+export async function fetchExploreLots(
+  nickname: string, process: string, months = 6
+): Promise<ExploreLotsResponse> {
+  const res = await api.get<ExploreLotsResponse>("/explore/lots", {
+    params: { nickname, process, months },
+  });
+  return res.data;
+}
+
+export async function fetchAnomalyConfig(): Promise<Record<string, unknown>> {
+  const res = await api.get<Record<string, unknown>>("/anomaly/config");
   return res.data;
 }
