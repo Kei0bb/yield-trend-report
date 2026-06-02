@@ -3,11 +3,24 @@ import logging
 import pandas as pd
 
 from app.database import get_connection, release_connection
-from app.services.yield_queries import COMMON_COLUMNS, build_product_id_where, _PROCESS_SPEC
+from app.services.yield_queries import build_product_id_where, _PROCESS_SPEC
 
 logger = logging.getLogger(__name__)
 
-LOT_COLUMNS = COMMON_COLUMNS + ["lot_date"]
+# Column names for query_lot_data results, in the SAME order as the SELECT in
+# build_lot_query (lot_date is the 2nd column, not appended last). Keeping this
+# aligned with the SELECT is essential: pandas labels positionally, so a wrong
+# order silently mislabels every column after lot_date.
+LOT_COLUMNS = [
+    "lot_id",
+    "lot_date",
+    "wafer_id",
+    "yield_pct",
+    "gross_die",
+    "raw_bin_code",
+    "bin_name",
+    "bin_fail_count",
+]
 
 # Real per-lot identifier column by process (vs. yield_queries' ISO-week rollup).
 _LOT_COLUMN: dict[str, str] = {
