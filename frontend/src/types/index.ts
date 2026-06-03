@@ -1,5 +1,5 @@
 export interface YieldRequest {
-  products: string[];   // 比較品種リスト（1 品種以上）
+  products: string[];   // 対象品種（単一選択。API 互換のため配列形のまま）
   start_month: string;
   end_month: string;
   processes: string[];

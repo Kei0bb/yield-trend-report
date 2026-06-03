@@ -16,9 +16,9 @@ export default function ReportView({ data, request }: ReportViewProps) {
           <div style={styles.emptyBadge}>Ready</div>
           <h2 style={styles.emptyTitle}>Generate your yield report</h2>
           <p style={styles.emptyText}>
-            Pick a product (or multiple to compare), period, and test process on
-            the left, then hit <b>Generate Report</b> to see lot-level yield
-            trends and failure-bin breakdown per process.
+            Pick a product, period, and test process on the left, then hit{" "}
+            <b>Generate Report</b> to see lot-level yield trends and failure-bin
+            breakdown per process.
           </p>
         </div>
       </main>
@@ -29,10 +29,10 @@ export default function ReportView({ data, request }: ReportViewProps) {
     (a, b) => PROCESS_ORDER.indexOf(a) - PROCESS_ORDER.indexOf(b)
   );
 
-  // display_name 一覧 = data.data の最初の process の keys (バックエンドで
-  // display_name でグループ化済み。改版品種は1つにマージされている)
+  // display_name = data.data の最初の process の最初の key (バックエンドで
+  // display_name でグループ化済み。同一製品の改版品種は1つにマージされている)
   const firstProcess = sortedProcesses[0];
-  const displayNames = firstProcess ? Object.keys(data.data[firstProcess]) : [];
+  const displayName = firstProcess ? Object.keys(data.data[firstProcess])[0] : undefined;
 
   const today = new Date().toISOString().slice(0, 10);
   const periodStart = (() => {
@@ -40,16 +40,11 @@ export default function ReportView({ data, request }: ReportViewProps) {
     d.setMonth(d.getMonth() - 3);
     return d.toISOString().slice(0, 10);
   })();
-  const isMultiDisplay = displayNames.length > 1;
-  const titleText =
-    displayNames.length > 0
-      ? displayNames.join(" vs ")
-      : request.products.join(" vs ");
+  const selected = request.products[0];
+  const titleText = displayName ?? selected;
 
-  // 選択した nicknames と display_name が異なる場合 (= 改版マージ発生時) は明示
-  const showSelectedNicknames =
-    request.products.length !== displayNames.length ||
-    request.products.some((p, i) => p !== displayNames[i]);
+  // 選択した nickname と display_name が異なる場合 (= 改版マージ発生時) は明示
+  const showSelectedNickname = displayName != null && selected !== displayName;
 
   return (
     <main style={styles.container}>
@@ -57,20 +52,11 @@ export default function ReportView({ data, request }: ReportViewProps) {
         <div style={styles.breadcrumb}>Reports · Yield Trend</div>
         <h1 style={styles.title}>{titleText}</h1>
         <div style={styles.metaRow}>
-          {isMultiDisplay && (
-            <>
-              <span style={styles.metaItem}>
-                <span style={styles.metaLabel}>Products</span>
-                {displayNames.join(" · ")}
-              </span>
-              <span style={styles.metaDivider} />
-            </>
-          )}
-          {showSelectedNicknames && (
+          {showSelectedNickname && (
             <>
               <span style={styles.metaItem}>
                 <span style={styles.metaLabel}>Selected</span>
-                {request.products.join(" · ")}
+                {selected}
               </span>
               <span style={styles.metaDivider} />
             </>
@@ -93,13 +79,13 @@ export default function ReportView({ data, request }: ReportViewProps) {
       </header>
 
       <div style={styles.grid}>
-        {sortedProcesses.map((process) => (
-          <YieldChart
-            key={process}
-            processName={process}
-            productData={data.data[process]}
-          />
-        ))}
+        {sortedProcesses.map((process) => {
+          const processData = Object.values(data.data[process])[0];
+          if (!processData) return null;
+          return (
+            <YieldChart key={process} processName={process} data={processData} />
+          );
+        })}
       </div>
     </main>
   );
