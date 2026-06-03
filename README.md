@@ -19,12 +19,13 @@ Oracle DB から Wafer 単位データを取得し、Lot 毎に集計。CP / FT 
 
 | 機能 | 詳細 |
 |------|------|
-| 製品 / 工程フィルター | Product チップ選択、CP / FT / SLT チップ選択（期間は直近 3 ヶ月固定） |
+| 3 ページ構成 | Dashboard（製品×工程の集計表）/ Report（単一製品の Yield トレンド + PDF）/ Explore（Lot 単位ドリルダウン） |
+| 製品 / 工程選択 | 上部ツールバーで `product_id` を選択（製品名は副表示）、CP / FT / SLT 選択、期間 3 / 6 / 12 ヶ月 |
 | 複合チャート | Lot 平均 Yield 折れ線（右 Y 軸）+ 不良 Bin Stacked Bar（左 Y 軸）。週単位で必ず最新 12 ISO 週分を表示 |
 | Web プレビュー | Plotly でインタラクティブ表示（ズーム / ホバー / 凡例トグル） |
 | PDF エクスポート | "Export PDF" ボタンでサーバー生成（ReportLab + Plotly→kaleido）。A4 横向き、ロゴ / CONFIDENTIAL バッジ / ページ番号付き |
 | モックモード | Oracle 不要でモックデータで即起動 (`USE_MOCK_DATA=true`) |
-| 接続状態表示 | サイドバー下部に "Mock data mode" / "Live DB mode" をリアルタイム表示 |
+| 接続状態表示 | 上部ツールバーに "Mock data" / "Live DB" をリアルタイム表示 |
 
 ---
 
@@ -187,8 +188,10 @@ CORS_ORIGINS=["http://localhost:5173"]
 | メソッド | パス | 説明 |
 |----------|------|------|
 | `GET` | `/health` | ヘルスチェック（`mock: true/false` 付き） |
-| `GET` | `/api/products` | 製品一覧取得 |
-| `POST` | `/api/yield-data` | Yield + Bin データ取得 |
+| `GET` | `/api/products` | 製品一覧取得（`{product_id, display_name}` の配列） |
+| `POST` | `/api/yield-data` | Yield + Bin データ取得（`products` は `product_id`） |
+| `GET` | `/api/dashboard/summary` | ダッシュボード集計（製品×工程） |
+| `GET` | `/api/explore/lots` | Lot 単位ドリルダウン（`product_id` + `process`） |
 | `GET` | `/api/debug/config` | 設定ファイル読み込み状況の確認 |
 | `GET` | `/api/debug/probe` | 実 DB クエリの診断（行数・エラー確認） |
 
@@ -196,12 +199,14 @@ CORS_ORIGINS=["http://localhost:5173"]
 
 ```json
 {
-  "products": ["Product-A"],
+  "products": ["P12345-A"],
   "start_month": "2026-01",
   "end_month": "2026-03",
   "processes": ["CP", "FT"]
 }
 ```
+
+> `products` には DB の `product_id` を渡します（バックエンドが内部で nickname に解決）。
 
 ---
 
@@ -221,17 +226,18 @@ CONFIDENTIAL バッジは各ページのフッター右下に表示されます�
 ## Oracle DB テーブル仕様
 
 ```sql
--- CP テスト結果
-SEMI_CP_HEADER   -- ヘッダ（LOT / WAFER / PRODUCT / CREATE_DATE / YIELD 等）
+-- CP / FT / SLT すべて CP スキーマから取得（FT/SLT は CP DB へ移管済み）
+SEMI_CP_HEADER   -- ヘッダ（SUBSTRATE_ID / WAFER_ID / PRODUCT_ID / PROCESS / MODIFIED_DATE / YIELD 等）
 SEMI_CP_BIN_SUM  -- Bin 集計（BIN_CODE / BIN_NAME / BIN_COUNT）
-
--- FT テスト結果
-SEMI_FT_HEADER   -- ヘッダ（CP に加え ASSY_LOT_ID を含む）
-SEMI_FT_BIN_SUM  -- Bin 集計（同上）
 ```
 
+CP/FT/SLT は **同一テーブル・同一 PRODUCT_ID** を共有し、`PROCESS` 列の値（例: `CP` / `cFT1` / `cSLT1`）で区別します。
+JOIN キーは `SUBSTRATE_ID` + `WAFER_ID` + `PROCESS`、Lot 識別列は `SUBSTRATE_ID`。
+論理工程（CP/FT/SLT）→ 実 PROCESS 値の対応は `product_config.csv` の `cp_processes` / `ft_processes` / `slt_processes` で設定します。  
+旧 `SEMI_FT_*` テーブルは参照しません。
+
 データは Wafer 単位（bin_code ごとに複数行）。アプリ側で Lot 毎に集計します。  
-`lot_id` は `CREATE_DATE` から ISO 年週形式（`IYYY"W"IW`）で生成されます。  
+Report の `lot_id` は `MODIFIED_DATE` から ISO 年週形式（`IYYY"W"IW`）で生成、Explore は実 `SUBSTRATE_ID` 単位で表示します。  
 Bin 不良率 = `BIN_COUNT / EFFECTIVE_NUM × 100`
 
 ---
