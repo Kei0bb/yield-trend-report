@@ -16,29 +16,23 @@ COMMON_COLUMNS = [
     "bin_fail_count",
 ]
 
-# Per-process table and JOIN key definitions
+# Per-process table and JOIN key definitions.
+# FT/SLT data was migrated into the CP schema (SEMI_CP_*) and is now keyed by
+# the same SUBSTRATE_ID/PRODUCT_ID as CP, distinguished only by the PROCESS
+# column value (e.g. 'cFT1'). All processes therefore share one table spec; the
+# per-process PROCESS filter is supplied by product_config (cp/ft/slt_processes).
+_CP_SPEC: dict = {
+    "header": "SEMI_CP_HEADER",
+    "bin_sum": "SEMI_CP_BIN_SUM",
+    "join_keys": ["SUBSTRATE_ID", "WAFER_ID", "PROCESS"],
+    "join_type": "JOIN",
+    "date_col": "MODIFIED_DATE",
+}
+
 _PROCESS_SPEC: dict[str, dict] = {
-    "CP": {
-        "header": "SEMI_CP_HEADER",
-        "bin_sum": "SEMI_CP_BIN_SUM",
-        "join_keys": ["SUBSTRATE_ID", "WAFER_ID", "PROCESS"],
-        "join_type": "JOIN",
-        "date_col": "MODIFIED_DATE",
-    },
-    "FT": {
-        "header": "SEMI_FT_HEADER",
-        "bin_sum": "SEMI_FT_BIN_SUM",
-        "join_keys": ["ASSY_LOT_ID", "PRODUCT_ID", "PROCESS"],
-        "join_type": "LEFT OUTER JOIN",
-        "date_col": "MODIFIED_DATE",
-    },
-    "SLT": {
-        "header": "SEMI_FT_HEADER",
-        "bin_sum": "SEMI_FT_BIN_SUM",
-        "join_keys": ["ASSY_LOT_ID", "PRODUCT_ID", "PROCESS"],
-        "join_type": "LEFT OUTER JOIN",
-        "date_col": "MODIFIED_DATE",
-    },
+    "CP": _CP_SPEC,
+    "FT": _CP_SPEC,
+    "SLT": _CP_SPEC,
 }
 
 

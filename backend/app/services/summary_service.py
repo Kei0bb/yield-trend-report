@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 
 from app.models.schemas import DashboardSummaryResponse, SparkPoint, SummaryRow
 from app.services.lot_service import SUPPORTED_PROCESSES, get_lots, period_months
-from app.services.product_config import resolve_display_name
+from app.services.product_config import primary_product_id, resolve_display_name
 from app.services.yield_service import get_products
 
 logger = logging.getLogger(__name__)
@@ -25,6 +25,7 @@ def _build_row(nickname: str, process: str, months: int) -> SummaryRow | None:
     avg = round(sum(yields) / len(yields), 2)
     return SummaryRow(
         nickname=nickname,
+        product_id=primary_product_id(nickname),
         display_name=resolve_display_name(nickname),
         process=process,
         latest_yield=latest.yield_pct,

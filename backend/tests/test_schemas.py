@@ -18,7 +18,7 @@ def test_lotdata_roundtrip():
 
 def test_summary_row_defaults():
     row = SummaryRow(
-        nickname="P", display_name="P", process="CP",
+        nickname="P", product_id="P12345", display_name="P", process="CP",
         latest_yield=None, latest_lot_id=None, latest_lot_date=None,
         avg_yield_6m=None, delta=None, sparkline=[], warnings=[],
     )

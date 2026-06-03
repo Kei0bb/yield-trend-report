@@ -49,7 +49,8 @@ class LotData(BaseModel):
 
 
 class ExploreLotsResponse(BaseModel):
-    nickname: str
+    product_id: str
+    display_name: str
     process: str
     period: dict
     lots: list[LotData]
@@ -64,6 +65,7 @@ class SparkPoint(BaseModel):
 
 class SummaryRow(BaseModel):
     nickname: str
+    product_id: str
     display_name: str
     process: str
     latest_yield: float | None

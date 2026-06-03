@@ -6,10 +6,13 @@ from app.models.schemas import YieldRequest, YieldResponse
 from app.services.bin_mapping import load_bin_mapping
 from app.services.product_config import (
     group_by_display_name,
+    list_products as list_products_with_ids,
     load_product_config,
     resolve_bin_group,
     resolve_display_name,
+    resolve_process_filter,
     resolve_product_ids,
+    to_nicknames,
 )
 from app.services.yield_service import get_products, get_yield_data_merged
 from app.utils.csv_loader import BIN_MAPPINGS_DIR
@@ -19,8 +22,16 @@ router = APIRouter()
 
 
 @router.get("/products")
-def list_products() -> list[str]:
-    return get_products()
+def list_products() -> list[dict[str, str]]:
+    """Product list for the UI: {product_id, display_name} per product.
+
+    When product_config.csv is absent we fall back to DB/mock enumeration,
+    using the enumerated id as both product_id and display_name.
+    """
+    configured = list_products_with_ids()
+    if configured:
+        return configured
+    return [{"product_id": p, "display_name": p} for p in get_products()]
 
 
 @router.get("/debug/config")
@@ -44,8 +55,10 @@ def debug_config(nickname: str | None = None) -> dict:
             "nickname": nickname,
             "display_name": resolve_display_name(nickname),
             "bin_group": bin_group,
-            "cp_product_ids": resolve_product_ids(nickname, "CP"),
-            "ft_product_ids": resolve_product_ids(nickname, "FT"),
+            "product_ids": resolve_product_ids(nickname),
+            "process_filters": {
+                proc: resolve_process_filter(nickname, proc) for proc in ("CP", "FT", "SLT")
+            },
             "bin_mapping": {
                 proc: dict(m) for proc, m in load_bin_mapping(bin_group).items()
             },
@@ -95,7 +108,7 @@ def debug_probe(nickname: str, process: str, start_month: str, end_month: str) -
 @router.post("/yield-data")
 def fetch_yield_data(req: YieldRequest) -> YieldResponse:
     """Fetch yield + bin data, merging nicknames that share the same display_name."""
-    groups = group_by_display_name(req.products)
+    groups = group_by_display_name(to_nicknames(req.products))
 
     data: dict = {}
     for process in req.processes:

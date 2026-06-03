@@ -14,7 +14,7 @@ export default function App() {
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/report" element={<ReportPage />} />
-            <Route path="/explore/:nickname/:process" element={<ExplorePage />} />
+            <Route path="/explore/:productId/:process" element={<ExplorePage />} />
           </Routes>
         </div>
       </div>

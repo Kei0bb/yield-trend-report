@@ -15,13 +15,24 @@ def test_dashboard_summary_endpoint():
 
 
 def test_explore_lots_endpoint():
-    r = client.get("/api/explore/lots?nickname=Product-A&process=CP&months=6")
+    # CP product_id for Product-A (resolved back to its nickname internally)
+    r = client.get("/api/explore/lots?product_id=P12345-A&process=CP&months=6")
     assert r.status_code == 200
     body = r.json()
-    assert body["nickname"] == "Product-A"
+    assert body["product_id"] == "P12345-A"
+    assert body["display_name"] == "Product-A"
     assert body["lots"]
     assert "available_bins" in body
     assert "yield_pct" in body["lots"][0]
+
+
+def test_products_endpoint_returns_product_ids():
+    r = client.get("/api/products")
+    assert r.status_code == 200
+    body = r.json()
+    assert isinstance(body, list) and body
+    assert {"product_id", "display_name"} <= set(body[0].keys())
+    assert any(p["product_id"] == "P12345-A" for p in body)
 
 
 def test_anomaly_config_endpoint():

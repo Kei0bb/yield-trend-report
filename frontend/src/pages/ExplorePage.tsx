@@ -23,7 +23,7 @@ function toProcessData(data: ExploreLotsResponse, format: LotIdFormat): ProcessD
 }
 
 export default function ExplorePage() {
-  const { nickname = "", process = "" } = useParams();
+  const { productId = "", process = "" } = useParams();
   const navigate = useNavigate();
   const [data, setData] = useState<ExploreLotsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -31,11 +31,11 @@ export default function ExplorePage() {
 
   useEffect(() => {
     let active = true;
-    fetchExploreLots(nickname, process, 6)
+    fetchExploreLots(productId, process, 6)
       .then((d) => { if (active) setData(d); })
       .catch((e) => { console.error(e); if (active) setError("ロットデータの取得に失敗しました。"); });
     return () => { active = false; };
-  }, [nickname, process]);
+  }, [productId, process]);
 
   const changeFormat = (f: LotIdFormat) => { setFormat(f); setLotIdFormat(f); };
 
@@ -50,8 +50,10 @@ export default function ExplorePage() {
         <div style={styles.headerLeft}>
           <button onClick={() => navigate("/dashboard")} style={styles.back}>← Dashboard</button>
           <div>
-            <div style={styles.breadcrumb}>Explore · Lot Drill-down</div>
-            <h1 style={styles.title}>{nickname} <span style={styles.proc}>/ {process}</span></h1>
+            <div style={styles.breadcrumb}>
+              Explore · Lot Drill-down{data?.display_name ? ` · ${data.display_name}` : ""}
+            </div>
+            <h1 style={styles.title}>{productId} <span style={styles.proc}>/ {process}</span></h1>
           </div>
         </div>
         <label style={styles.field}>

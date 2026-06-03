@@ -40,11 +40,11 @@ export default function ReportView({ data, request }: ReportViewProps) {
     d.setMonth(d.getMonth() - 3);
     return d.toISOString().slice(0, 10);
   })();
-  const selected = request.products[0];
-  const titleText = displayName ?? selected;
-
-  // 選択した nickname と display_name が異なる場合 (= 改版マージ発生時) は明示
-  const showSelectedNickname = displayName != null && selected !== displayName;
+  // request.products は product_id（UI 選択キー）。タイトルは product_id を主、
+  // 製品名(display_name) を副として meta に表示する。
+  const productId = request.products[0];
+  const titleText = productId;
+  const showDisplayName = displayName != null && displayName !== productId;
 
   return (
     <main style={styles.container}>
@@ -52,11 +52,11 @@ export default function ReportView({ data, request }: ReportViewProps) {
         <div style={styles.breadcrumb}>Reports · Yield Trend</div>
         <h1 style={styles.title}>{titleText}</h1>
         <div style={styles.metaRow}>
-          {showSelectedNickname && (
+          {showDisplayName && (
             <>
               <span style={styles.metaItem}>
-                <span style={styles.metaLabel}>Selected</span>
-                {selected}
+                <span style={styles.metaLabel}>製品名</span>
+                {displayName}
               </span>
               <span style={styles.metaDivider} />
             </>

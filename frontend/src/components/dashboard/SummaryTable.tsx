@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import type { SummaryRow } from "../../types";
 import Sparkline from "./Sparkline";
 
-type SortKey = "display_name" | "process" | "latest_yield" | "avg_yield_6m" | "delta";
+type SortKey = "product_id" | "process" | "latest_yield" | "avg_yield_6m" | "delta";
 
 interface Props {
   rows: SummaryRow[];
@@ -36,7 +36,7 @@ export default function SummaryTable({ rows }: Props) {
     <table style={styles.table}>
       <thead>
         <tr>
-          <th style={styles.thLeft} onClick={() => toggleSort("display_name")}>製品 / Proc</th>
+          <th style={styles.thLeft} onClick={() => toggleSort("product_id")}>Product ID / Proc</th>
           <th style={styles.th} onClick={() => toggleSort("latest_yield")}>直近歩留</th>
           <th style={styles.th} onClick={() => toggleSort("avg_yield_6m")}>6m平均</th>
           <th style={styles.th} onClick={() => toggleSort("delta")}>差分</th>
@@ -52,10 +52,13 @@ export default function SummaryTable({ rows }: Props) {
             <tr
               key={`${r.nickname}-${r.process}`}
               style={{ ...styles.tr, ...(warn ? styles.trWarn : {}) }}
-              onClick={() => navigate(`/explore/${encodeURIComponent(r.nickname)}/${r.process}`)}
+              onClick={() => navigate(`/explore/${encodeURIComponent(r.product_id)}/${r.process}`)}
             >
               <td style={styles.tdLeft}>
-                <b>{r.display_name}</b> <span style={styles.proc}>/ {r.process}</span>
+                <b>{r.product_id}</b> <span style={styles.proc}>/ {r.process}</span>
+                {r.display_name && r.display_name !== r.product_id && (
+                  <div style={styles.subName}>{r.display_name}</div>
+                )}
               </td>
               <td style={styles.td}>{fmt(r.latest_yield, "%")}</td>
               <td style={styles.td}>{fmt(r.avg_yield_6m, "%")}</td>
@@ -90,5 +93,6 @@ const styles: Record<string, React.CSSProperties> = {
   td: { textAlign: "right", padding: "10px 14px", fontVariantNumeric: "tabular-nums" },
   tdLeft: { textAlign: "left", padding: "10px 14px" },
   proc: { color: "var(--gray-400)" },
+  subName: { color: "var(--gray-400)", fontSize: 11, marginTop: 2 },
   badge: { display: "inline-block", background: "rgba(224, 62, 62, 0.1)", color: "var(--red)", fontSize: 11, fontWeight: 500, padding: "2px 8px", borderRadius: 999, marginRight: 4 },
 };

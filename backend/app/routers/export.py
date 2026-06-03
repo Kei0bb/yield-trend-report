@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
 
 from app.models.schemas import ProcessData, YieldRequest
-from app.services.product_config import group_by_display_name
+from app.services.product_config import group_by_display_name, to_nicknames
 from app.services.yield_service import get_yield_data_merged
 from app.services.pdf_service import generate_pdf
 
@@ -20,7 +20,7 @@ def export_pdf(req: YieldRequest) -> Response:
         "export-pdf request: products=%s processes=%s period=%s..%s",
         req.products, req.processes, req.start_month, req.end_month,
     )
-    groups = group_by_display_name(req.products)
+    groups = group_by_display_name(to_nicknames(req.products))
     display_names = list(groups.keys())
 
     # data[process][display_name] = ProcessData

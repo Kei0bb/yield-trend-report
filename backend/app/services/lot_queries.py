@@ -23,10 +23,11 @@ LOT_COLUMNS = [
 ]
 
 # Real per-lot identifier column by process (vs. yield_queries' ISO-week rollup).
+# FT/SLT now live in the CP schema and share CP's SUBSTRATE_ID lot identifier.
 _LOT_COLUMN: dict[str, str] = {
     "CP": "SUBSTRATE_ID",
-    "FT": "ASSY_LOT_ID",
-    "SLT": "ASSY_LOT_ID",
+    "FT": "SUBSTRATE_ID",
+    "SLT": "SUBSTRATE_ID",
 }
 
 
