@@ -24,22 +24,17 @@ function addMonths(d: Date, n: number): Date {
 
 export default function Sidebar({ onGenerate, loading, canPrint }: SidebarProps) {
   const [products, setProducts] = useState<string[]>([]);
-  const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
+  const [selectedProduct, setSelectedProduct] = useState<string>("");
   const [selectedProcesses, setSelectedProcesses] = useState<string[]>(["CP", "FT", "SLT"]);
   const [isMock, setIsMock] = useState<boolean | null>(null);
 
   useEffect(() => {
     fetchProducts().then((list) => {
       setProducts(list);
-      if (list.length > 0) setSelectedProducts([list[0]]);
+      if (list.length > 0) setSelectedProduct(list[0]);
     });
     fetchHealth().then((h) => setIsMock(h.mock)).catch(() => setIsMock(null));
   }, []);
-
-  const toggleProduct = (p: string) =>
-    setSelectedProducts((prev) =>
-      prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p]
-    );
 
   const toggleProcess = (p: string) =>
     setSelectedProcesses((prev) =>
@@ -49,14 +44,14 @@ export default function Sidebar({ onGenerate, loading, canPrint }: SidebarProps)
   const buildRequest = (): YieldRequest => {
     const now = new Date();
     return {
-      products: selectedProducts,
+      products: [selectedProduct],
       start_month: formatYM(addMonths(now, -2)),  // 3-month window ending this month
       end_month: formatYM(now),
       processes: selectedProcesses,
     };
   };
 
-  const disabled = loading || selectedProducts.length === 0 || selectedProcesses.length === 0;
+  const disabled = loading || !selectedProduct || selectedProcesses.length === 0;
 
   return (
     <aside style={styles.sidebar}>
@@ -82,20 +77,15 @@ export default function Sidebar({ onGenerate, loading, canPrint }: SidebarProps)
 
       {/* ── Product ────────────────────────────────────────────── */}
       <div style={styles.field}>
-        <label style={styles.label}>
-          Product
-          {selectedProducts.length > 1 && (
-            <span style={styles.multiTag}>{selectedProducts.length} selected</span>
-          )}
-        </label>
+        <label style={styles.label}>Product</label>
         <div style={styles.chipGroup}>
           {products.map((p) => {
-            const active = selectedProducts.includes(p);
+            const active = selectedProduct === p;
             return (
               <button
                 key={p}
                 type="button"
-                onClick={() => toggleProduct(p)}
+                onClick={() => setSelectedProduct(p)}
                 style={{ ...styles.chip, ...(active ? styles.chipActive : {}) }}
               >
                 {p}
@@ -103,11 +93,6 @@ export default function Sidebar({ onGenerate, loading, canPrint }: SidebarProps)
             );
           })}
         </div>
-        {selectedProducts.length > 1 && (
-          <div style={styles.compareHint}>
-            複数選択時は Yield ラインを重ね比較します
-          </div>
-        )}
       </div>
 
       {/* ── Test Process ───────────────────────────────────────── */}
@@ -228,22 +213,6 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 500,
     textTransform: "uppercase",
     letterSpacing: "0.06em",
-  },
-  multiTag: {
-    padding: "1px 7px",
-    borderRadius: 999,
-    background: "var(--badge-bg)",
-    color: "var(--badge-text)",
-    fontSize: 10,
-    fontWeight: 600,
-    letterSpacing: "0.02em",
-    textTransform: "none" as const,
-  },
-  compareHint: {
-    fontSize: 11,
-    color: "var(--gray-400)",
-    lineHeight: 1.4,
-    paddingLeft: 2,
   },
   chipGroup: {
     display: "flex",

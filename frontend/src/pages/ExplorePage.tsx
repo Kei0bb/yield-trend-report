@@ -68,7 +68,7 @@ export default function ExplorePage() {
       {data && data.lots.length === 0 && <p style={styles.empty}>該当するロットがありません。</p>}
       {data && processData && data.lots.length > 0 && (
         <div style={styles.stack}>
-          <YieldChart processName={process} productData={{ [data.nickname]: processData }} />
+          <YieldChart processName={process} data={processData} />
           <div style={styles.card}>
             <LotTable lots={data.lots} availableBins={data.available_bins} format={format} />
           </div>

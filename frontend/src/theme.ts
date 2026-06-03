@@ -16,17 +16,6 @@ export const BIN_COLORS = [
   "#005bab", // active blue
 ];
 
-export const PRODUCT_COLORS = [
-  "#0075de", // notion blue
-  "#e03e3e", // red
-  "#1aae39", // green
-  "#dd5b00", // orange
-  "#391c57", // purple
-  "#e9b949", // yellow
-  "#097fe8", // focus blue
-  "#ff64c8", // pink
-];
-
 export const FONT_FAMILY =
   "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif";
 
