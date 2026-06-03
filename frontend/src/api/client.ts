@@ -1,6 +1,6 @@
 import axios from "axios";
 import type {
-  YieldRequest, YieldResponse,
+  Product, YieldRequest, YieldResponse,
   DashboardSummaryResponse, ExploreLotsResponse,
 } from "../types";
 
@@ -8,8 +8,8 @@ const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL ?? "/api",
 });
 
-export async function fetchProducts(): Promise<string[]> {
-  const res = await api.get<string[]>("/products");
+export async function fetchProducts(): Promise<Product[]> {
+  const res = await api.get<Product[]>("/products");
   return res.data;
 }
 
@@ -47,10 +47,10 @@ export async function fetchDashboardSummary(
 }
 
 export async function fetchExploreLots(
-  nickname: string, process: string, months = 6
+  productId: string, process: string, months = 6
 ): Promise<ExploreLotsResponse> {
   const res = await api.get<ExploreLotsResponse>("/explore/lots", {
-    params: { nickname, process, months },
+    params: { product_id: productId, process, months },
   });
   return res.data;
 }

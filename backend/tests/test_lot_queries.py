@@ -5,21 +5,24 @@ from app.services.lot_queries import lot_column_for, build_lot_query, query_lot_
 
 
 def test_lot_column_for_cp_and_ft():
+    # FT/SLT migrated into the CP schema → all share SUBSTRATE_ID
     assert lot_column_for("CP") == "SUBSTRATE_ID"
-    assert lot_column_for("FT") == "ASSY_LOT_ID"
-    assert lot_column_for("SLT") == "ASSY_LOT_ID"
+    assert lot_column_for("FT") == "SUBSTRATE_ID"
+    assert lot_column_for("SLT") == "SUBSTRATE_ID"
 
 
 def test_build_lot_query_selects_real_lot_column():
     sql, binds = build_lot_query(
-        process="FT", product_ids=["Q67890-A"],
-        start_month="2025-12", end_month="2026-05", process_values=None,
+        process="FT", product_ids=["P12345-A"],
+        start_month="2025-12", end_month="2026-05", process_values=["cFT1"],
     )
-    assert "ASSY_LOT_ID" in sql
+    assert "SUBSTRATE_ID" in sql
+    assert "SEMI_CP_HEADER" in sql           # FT now reads from the CP schema
     assert "AS lot_id" in sql
     assert "AS lot_date" in sql
     assert 'IYYY"W"IW' not in sql
     assert binds["start_month"] == "2025-12"
+    assert "cFT1" in binds.values()
 
 
 def test_build_lot_query_unknown_process_returns_empty_sql():

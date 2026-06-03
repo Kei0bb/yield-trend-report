@@ -1,5 +1,10 @@
+export interface Product {
+  product_id: string;     // DB の PRODUCT_ID（UI で選択・表示する主キー）
+  display_name: string;   // 製品名（副表示）
+}
+
 export interface YieldRequest {
-  products: string[];   // 対象品種（単一選択。API 互換のため配列形のまま）
+  products: string[];   // 対象 product_id（単一選択。API 互換のため配列形のまま）
   start_month: string;
   end_month: string;
   processes: string[];
@@ -33,6 +38,7 @@ export interface SparkPoint {
 
 export interface SummaryRow {
   nickname: string;
+  product_id: string;
   display_name: string;
   process: string;
   latest_yield: number | null;
@@ -67,7 +73,8 @@ export interface LotData {
 }
 
 export interface ExploreLotsResponse {
-  nickname: string;
+  product_id: string;
+  display_name: string;
   process: string;
   period: { months: number; start: string; end: string };
   lots: LotData[];
