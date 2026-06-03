@@ -75,8 +75,7 @@ export default function Sidebar({ onGenerate, loading, canPrint }: SidebarProps)
         />
         <div style={{ ...styles.brandMark, display: "none" }}>Y</div>
         <div>
-          <div style={styles.brandTitle}>Yield Trend</div>
-          <div style={styles.brandSub}>Report Generator</div>
+          <div style={styles.brandTitle}>Report Generator</div>
         </div>
       </div>
 

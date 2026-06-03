@@ -21,9 +21,9 @@ from reportlab.pdfgen import canvas
 from app.models.schemas import ProcessData
 
 # ---------------------------------------------------------------------------
-# Branding  ← production で差し替えてください
+# Branding
 # ---------------------------------------------------------------------------
-COMPANY_NAME: str = "Socionext"          # ← 企業名
+COMPANY_NAME: str = "Socionext"     
 LOGO_PATH: str | None = str(Path(__file__).resolve().parents[3] / "assets" / "logo.png")  # ← project-root/assets/logo.png (backend/frontend 共通) | None = mock
 CONFIDENTIAL: bool = True                     # ← False にすると透かし非表示
 
@@ -316,7 +316,7 @@ def _draw_header(
     title_y = div_y + 3.5 * mm
     c.saveState()
     c.setFillColorRGB(0.13, 0.12, 0.11)
-    c.setFont("Helvetica-Bold", 18)
+    c.setFont("Helvetica-Bold", 20)
     c.drawString(MARGIN, title_y, product)
     c.restoreState()
 

@@ -11,7 +11,7 @@ export default function TopNav() {
 
   return (
     <nav style={styles.nav}>
-      <span style={styles.brand}>Yield</span>
+      <span style={styles.brand}>PE Dashboard</span>
       {tabs.map((t) => (
         <NavLink
           key={t.to}
