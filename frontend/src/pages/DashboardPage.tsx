@@ -17,7 +17,7 @@ export default function DashboardPage() {
       setData(await fetchDashboardSummary(months, process));
     } catch (e) {
       console.error(e);
-      setError("ダッシュボードデータの取得に失敗しました。");
+      setError("Failed to load dashboard data.");
     } finally {
       setLoading(false);
     }
@@ -34,15 +34,15 @@ export default function DashboardPage() {
 
       <div style={styles.toolbar}>
         <label style={styles.field}>
-          <span style={styles.fieldLabel}>期間</span>
+          <span style={styles.fieldLabel}>Period</span>
           <select value={months} onChange={(e) => setMonths(Number(e.target.value))} style={styles.select}>
-            <option value={3}>過去3ヶ月</option>
-            <option value={6}>過去6ヶ月</option>
-            <option value={12}>過去12ヶ月</option>
+            <option value={3}>Last 3 months</option>
+            <option value={6}>Last 6 months</option>
+            <option value={12}>Last 12 months</option>
           </select>
         </label>
         <label style={styles.field}>
-          <span style={styles.fieldLabel}>プロセス</span>
+          <span style={styles.fieldLabel}>Process</span>
           <select value={process} onChange={(e) => setProcess(e.target.value)} style={styles.select}>
             <option value="all">All</option>
             <option value="CP">CP</option>
@@ -50,9 +50,9 @@ export default function DashboardPage() {
           </select>
         </label>
         <button onClick={load} disabled={loading} style={styles.refresh}>
-          {loading ? "更新中…" : "🔄 更新"}
+          {loading ? "Refreshing…" : "🔄 Refresh"}
         </button>
-        {data && <span style={styles.updated}>最終更新: {new Date(data.generated_at).toLocaleString()}</span>}
+        {data && <span style={styles.updated}>Updated: {new Date(data.generated_at).toLocaleString()}</span>}
       </div>
 
       {error && <div style={styles.error}>{error}</div>}
@@ -61,7 +61,7 @@ export default function DashboardPage() {
           <SummaryTable rows={data.rows} />
         </div>
       )}
-      {data && data.rows.length === 0 && !loading && <p style={styles.empty}>データがありません。</p>}
+      {data && data.rows.length === 0 && !loading && <p style={styles.empty}>No data available.</p>}
     </main>
   );
 }

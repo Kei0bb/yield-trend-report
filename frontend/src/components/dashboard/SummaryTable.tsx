@@ -37,11 +37,11 @@ export default function SummaryTable({ rows }: Props) {
       <thead>
         <tr>
           <th style={styles.thLeft} onClick={() => toggleSort("product_id")}>Product ID / Proc</th>
-          <th style={styles.th} onClick={() => toggleSort("latest_yield")}>直近歩留</th>
-          <th style={styles.th} onClick={() => toggleSort("avg_yield_6m")}>6m平均</th>
-          <th style={styles.th} onClick={() => toggleSort("delta")}>差分</th>
-          <th style={styles.th}>トレンド</th>
-          <th style={styles.thLeft}>要注意</th>
+          <th style={styles.th} onClick={() => toggleSort("latest_yield")}>Latest</th>
+          <th style={styles.th} onClick={() => toggleSort("avg_yield_6m")}>Avg</th>
+          <th style={styles.th} onClick={() => toggleSort("delta")}>Delta</th>
+          <th style={styles.th}>Trend</th>
+          <th style={styles.thLeft}>Alerts</th>
         </tr>
       </thead>
       <tbody>

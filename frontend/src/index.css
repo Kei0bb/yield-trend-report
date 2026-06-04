@@ -1,5 +1,5 @@
-/* Inter フォント — 社内ネットワーク(Zscaler)では外部 CDN に繋がらない場合があるため
-   システムフォントスタック (-apple-system / Segoe UI) にフォールバック */
+/* Inter font — corporate networks (e.g. Zscaler) may block external CDNs, so we
+   fall back to the system font stack (-apple-system / Segoe UI). */
 
 :root {
   /* Core palette */

@@ -22,7 +22,6 @@ export default function ReportPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [productId, setProductId] = useState("");
   const [processes, setProcesses] = useState<string[]>(["CP", "FT", "SLT"]);
-  const [months, setMonths] = useState(6);
   const [isMock, setIsMock] = useState<boolean | null>(null);
 
   const [data, setData] = useState<YieldResponse | null>(null);
@@ -47,7 +46,7 @@ export default function ReportPage() {
     const now = new Date();
     return {
       products: [productId],
-      start_month: formatYM(addMonths(now, -(months - 1))),
+      start_month: formatYM(addMonths(now, -2)),  // fixed 3-month window ending this month
       end_month: formatYM(now),
       processes,
     };
@@ -65,7 +64,7 @@ export default function ReportPage() {
       setRequest(req);
     } catch (err) {
       console.error("Failed to fetch yield data:", err);
-      setError("データ取得に失敗しました。バックエンドが起動しているか確認してください。");
+      setError("Failed to load data. Please check that the backend is running.");
     } finally {
       setLoading(false);
     }
@@ -110,15 +109,6 @@ export default function ReportPage() {
               })}
             </div>
           </div>
-
-          <label style={styles.field}>
-            <span style={styles.fieldLabel}>期間</span>
-            <select value={months} onChange={(e) => setMonths(Number(e.target.value))} style={styles.select}>
-              <option value={3}>過去3ヶ月</option>
-              <option value={6}>過去6ヶ月</option>
-              <option value={12}>過去12ヶ月</option>
-            </select>
-          </label>
 
           <button onClick={handleGenerate} disabled={disabled} style={{ ...styles.primaryBtn, ...(disabled ? styles.btnDisabled : {}) }}>
             {loading ? "Loading…" : "Generate Report"}

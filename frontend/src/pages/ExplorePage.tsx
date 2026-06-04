@@ -33,7 +33,7 @@ export default function ExplorePage() {
     let active = true;
     fetchExploreLots(productId, process, 6)
       .then((d) => { if (active) setData(d); })
-      .catch((e) => { console.error(e); if (active) setError("ロットデータの取得に失敗しました。"); });
+      .catch((e) => { console.error(e); if (active) setError("Failed to load lot data."); });
     return () => { active = false; };
   }, [productId, process]);
 
@@ -57,17 +57,17 @@ export default function ExplorePage() {
           </div>
         </div>
         <label style={styles.field}>
-          <span style={styles.fieldLabel}>Lot ID 表示</span>
+          <span style={styles.fieldLabel}>Lot ID</span>
           <select value={format} onChange={(e) => changeFormat(e.target.value as LotIdFormat)} style={styles.select}>
-            <option value="raw">実ロット番号</option>
-            <option value="date">日付</option>
-            <option value="yearweek">年週</option>
+            <option value="raw">Raw lot ID</option>
+            <option value="date">Date</option>
+            <option value="yearweek">Year-Week</option>
           </select>
         </label>
       </header>
 
       {error && <div style={styles.error}>{error}</div>}
-      {data && data.lots.length === 0 && <p style={styles.empty}>該当するロットがありません。</p>}
+      {data && data.lots.length === 0 && <p style={styles.empty}>No lots found.</p>}
       {data && processData && data.lots.length > 0 && (
         <div style={styles.stack}>
           <YieldChart processName={process} data={processData} />

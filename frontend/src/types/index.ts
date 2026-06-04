@@ -1,10 +1,10 @@
 export interface Product {
-  product_id: string;     // DB の PRODUCT_ID（UI で選択・表示する主キー）
-  display_name: string;   // 製品名（副表示）
+  product_id: string;     // DB PRODUCT_ID (primary key shown/selected in the UI)
+  display_name: string;   // product name (secondary label)
 }
 
 export interface YieldRequest {
-  products: string[];   // 対象 product_id（単一選択。API 互換のため配列形のまま）
+  products: string[];   // target product_id (single select; kept as an array for API compatibility)
   start_month: string;
   end_month: string;
   processes: string[];

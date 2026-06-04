@@ -328,7 +328,7 @@ def _draw_header(
     c.saveState()
     c.setFont("Helvetica-Bold", chip_font_size)
     chip_w = c.stringWidth(chip_text, "Helvetica-Bold", chip_font_size) + chip_padding_x * 2
-    chip_x = MARGIN + c.stringWidth(product, "Helvetica-Bold", 18) + 3 * mm
+    chip_x = MARGIN + c.stringWidth(product, "Helvetica-Bold", 18) + 5 * mm
     chip_y = title_y
     c.setFillColorRGB(0.95, 0.97, 1.0)
     c.setStrokeColorRGB(0.04, 0.46, 0.91, alpha=0.5)

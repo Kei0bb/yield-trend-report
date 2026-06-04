@@ -19,9 +19,9 @@ export default function LotTable({ lots, availableBins, format }: Props) {
       <thead>
         <tr>
           <th style={styles.thLeft}>Lot ID</th>
-          <th style={styles.th}>日付</th>
-          <th style={styles.th}>Wafer数</th>
-          <th style={styles.th}>歩留</th>
+          <th style={styles.th}>Date</th>
+          <th style={styles.th}>Wafers</th>
+          <th style={styles.th}>Yield</th>
           {availableBins.map((b) => <th key={b} style={styles.th}>{b}</th>)}
           <th style={styles.thLeft}>⚠</th>
         </tr>

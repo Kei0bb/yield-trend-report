@@ -29,8 +29,8 @@ export default function ReportView({ data, request }: ReportViewProps) {
     (a, b) => PROCESS_ORDER.indexOf(a) - PROCESS_ORDER.indexOf(b)
   );
 
-  // display_name = data.data の最初の process の最初の key (バックエンドで
-  // display_name でグループ化済み。同一製品の改版品種は1つにマージされている)
+  // display_name = first key of the first process's data (the backend groups by
+  // display_name, merging revision variants of the same product into one series).
   const firstProcess = sortedProcesses[0];
   const displayName = firstProcess ? Object.keys(data.data[firstProcess])[0] : undefined;
 
@@ -40,8 +40,8 @@ export default function ReportView({ data, request }: ReportViewProps) {
     d.setMonth(d.getMonth() - 3);
     return d.toISOString().slice(0, 10);
   })();
-  // request.products は product_id（UI 選択キー）。タイトルは product_id を主、
-  // 製品名(display_name) を副として meta に表示する。
+  // request.products holds the product_id (UI selection key). The title shows the
+  // product_id as primary, with the product name (display_name) as secondary meta.
   const productId = request.products[0];
   const titleText = productId;
   const showDisplayName = displayName != null && displayName !== productId;
@@ -55,7 +55,7 @@ export default function ReportView({ data, request }: ReportViewProps) {
           {showDisplayName && (
             <>
               <span style={styles.metaItem}>
-                <span style={styles.metaLabel}>製品名</span>
+                <span style={styles.metaLabel}>Name</span>
                 {displayName}
               </span>
               <span style={styles.metaDivider} />

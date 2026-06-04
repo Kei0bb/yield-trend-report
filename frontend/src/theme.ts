@@ -19,4 +19,4 @@ export const BIN_COLORS = [
 export const FONT_FAMILY =
   "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif";
 
-export const YIELD_LINE_COLOR = "#0075de";
+export const YIELD_LINE_COLOR = "#2e2e2e";
