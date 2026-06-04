@@ -55,7 +55,3 @@ export async function fetchExploreLots(
   return res.data;
 }
 
-export async function fetchAnomalyConfig(): Promise<Record<string, unknown>> {
-  const res = await api.get<Record<string, unknown>>("/anomaly/config");
-  return res.data;
-}

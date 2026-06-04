@@ -2,7 +2,7 @@ from pydantic import BaseModel
 
 
 class YieldRequest(BaseModel):
-    products: list[str]    # 比較したい品種リスト（1 品種以上）
+    products: list[str]    # list of product_ids (single-product in UI)
     start_month: str       # "YYYY-MM"
     end_month: str         # "YYYY-MM"
     processes: list[str]   # ["CP", "FT", "SLT"]
@@ -15,8 +15,7 @@ class ProcessData(BaseModel):
 
 
 class YieldResponse(BaseModel):
-    # process -> product -> ProcessData
-    # 例: data["CP"]["PRODUCT-A"] = ProcessData(...)
+    # process -> display_name -> ProcessData
     data: dict[str, dict[str, ProcessData]]
 
 
