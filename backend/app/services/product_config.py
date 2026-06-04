@@ -1,7 +1,13 @@
 import logging
 from functools import lru_cache
 
-from app.utils.csv_loader import PRODUCT_CONFIG_CSV, read_csv_robust
+import yaml
+
+from app.utils.csv_loader import (
+    PRODUCT_CONFIG_CSV,
+    PRODUCT_CONFIG_YAML,
+    read_csv_robust,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -14,22 +20,56 @@ DEFAULT_BIN_GROUP = "default"
 _FT_FAMILY = {"SLT"}
 
 
-@lru_cache(maxsize=None)
-def load_product_config() -> dict[str, dict[str, str]] | None:
-    """Load product_config.csv and return {nickname: {display_name, product_id, bin_group, ...}}.
+def _as_str(val) -> str:
+    """Normalise a scalar / list config value to a ';'-delimited string so the
+    downstream resolvers (which split on ';'/',') work for both YAML lists and
+    plain strings. Returns '' for None/empty."""
+    if val is None:
+        return ""
+    if isinstance(val, (list, tuple)):
+        return ";".join(str(v).strip() for v in val if str(v).strip())
+    return str(val).strip()
 
-    FT/SLT data now lives in the CP schema under the *same* PRODUCT_ID as CP,
-    distinguished only by the PROCESS column (e.g. 'cFT1'). So a product has a
-    single `product_id`; the per-process PROCESS values come from
-    cp_processes / ft_processes / slt_processes.
 
-    `product_id` falls back to the legacy `cp_product_id` column for backward
-    compatibility. Returns None when the file does not exist (falls back to DB
-    enumeration or mock). Cached for the process lifetime — restart after edits.
+def _config_from_yaml() -> dict[str, dict[str, str]] | None:
+    """Parse product_config.yaml into the flat internal shape.
+
+    Schema (per product, all fields except product_id optional):
+        products:
+          <nickname>:
+            display_name: ...
+            product_id: ...            # single id; '%' LIKE wildcard allowed
+            bin_group: ...
+            bin_groups: {ft: ..., slt: ...}   # optional per-process overrides
+            processes: {cp: ..., ft: cFT1, slt: cSLT1}  # DB PROCESS values
+    A bare top-level mapping (no `products:` key) is also accepted.
     """
-    if not PRODUCT_CONFIG_CSV.exists():
-        return None
+    with PRODUCT_CONFIG_YAML.open(encoding="utf-8") as f:
+        data = yaml.safe_load(f) or {}
+    products = data.get("products", data) if isinstance(data, dict) else {}
 
+    config: dict[str, dict[str, str]] = {}
+    for nickname, entry in (products or {}).items():
+        if not isinstance(entry, dict):
+            continue
+        name = str(nickname).strip()
+        processes = entry.get("processes") or {}
+        bin_groups = entry.get("bin_groups") or {}
+        config[name] = {
+            "display_name": _as_str(entry.get("display_name")) or name,
+            "product_id": _as_str(entry.get("product_id")),
+            "bin_group": _as_str(entry.get("bin_group")) or DEFAULT_BIN_GROUP,
+            "ft_bin_group": _as_str(bin_groups.get("ft")),
+            "slt_bin_group": _as_str(bin_groups.get("slt")),
+            "cp_processes": _as_str(processes.get("cp")),
+            "ft_processes": _as_str(processes.get("ft")),
+            "slt_processes": _as_str(processes.get("slt")),
+        }
+    return config or None
+
+
+def _config_from_csv() -> dict[str, dict[str, str]] | None:
+    """Legacy CSV loader (fallback when no product_config.yaml is present)."""
     df = read_csv_robust(PRODUCT_CONFIG_CSV)
     if "nickname" not in df.columns:
         logger.warning(
@@ -57,12 +97,35 @@ def load_product_config() -> dict[str, dict[str, str]] | None:
             "ft_processes": row.get("ft_processes", "").strip(),
             "slt_processes": row.get("slt_processes", "").strip(),
         }
+    return config or None
 
-    if not config:
-        return None
 
-    logger.info("Loaded product_config.csv: %d nicknames", len(config))
-    return config
+@lru_cache(maxsize=None)
+def load_product_config() -> dict[str, dict[str, str]] | None:
+    """Load product configuration as {nickname: {display_name, product_id, bin_group, ...}}.
+
+    Prefers product_config.yaml; falls back to the legacy product_config.csv.
+    FT/SLT data lives in the CP schema under the *same* PRODUCT_ID as CP,
+    distinguished only by the PROCESS column (e.g. 'cFT1'), so a product has a
+    single `product_id`; per-process PROCESS values come from cp/ft/slt_processes.
+
+    Returns None when no config file exists (falls back to DB enumeration or
+    mock). Cached for the process lifetime — restart the server after edits.
+    """
+    if PRODUCT_CONFIG_YAML.exists():
+        config = _config_from_yaml()
+        if config:
+            logger.info("Loaded product_config.yaml: %d products", len(config))
+            return config
+        logger.warning("product_config.yaml present but empty/invalid — trying CSV")
+
+    if PRODUCT_CONFIG_CSV.exists():
+        config = _config_from_csv()
+        if config:
+            logger.info("Loaded product_config.csv: %d nicknames", len(config))
+            return config
+
+    return None
 
 
 def resolve_product_ids(nickname: str, process: str = "") -> list[str]:

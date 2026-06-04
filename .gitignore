@@ -51,6 +51,8 @@ htmlcov/
 *.pdf
 
 # 製品設定（環境ごとに管理、サンプルのみコミット）
+backend/product_config.yaml
+!backend/product_config.yaml.example
 backend/product_config.csv
 !backend/product_config.csv.example
 

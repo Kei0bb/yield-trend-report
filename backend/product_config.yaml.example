@@ -1,0 +1,59 @@
+# ─────────────────────────────────────────────────────────────────
+# Product configuration
+#
+# CP/FT/SLT share ONE product_id and the same CP-schema tables (SEMI_CP_*);
+# they are distinguished only by the PROCESS column value (e.g. cFT1).
+#
+# Per product (key = internal nickname; never shown in the UI):
+#   display_name : product name (shown as secondary text next to product_id)
+#                  products sharing a display_name are merged into one series
+#   product_id   : DB PRODUCT_ID (the primary key selected/shown in the UI).
+#                  A single value; '%' enables an Oracle LIKE wildcard.
+#   bin_group    : bin_mappings/<bin_group>.csv (without extension)
+#   bin_groups   : optional per-process overrides, e.g. {ft: main_ft}
+#   processes    : logical process -> DB PROCESS value(s). Omit a key to use the
+#                  default (CP/FT/SLT). A list maps to PROCESS IN (...).
+# ─────────────────────────────────────────────────────────────────
+products:
+  Product-A:
+    display_name: Product-A
+    product_id: P12345-A
+    bin_group: main
+    processes:
+      ft: cFT1
+      slt: cSLT1
+
+  # Revision sharing the same display_name → merged with Product-A
+  Product-A-rev2:
+    display_name: Product-A
+    product_id: P12346-A
+    bin_group: main
+    processes:
+      ft: cFT1
+      slt: cSLT1
+
+  Product-B:
+    display_name: Product-B
+    product_id: P12345-B
+    bin_group: main_b
+    processes:
+      ft: cFT1
+      slt: cSLT1
+
+  SCT101:
+    display_name: SCT101
+    product_id: SCT101A
+    bin_group: main
+    processes:
+      ft: cFT1
+      slt: cSLT1
+
+  # LIKE wildcard example: matches SC0G29AP3-ES, -ES-9Q1, ... in one query.
+  # `processes.ft` can also be a list, e.g. [cFT1, cFT2] → PROCESS IN ('cFT1','cFT2').
+  Phoenix:
+    display_name: Phoenix
+    product_id: SC0G29AP3%
+    bin_group: Phoenix
+    processes:
+      ft: cFT1
+      slt: cSLT1

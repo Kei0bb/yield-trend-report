@@ -61,7 +61,7 @@ Report_gen/
 │   │   │   └── yield_data.py     # GET /api/products, POST /api/yield-data, debug endpoints
 │   │   ├── services/
 │   │   │   ├── yield_service.py  # オーケストレータ（薄いエントリポイント）
-│   │   │   ├── product_config.py # product_config.csv 読み込み・nickname 解決（lru_cache）
+│   │   │   ├── product_config.py # product_config.yaml 読み込み・nickname 解決（lru_cache）
 │   │   │   ├── bin_mapping.py    # bin_mappings/*.csv 読み込み・Bin コード変換（lru_cache）
 │   │   │   ├── yield_queries.py  # Oracle SQL ビルダ + 実行（CP/FT/SLT 統合）
 │   │   │   ├── yield_aggregator.py # DataFrame → ProcessData 集計（最新 12 週パディング）
@@ -70,7 +70,7 @@ Report_gen/
 │   │   └── utils/
 │   │       └── csv_loader.py     # CSV 読み込み共通ヘルパー・パス定数
 │   ├── bin_mappings/             # 製品別 Bin マッピング CSV（*.csv.example を参照）
-│   ├── product_config.csv        # 製品設定（*.csv.example を参照）
+│   ├── product_config.yaml       # 製品設定（*.yaml.example を参照）
 │   ├── pyproject.toml
 │   └── .env                      # ← gitignore 済み（下記テンプレート参照）
 ├── assets/
@@ -233,7 +233,7 @@ SEMI_CP_BIN_SUM  -- Bin 集計（BIN_CODE / BIN_NAME / BIN_COUNT）
 
 CP/FT/SLT は **同一テーブル・同一 PRODUCT_ID** を共有し、`PROCESS` 列の値（例: `CP` / `cFT1` / `cSLT1`）で区別します。
 JOIN キーは `SUBSTRATE_ID` + `WAFER_ID` + `PROCESS`、Lot 識別列は `SUBSTRATE_ID`。
-論理工程（CP/FT/SLT）→ 実 PROCESS 値の対応は `product_config.csv` の `cp_processes` / `ft_processes` / `slt_processes` で設定します。  
+論理工程（CP/FT/SLT）→ 実 PROCESS 値の対応は `product_config.yaml` の `processes:`（`cp` / `ft` / `slt`）で設定します。  
 旧 `SEMI_FT_*` テーブルは参照しません。
 
 データは Wafer 単位（bin_code ごとに複数行）。アプリ側で Lot 毎に集計します。  
@@ -253,7 +253,7 @@ LOG_LEVEL=DEBUG  # DB クエリ・Bin マッピング読み込みの詳細が表
 ### 設定確認エンドポイント
 
 ```bash
-# product_config.csv と bin_mappings/ の読み込み状況
+# product_config.yaml と bin_mappings/ の読み込み状況
 curl http://localhost:8000/api/debug/config?nickname=Product-A
 
 # 実 DB クエリを叩いて行数を確認（空データの原因調査に有効）
@@ -262,7 +262,7 @@ curl "http://localhost:8000/api/debug/probe?nickname=Product-A&process=FT&start_
 
 ### CSV キャッシュのリセット
 
-`product_config.csv` や `bin_mappings/*.csv` を編集した場合は、バックエンドを再起動してください（`lru_cache` でプロセス起動時にのみ読み込まれます）。
+`product_config.yaml` や `bin_mappings/*.csv` を編集した場合は、バックエンドを再起動してください（`lru_cache` でプロセス起動時にのみ読み込まれます）。
 
 ---
 
