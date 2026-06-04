@@ -25,7 +25,7 @@ router = APIRouter()
 def list_products() -> list[dict[str, str]]:
     """Product list for the UI: {product_id, display_name} per product.
 
-    When product_config.csv is absent we fall back to DB/mock enumeration,
+    When product_config.yaml is absent we fall back to DB/mock enumeration,
     using the enumerated id as both product_id and display_name.
     """
     configured = list_products_with_ids()

@@ -6,7 +6,6 @@ import pandas as pd
 BACKEND_ROOT = Path(__file__).parent.parent.parent
 BIN_MAPPINGS_DIR = BACKEND_ROOT / "bin_mappings"
 PRODUCT_CONFIG_YAML = BACKEND_ROOT / "product_config.yaml"
-PRODUCT_CONFIG_CSV = BACKEND_ROOT / "product_config.csv"
 LEGACY_BIN_GROUP_CSV = BACKEND_ROOT / "bin_group.csv"
 
 

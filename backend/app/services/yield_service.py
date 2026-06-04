@@ -27,7 +27,7 @@ def get_products() -> list[str]:
     """Return the product list for the UI.
 
     Priority:
-    1. product_config.csv nicknames (mock and real DB)
+    1. product_config.yaml nicknames (mock and real DB)
     2. DB SEMI_CP_HEADER.PRODUCT_ID enumeration (real DB only)
     3. Hard-coded mock list (mock mode, no config)
     """
@@ -90,7 +90,7 @@ def get_yield_data_merged(
 
         if not all_pids:
             logger.warning(
-                "No PRODUCT_IDs resolved for nicknames=%s process=%s — check product_config.csv",
+                "No PRODUCT_IDs resolved for nicknames=%s process=%s — check product_config.yaml",
                 nicknames, process,
             )
             return ProcessData(

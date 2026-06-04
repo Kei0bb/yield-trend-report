@@ -30,7 +30,7 @@ def load_bin_mapping(bin_group: str) -> dict[str, dict[int, str]]:
             return _load_legacy_bin_mapping()
         logger.warning(
             "Bin mapping file not found: %s  "
-            "(Check bin_group column in product_config.csv matches the filename)",
+            "(Check the bin_group value in product_config.yaml matches the filename)",
             csv_path,
         )
         return {}

@@ -53,8 +53,6 @@ htmlcov/
 # 製品設定（環境ごとに管理、サンプルのみコミット）
 backend/product_config.yaml
 !backend/product_config.yaml.example
-backend/product_config.csv
-!backend/product_config.csv.example
 
 # bin マッピングは bin_mappings/ 配下に品種別 CSV を配置
 # 本体 *.csv は環境別管理（gitignore）、サンプル *.csv.example と README はコミット
