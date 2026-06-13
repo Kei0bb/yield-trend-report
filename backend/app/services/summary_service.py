@@ -3,7 +3,11 @@ from datetime import datetime, timezone
 
 from app.models.schemas import DashboardSummaryResponse, SparkPoint, SummaryRow
 from app.services.lot_service import SUPPORTED_PROCESSES, get_lots, period_months
-from app.services.product_config import primary_product_id, resolve_display_name
+from app.services.product_config import (
+    primary_product_id,
+    resolve_display_name,
+    resolve_process_filter,
+)
 from app.services.yield_service import get_products
 
 logger = logging.getLogger(__name__)
@@ -16,8 +20,28 @@ def _target_processes(process: str) -> list[str]:
     return [p] if p in SUPPORTED_PROCESSES else []
 
 
-def _build_row(nickname: str, process: str, months: int) -> SummaryRow | None:
-    lots = get_lots(nickname, process, months)
+def _build_row(
+    nickname: str,
+    process: str,
+    months: int,
+    *,
+    level: int = 0,
+    process_label: str = "",
+    process_values: list[str] | None = None,
+) -> SummaryRow | None:
+    """Build a single SummaryRow for a nickname + major process.
+
+    Args:
+        nickname: Internal product nickname.
+        process: Major process name (used for navigation; always the major name).
+        months: History window in months.
+        level: 0 for a major row, 1 for a sub-process row.
+        process_label: Display label (major name for level 0; DB PROCESS value
+            for level 1).
+        process_values: When provided, passed through to ``get_lots`` to query
+            exactly this set of DB PROCESS values (sub-process rows).
+    """
+    lots = get_lots(nickname, process, months, process_values=process_values)
     if not lots:
         return None
     latest = lots[-1]
@@ -28,6 +52,8 @@ def _build_row(nickname: str, process: str, months: int) -> SummaryRow | None:
         product_id=primary_product_id(nickname),
         display_name=resolve_display_name(nickname),
         process=process,
+        process_label=process_label or process,
+        level=level,
         latest_yield=latest.yield_pct,
         latest_lot_id=latest.lot_id,
         latest_lot_date=latest.lot_date,
@@ -40,7 +66,16 @@ def _build_row(nickname: str, process: str, months: int) -> SummaryRow | None:
 
 
 def build_summary(months: int = 6, process: str = "all") -> dict:
-    """Build the dashboard summary for every configured product × target process."""
+    """Build the dashboard summary for every configured product × target process.
+
+    For each nickname × major process, emits:
+    - A **major row** (level=0) covering all sub-processes combined, as today.
+    - Immediately after, one **sub row** (level=1) per value returned by
+      ``resolve_process_filter``, querying only that single DB PROCESS value.
+
+    When ``resolve_process_filter`` returns None or an empty list the major row
+    is emitted alone (current / graceful-degradation behaviour).
+    """
     start, end = period_months(months)
     nicknames = get_products()
     processes = _target_processes(process)
@@ -48,9 +83,26 @@ def build_summary(months: int = 6, process: str = "all") -> dict:
     rows: list[SummaryRow] = []
     for nickname in nicknames:
         for proc in processes:
-            row = _build_row(nickname, proc, months)
-            if row is not None:
-                rows.append(row)
+            # Major row (all sub-processes combined).
+            major_row = _build_row(nickname, proc, months, level=0, process_label=proc)
+            if major_row is None:
+                continue
+            rows.append(major_row)
+
+            # Sub-process rows — one per configured DB PROCESS value.
+            sub_values = resolve_process_filter(nickname, proc)
+            if sub_values:
+                for value in sub_values:
+                    sub_row = _build_row(
+                        nickname,
+                        proc,
+                        months,
+                        level=1,
+                        process_label=value,
+                        process_values=[value],
+                    )
+                    if sub_row is not None:
+                        rows.append(sub_row)
 
     resp = DashboardSummaryResponse(
         generated_at=datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds"),

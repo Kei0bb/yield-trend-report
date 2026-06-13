@@ -67,6 +67,8 @@ class SummaryRow(BaseModel):
     product_id: str
     display_name: str
     process: str
+    process_label: str = ""    # display label: major name (level 0) or DB PROCESS value (level 1)
+    level: int = 0             # 0 = major row, 1 = sub-process row
     latest_yield: float | None
     latest_lot_id: str | None
     latest_lot_date: str | None

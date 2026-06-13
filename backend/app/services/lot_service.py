@@ -29,23 +29,52 @@ def period_months(months: int) -> tuple[str, str]:
     return start, end
 
 
-def _load_dataframe(nickname: str, process: str, months: int) -> pd.DataFrame:
+def _load_dataframe(
+    nickname: str,
+    process: str,
+    months: int,
+    process_values: list[str] | None = None,
+) -> pd.DataFrame:
+    """Load raw lot data for a nickname + process.
+
+    When *process_values* is provided it overrides ``resolve_process_filter``
+    and queries exactly those DB PROCESS values (used by sub-process rows).
+    """
     if process.upper() not in SUPPORTED_PROCESSES:
         return pd.DataFrame(columns=LOT_COLUMNS)
     if settings.USE_MOCK_DATA:
-        return mock_lot_dataframe(nickname, process.upper(), months)
+        # In mock mode, use the first explicit process value as the seed string
+        # so different sub-processes produce distinct series.
+        mock_process = process_values[0] if process_values else process.upper()
+        return mock_lot_dataframe(nickname, mock_process, months)
     product_ids = resolve_product_ids(nickname, process)
     if not product_ids:
         return pd.DataFrame(columns=LOT_COLUMNS)
     start, end = period_months(months)
-    process_values = resolve_process_filter(nickname, process)
-    return query_lot_data(process, product_ids, start, end, process_values)
+    resolved = process_values if process_values is not None else resolve_process_filter(nickname, process)
+    return query_lot_data(process, product_ids, start, end, resolved)
 
 
-def _aggregate(df: pd.DataFrame, bin_group: str, process: str) -> list[LotData]:
+def _aggregate(
+    df: pd.DataFrame,
+    bin_group: str,
+    process: str,
+    *,
+    raw_bins: bool = False,
+) -> list[LotData]:
+    """Aggregate a raw DataFrame into a list of LotData.
+
+    When *raw_bins* is True, skip the bin-group CSV mapping and use the DB
+    ``bin_name`` column directly as the bin category.
+    """
     if df.empty:
         return []
-    df = apply_bin_groups(df, bin_group, process)  # adds 'bin_code' = group name
+    if raw_bins:
+        # Use the DB bin_name directly as the category column; skip CSV mapping.
+        df = df.copy()
+        df["bin_code"] = df["bin_name"]
+    else:
+        df = apply_bin_groups(df, bin_group, process)  # adds 'bin_code' = group name
 
     lots: list[LotData] = []
     for lot_id, g in df.groupby("lot_id", sort=False):
@@ -75,12 +104,31 @@ def _aggregate(df: pd.DataFrame, bin_group: str, process: str) -> list[LotData]:
     return lots
 
 
-def get_lots(nickname: str, process: str, months: int = 6) -> list[LotData]:
+def get_lots(
+    nickname: str,
+    process: str,
+    months: int = 6,
+    *,
+    raw_bins: bool = False,
+    process_values: list[str] | None = None,
+) -> list[LotData]:
     """Return lot-granular data for a product+process, oldest→newest, with
-    anomaly warnings attached to the latest lot."""
-    df = _load_dataframe(nickname, process, months)
+    anomaly warnings attached to the latest lot.
+
+    Args:
+        nickname: Internal product nickname.
+        process: Major process name ("CP", "FT", "SLT").
+        months: How many months of history to include.
+        raw_bins: When True, skip the bin-group CSV mapping and use raw DB bin
+            names directly as categories. Anomaly evaluation still runs on the
+            full raw breakdown.
+        process_values: When provided, bypass ``resolve_process_filter`` and
+            query exactly these DB PROCESS values. Used to build sub-process
+            rows on the dashboard.
+    """
+    df = _load_dataframe(nickname, process, months, process_values=process_values)
     bin_group = resolve_bin_group(nickname, process)
-    lots = _aggregate(df, bin_group, process)
+    lots = _aggregate(df, bin_group, process, raw_bins=raw_bins)
     if lots:
         cfg = resolve_config(nickname, load_anomaly_config())
         warns = evaluate(lots, cfg)

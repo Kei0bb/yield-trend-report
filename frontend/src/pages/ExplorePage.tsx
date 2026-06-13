@@ -4,14 +4,13 @@ import { fetchExploreLots } from "../api/client";
 import type { ExploreLotsResponse, ProcessData } from "../types";
 import YieldChart from "../components/YieldChart";
 import LotTable from "../components/explore/LotTable";
-import { formatLotId, getLotIdFormat, setLotIdFormat, type LotIdFormat } from "../utils/formatLotId";
 
 /** Map the lot-granular Explore response into the Report-style ProcessData
  *  (lots = x-axis labels, yield_avg = yield line, fail_bins = stacked bars),
  *  so the trend view is identical to the Report tab's YieldChart. */
-function toProcessData(data: ExploreLotsResponse, format: LotIdFormat): ProcessData {
+function toProcessData(data: ExploreLotsResponse): ProcessData {
   return {
-    lots: data.lots.map((l) => formatLotId(l.lot_id, l.lot_date, format)),
+    lots: data.lots.map((l) => l.lot_id),
     yield_avg: data.lots.map((l) => l.yield_pct),
     fail_bins: Object.fromEntries(
       data.available_bins.map((bin) => [
@@ -27,7 +26,6 @@ export default function ExplorePage() {
   const navigate = useNavigate();
   const [data, setData] = useState<ExploreLotsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [format, setFormat] = useState<LotIdFormat>(getLotIdFormat());
 
   useEffect(() => {
     let active = true;
@@ -37,11 +35,9 @@ export default function ExplorePage() {
     return () => { active = false; };
   }, [productId, process]);
 
-  const changeFormat = (f: LotIdFormat) => { setFormat(f); setLotIdFormat(f); };
-
   const processData = useMemo(
-    () => (data ? toProcessData(data, format) : null),
-    [data, format]
+    () => (data ? toProcessData(data) : null),
+    [data]
   );
 
   return (
@@ -56,14 +52,6 @@ export default function ExplorePage() {
             <h1 style={styles.title}>{productId} <span style={styles.proc}>/ {process}</span></h1>
           </div>
         </div>
-        <label style={styles.field}>
-          <span style={styles.fieldLabel}>Lot ID</span>
-          <select value={format} onChange={(e) => changeFormat(e.target.value as LotIdFormat)} style={styles.select}>
-            <option value="raw">Raw lot ID</option>
-            <option value="date">Date</option>
-            <option value="yearweek">Year-Week</option>
-          </select>
-        </label>
       </header>
 
       {error && <div style={styles.error}>{error}</div>}
@@ -72,7 +60,7 @@ export default function ExplorePage() {
         <div style={styles.stack}>
           <YieldChart processName={process} data={processData} />
           <div style={styles.card}>
-            <LotTable lots={data.lots} availableBins={data.available_bins} format={format} />
+            <LotTable lots={data.lots} availableBins={data.available_bins} />
           </div>
         </div>
       )}
@@ -123,23 +111,6 @@ const styles: Record<string, React.CSSProperties> = {
     lineHeight: 1.15,
   },
   proc: { color: "var(--gray-400)", fontWeight: 600 },
-  field: { display: "inline-flex", alignItems: "center", gap: 8 },
-  fieldLabel: {
-    fontSize: 11,
-    fontWeight: 600,
-    textTransform: "uppercase",
-    letterSpacing: "0.06em",
-    color: "var(--gray-400)",
-  },
-  select: {
-    padding: "6px 10px",
-    borderRadius: 8,
-    border: "var(--border-whisper)",
-    background: "var(--white)",
-    color: "var(--gray-700)",
-    fontSize: 13,
-    fontFamily: "var(--font-sans)",
-  },
   stack: { display: "flex", flexDirection: "column", gap: 24 },
   card: {
     background: "var(--white)",

@@ -9,20 +9,47 @@ interface Props {
   rows: SummaryRow[];
 }
 
-export default function SummaryTable({ rows }: Props) {
-  const navigate = useNavigate();
-  const [sortKey, setSortKey] = useState<SortKey>("delta");
-  const [asc, setAsc] = useState(true);
+/** Sort only the major (level 0) rows, then re-attach each major's sub rows
+ *  (level 1) immediately after it. This preserves the major+sub grouping
+ *  regardless of the chosen sort key. */
+function sortGrouped(rows: SummaryRow[], sortKey: SortKey, asc: boolean): SummaryRow[] {
+  // Build groups: each group = [major, ...subs]
+  const groups: SummaryRow[][] = [];
+  for (const row of rows) {
+    if (row.level === 0) {
+      groups.push([row]);
+    } else {
+      // Attach sub to the most recent major group
+      if (groups.length > 0) {
+        groups[groups.length - 1].push(row);
+      } else {
+        // Orphaned sub row (shouldn't happen) — treat as its own group
+        groups.push([row]);
+      }
+    }
+  }
 
-  const sorted = [...rows].sort((a, b) => {
-    const av = a[sortKey];
-    const bv = b[sortKey];
+  // Sort groups by the major row's sort key
+  groups.sort((ga, gb) => {
+    const av = ga[0][sortKey];
+    const bv = gb[0][sortKey];
     if (av == null) return 1;
     if (bv == null) return -1;
     if (av < bv) return asc ? -1 : 1;
     if (av > bv) return asc ? 1 : -1;
     return 0;
   });
+
+  // Flatten back to a single array
+  return groups.flat();
+}
+
+export default function SummaryTable({ rows }: Props) {
+  const navigate = useNavigate();
+  const [sortKey, setSortKey] = useState<SortKey>("delta");
+  const [asc, setAsc] = useState(true);
+
+  const sorted = sortGrouped(rows, sortKey, asc);
 
   const toggleSort = (k: SortKey) => {
     if (k === sortKey) setAsc(!asc);
@@ -48,16 +75,26 @@ export default function SummaryTable({ rows }: Props) {
         {sorted.map((r) => {
           const warn = r.warnings.length > 0;
           const deltaColor = r.delta == null ? "var(--gray-400)" : r.delta < 0 ? "var(--red)" : "var(--green)";
+          const isSub = r.level === 1;
           return (
             <tr
-              key={`${r.nickname}-${r.process}`}
-              style={{ ...styles.tr, ...(warn ? styles.trWarn : {}) }}
+              key={`${r.nickname}-${r.process}-${r.level}-${r.process_label}`}
+              style={{ ...styles.tr, ...(warn ? styles.trWarn : {}), ...(isSub ? styles.trSub : {}) }}
               onClick={() => navigate(`/explore/${encodeURIComponent(r.product_id)}/${r.process}`)}
             >
-              <td style={styles.tdLeft}>
-                <b>{r.product_id}</b> <span style={styles.proc}>/ {r.process}</span>
-                {r.display_name && r.display_name !== r.product_id && (
-                  <div style={styles.subName}>{r.display_name}</div>
+              <td style={{ ...styles.tdLeft, ...(isSub ? styles.tdLeftSub : {}) }}>
+                {isSub ? (
+                  <>
+                    <span style={styles.subGlyph}>└</span>
+                    <span style={styles.proc}>{r.process_label}</span>
+                  </>
+                ) : (
+                  <>
+                    <b>{r.product_id}</b> <span style={styles.proc}>/ {r.process_label}</span>
+                    {r.display_name && r.display_name !== r.product_id && (
+                      <div style={styles.subName}>{r.display_name}</div>
+                    )}
+                  </>
                 )}
               </td>
               <td style={styles.td}>{fmt(r.latest_yield, "%")}</td>
@@ -90,9 +127,12 @@ const styles: Record<string, React.CSSProperties> = {
   thLeft: { textAlign: "left", padding: "10px 14px", background: "var(--warm-white)", cursor: "pointer", color: "var(--gray-500)", fontWeight: 600, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.04em", borderBottom: "var(--border-whisper)" },
   tr: { cursor: "pointer", borderBottom: "var(--border-soft)" },
   trWarn: { background: "rgba(224, 62, 62, 0.05)" },
+  trSub: { opacity: 0.85 },
   td: { textAlign: "right", padding: "10px 14px", fontVariantNumeric: "tabular-nums" },
   tdLeft: { textAlign: "left", padding: "10px 14px" },
+  tdLeftSub: { paddingLeft: 28 },
   proc: { color: "var(--gray-400)" },
+  subGlyph: { color: "var(--gray-400)", marginRight: 6, userSelect: "none" },
   subName: { color: "var(--gray-400)", fontSize: 11, marginTop: 2 },
   badge: { display: "inline-block", background: "rgba(224, 62, 62, 0.1)", color: "var(--red)", fontSize: 11, fontWeight: 500, padding: "2px 8px", borderRadius: 999, marginRight: 4 },
 };

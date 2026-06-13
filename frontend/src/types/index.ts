@@ -41,6 +41,8 @@ export interface SummaryRow {
   product_id: string;
   display_name: string;
   process: string;
+  process_label: string;
+  level: number;
   latest_yield: number | null;
   latest_lot_id: string | null;
   latest_lot_date: string | null;

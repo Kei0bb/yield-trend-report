@@ -1,13 +1,11 @@
 import type { LotData } from "../../types";
-import { formatLotId, type LotIdFormat } from "../../utils/formatLotId";
 
 interface Props {
   lots: LotData[];
   availableBins: string[];
-  format: LotIdFormat;
 }
 
-export default function LotTable({ lots, availableBins, format }: Props) {
+export default function LotTable({ lots, availableBins }: Props) {
   const pctFor = (lot: LotData, bin: string) => {
     const b = lot.bin_breakdown.find((x) => x.bin_name === bin);
     return b ? b.percent : 0;
@@ -29,7 +27,7 @@ export default function LotTable({ lots, availableBins, format }: Props) {
       <tbody>
         {rows.map((lot) => (
           <tr key={lot.lot_id} style={lot.warnings.length ? styles.warn : undefined}>
-            <td style={styles.tdLeft}>{formatLotId(lot.lot_id, lot.lot_date, format)}</td>
+            <td style={styles.tdLeft}>{lot.lot_id}</td>
             <td style={styles.td}>{lot.lot_date}</td>
             <td style={styles.td}>{lot.wafer_count}</td>
             <td style={styles.td}>{lot.yield_pct.toFixed(1)}%</td>

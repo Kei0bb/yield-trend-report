@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Query
 
 from app.models.schemas import ExploreLotsResponse
-from app.services.lot_service import get_lots, period_months
+from app.services.explore_service import build_explore
+from app.services.lot_service import period_months
 from app.services.product_config import nickname_for_product_id, resolve_display_name
 
 router = APIRouter()
@@ -17,18 +18,13 @@ def explore_lots(
     # bin_group / query resolution). Falls back to the value itself when the
     # product_id is not configured (mock / plain-nickname compatibility).
     nickname = nickname_for_product_id(product_id) or product_id
-    lots = get_lots(nickname, process, months)
+    lots, available_bins = build_explore(nickname, process, months)
     start, end = period_months(months)
-    available: list[str] = []
-    for lot in lots:
-        for b in lot.bin_breakdown:
-            if b.bin_name not in available:
-                available.append(b.bin_name)
     return ExploreLotsResponse(
         product_id=product_id,
         display_name=resolve_display_name(nickname),
         process=process,
         period={"months": months, "start": start, "end": end},
         lots=lots,
-        available_bins=available,
+        available_bins=available_bins,
     )
