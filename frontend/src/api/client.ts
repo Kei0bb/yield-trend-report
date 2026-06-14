@@ -47,10 +47,10 @@ export async function fetchDashboardSummary(
 }
 
 export async function fetchExploreLots(
-  productId: string, process: string, months = 6
+  productId: string, process: string, months = 6, sub?: string
 ): Promise<ExploreLotsResponse> {
   const res = await api.get<ExploreLotsResponse>("/explore/lots", {
-    params: { product_id: productId, process, months },
+    params: { product_id: productId, process, months, ...(sub ? { sub } : {}) },
   });
   return res.data;
 }

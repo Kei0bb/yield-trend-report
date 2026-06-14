@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { fetchExploreLots } from "../api/client";
 import type { ExploreLotsResponse, ProcessData } from "../types";
 import YieldChart from "../components/YieldChart";
@@ -23,17 +23,23 @@ function toProcessData(data: ExploreLotsResponse): ProcessData {
 
 export default function ExplorePage() {
   const { productId = "", process = "" } = useParams();
+  const [searchParams] = useSearchParams();
+  const sub = searchParams.get("sub") ?? "";
   const navigate = useNavigate();
   const [data, setData] = useState<ExploreLotsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // When `sub` is set we drill into a single sub-process; otherwise the merged
+  // major process is shown.
+  const label = sub || process;
+
   useEffect(() => {
     let active = true;
-    fetchExploreLots(productId, process, 6)
+    fetchExploreLots(productId, process, 6, sub || undefined)
       .then((d) => { if (active) setData(d); })
       .catch((e) => { console.error(e); if (active) setError("Failed to load lot data."); });
     return () => { active = false; };
-  }, [productId, process]);
+  }, [productId, process, sub]);
 
   const processData = useMemo(
     () => (data ? toProcessData(data) : null),
@@ -49,7 +55,7 @@ export default function ExplorePage() {
             <div style={styles.breadcrumb}>
               Explore · Lot Drill-down{data?.display_name ? ` · ${data.display_name}` : ""}
             </div>
-            <h1 style={styles.title}>{productId} <span style={styles.proc}>/ {process}</span></h1>
+            <h1 style={styles.title}>{productId} <span style={styles.proc}>/ {label}</span></h1>
           </div>
         </div>
       </header>
@@ -58,7 +64,7 @@ export default function ExplorePage() {
       {data && data.lots.length === 0 && <p style={styles.empty}>No lots found.</p>}
       {data && processData && data.lots.length > 0 && (
         <div style={styles.stack}>
-          <YieldChart processName={process} data={processData} />
+          <YieldChart processName={label} data={processData} />
           <div style={styles.card}>
             <LotTable lots={data.lots} availableBins={data.available_bins} />
           </div>

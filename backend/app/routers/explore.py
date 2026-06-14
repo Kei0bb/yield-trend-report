@@ -13,17 +13,21 @@ def explore_lots(
     product_id: str = Query(...),
     process: str = Query(...),
     months: int = Query(6, ge=1, le=24),
+    sub: str | None = Query(None),
 ) -> ExploreLotsResponse:
     # Resolve the UI-facing product_id back to its internal nickname (used for
     # bin_group / query resolution). Falls back to the value itself when the
     # product_id is not configured (mock / plain-nickname compatibility).
     nickname = nickname_for_product_id(product_id) or product_id
-    lots, available_bins = build_explore(nickname, process, months)
+    # `sub` (a single DB PROCESS value) drills into one sub-process; without it
+    # the process's full merged set is queried.
+    process_values = [sub] if sub else None
+    lots, available_bins = build_explore(nickname, process, months, process_values=process_values)
     start, end = period_months(months)
     return ExploreLotsResponse(
         product_id=product_id,
         display_name=resolve_display_name(nickname),
-        process=process,
+        process=sub or process,
         period={"months": months, "start": start, "end": end},
         lots=lots,
         available_bins=available_bins,

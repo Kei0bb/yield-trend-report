@@ -80,7 +80,10 @@ export default function SummaryTable({ rows }: Props) {
             <tr
               key={`${r.nickname}-${r.process}-${r.level}-${r.process_label}`}
               style={{ ...styles.tr, ...(warn ? styles.trWarn : {}), ...(isSub ? styles.trSub : {}) }}
-              onClick={() => navigate(`/explore/${encodeURIComponent(r.product_id)}/${r.process}`)}
+              onClick={() => navigate(
+                `/explore/${encodeURIComponent(r.product_id)}/${r.process}` +
+                (isSub ? `?sub=${encodeURIComponent(r.process_label)}` : "")
+              )}
             >
               <td style={{ ...styles.tdLeft, ...(isSub ? styles.tdLeftSub : {}) }}>
                 {isSub ? (

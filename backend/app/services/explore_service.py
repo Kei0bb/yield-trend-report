@@ -15,6 +15,7 @@ def build_explore(
     nickname: str,
     process: str,
     months: int = 6,
+    process_values: list[str] | None = None,
 ) -> tuple[list[LotData], list[str]]:
     """Fetch raw-bin lot data and collapse bins beyond the top 10 into "Other".
 
@@ -33,8 +34,11 @@ def build_explore(
     The returned ``LotData`` objects are modified in-place (bin_breakdown
     rewritten); all other fields (yield_pct, lot_date, wafer_count, warnings)
     are preserved unchanged.
+
+    When *process_values* is given, only those DB PROCESS values are queried
+    (sub-process drill-down); otherwise the process's full merged set is used.
     """
-    lots = get_lots(nickname, process, months, raw_bins=True)
+    lots = get_lots(nickname, process, months, raw_bins=True, process_values=process_values)
     if not lots:
         return lots, []
 
