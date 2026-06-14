@@ -11,19 +11,22 @@
 #                  A single value; '%' enables an Oracle LIKE wildcard.
 #   bin_group    : bin_mappings/<bin_group>.csv (without extension)
 #   bin_groups   : optional per-process overrides, e.g. {ft: main_ft}
-#   processes    : logical process -> DB PROCESS value(s). Omit a key to use the
-#                  default (CP/FT/SLT). A list maps to PROCESS IN (...).
+#   processes    : logical process (cp / ft / slt) -> list of DB PROCESS values.
+#                  ALWAYS write a list, even for one value: ft: [cFT1]
 #
-# Dashboard sub-process rows:
-#   A list under processes.<cp|ft|slt> drives the hierarchical Dashboard view.
-#   The list as a whole becomes the merged "major" row (PROCESS IN (...)), and
-#   EACH element becomes an indented sub-process row (PROCESS = <value>), labelled
-#   with the DB PROCESS value verbatim. See the Orion example below.
-#     cp: [CP1, CP2]  →  CP (merged)
-#                          └ CP1
-#                          └ CP2
-#   A single value (cp: CP1) yields one merged row + one identical sub-row.
-#   Omitting the key yields a single row matching PROCESS = 'CP' (no sub-rows).
+# How processes drives the Dashboard
+# ----------------------------------
+#   The list values are the actual strings in the DB PROCESS column; the query
+#   filters on them (merged = PROCESS IN (...), sub = PROCESS = <value>).
+#   The major-process name shown is the logical key in upper case (cp -> "CP").
+#
+#     cp: [CP1, CP2]   →   CP   (major, merged: PROCESS IN ('CP1','CP2'))
+#                            └ CP1   (sub: PROCESS = 'CP1')
+#                            └ CP2   (sub: PROCESS = 'CP2')
+#
+#   2+ values  → major (merged) row + one sub row per value
+#   1 value    → major row only (a lone sub would duplicate it)
+#   key omitted→ single row matching PROCESS = '<CP|FT|SLT>'
 # ─────────────────────────────────────────────────────────────────
 products:
   Product-A:
@@ -31,8 +34,8 @@ products:
     product_id: P12345-A
     bin_group: main
     processes:
-      ft: cFT1
-      slt: cSLT1
+      ft: [cFT1]
+      slt: [cSLT1]
 
   # Revision sharing the same display_name → merged with Product-A
   Product-A-rev2:
@@ -40,24 +43,24 @@ products:
     product_id: P12346-A
     bin_group: main
     processes:
-      ft: cFT1
-      slt: cSLT1
+      ft: [cFT1]
+      slt: [cSLT1]
 
   Product-B:
     display_name: Product-B
     product_id: P12345-B
     bin_group: main_b
     processes:
-      ft: cFT1
-      slt: cSLT1
+      ft: [cFT1]
+      slt: [cSLT1]
 
   SCT101:
     display_name: SCT101
     product_id: SCT101A
     bin_group: main
     processes:
-      ft: cFT1
-      slt: cSLT1
+      ft: [cFT1]
+      slt: [cSLT1]
 
   # LIKE wildcard example: matches SC0G29AP3-ES, -ES-9Q1, ... in one query.
   Phoenix:
@@ -65,8 +68,8 @@ products:
     product_id: SC0G29AP3%
     bin_group: Phoenix
     processes:
-      ft: cFT1
-      slt: cSLT1
+      ft: [cFT1]
+      slt: [cSLT1]
 
   # Multi sub-process example: CP and FT each have several DB PROCESS values.
   # Dashboard renders, per logical process, a merged "major" row plus one
@@ -81,4 +84,4 @@ products:
     processes:
       cp: [CP1, CP2]
       ft: [cFT1, cFT2]
-      slt: cSLT1
+      slt: [cSLT1]

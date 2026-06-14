@@ -69,12 +69,11 @@ def build_summary(months: int = 6, process: str = "all") -> dict:
     """Build the dashboard summary for every configured product × target process.
 
     For each nickname × major process, emits:
-    - A **major row** (level=0) covering all sub-processes combined, as today.
-    - Immediately after, one **sub row** (level=1) per value returned by
-      ``resolve_process_filter``, querying only that single DB PROCESS value.
-
-    When ``resolve_process_filter`` returns None or an empty list the major row
-    is emitted alone (current / graceful-degradation behaviour).
+    - A **major row** (level=0) covering all sub-processes combined.
+    - Sub rows (level=1) only when the process has **2 or more** configured DB
+      PROCESS values — one per value, querying that single value. A process with
+      a single value (or none) is shown as the major row alone, since a lone sub
+      row would just duplicate the major row.
     """
     start, end = period_months(months)
     nicknames = get_products()
@@ -89,9 +88,10 @@ def build_summary(months: int = 6, process: str = "all") -> dict:
                 continue
             rows.append(major_row)
 
-            # Sub-process rows — one per configured DB PROCESS value.
+            # Sub-process rows — only when there are 2+ values (a lone value
+            # would merely duplicate the major row).
             sub_values = resolve_process_filter(nickname, proc)
-            if sub_values:
+            if sub_values and len(sub_values) >= 2:
                 for value in sub_values:
                     sub_row = _build_row(
                         nickname,
