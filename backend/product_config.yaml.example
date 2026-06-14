@@ -13,6 +13,17 @@
 #   bin_groups   : optional per-process overrides, e.g. {ft: main_ft}
 #   processes    : logical process -> DB PROCESS value(s). Omit a key to use the
 #                  default (CP/FT/SLT). A list maps to PROCESS IN (...).
+#
+# Dashboard sub-process rows:
+#   A list under processes.<cp|ft|slt> drives the hierarchical Dashboard view.
+#   The list as a whole becomes the merged "major" row (PROCESS IN (...)), and
+#   EACH element becomes an indented sub-process row (PROCESS = <value>), labelled
+#   with the DB PROCESS value verbatim. See the Orion example below.
+#     cp: [CP1, CP2]  →  CP (merged)
+#                          └ CP1
+#                          └ CP2
+#   A single value (cp: CP1) yields one merged row + one identical sub-row.
+#   Omitting the key yields a single row matching PROCESS = 'CP' (no sub-rows).
 # ─────────────────────────────────────────────────────────────────
 products:
   Product-A:
@@ -49,11 +60,25 @@ products:
       slt: cSLT1
 
   # LIKE wildcard example: matches SC0G29AP3-ES, -ES-9Q1, ... in one query.
-  # `processes.ft` can also be a list, e.g. [cFT1, cFT2] → PROCESS IN ('cFT1','cFT2').
   Phoenix:
     display_name: Phoenix
     product_id: SC0G29AP3%
     bin_group: Phoenix
     processes:
       ft: cFT1
+      slt: cSLT1
+
+  # Multi sub-process example: CP and FT each have several DB PROCESS values.
+  # Dashboard renders, per logical process, a merged "major" row plus one
+  # indented sub-process row per value:
+  #   CP (merged: CP1+CP2)        FT (merged: cFT1+cFT2)
+  #     └ CP1                       └ cFT1
+  #     └ CP2                       └ cFT2
+  Orion:
+    display_name: Orion
+    product_id: ORN-100
+    bin_group: main
+    processes:
+      cp: [CP1, CP2]
+      ft: [cFT1, cFT2]
       slt: cSLT1
