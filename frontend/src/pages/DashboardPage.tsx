@@ -4,7 +4,7 @@ import type { DashboardSummaryResponse } from "../types";
 import SummaryTable from "../components/dashboard/SummaryTable";
 
 export default function DashboardPage() {
-  const [months, setMonths] = useState(6);
+  const [months, setMonths] = useState(3);
   const [process, setProcess] = useState("all");
   const [data, setData] = useState<DashboardSummaryResponse | null>(null);
   const [loading, setLoading] = useState(false);

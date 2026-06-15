@@ -40,8 +40,11 @@ def _build_row(
             for level 1).
         process_values: When provided, passed through to ``get_lots`` to query
             exactly this set of DB PROCESS values (sub-process rows).
+
+    Uses ``raw_bins=True`` so anomaly bin-surge alerts are computed on the raw DB
+    bin names (no CSV bin-map dependency), consistent with the Explore page.
     """
-    lots = get_lots(nickname, process, months, process_values=process_values)
+    lots = get_lots(nickname, process, months, raw_bins=True, process_values=process_values)
     if not lots:
         return None
     latest = lots[-1]
