@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { SummaryRow } from "../../types";
 import Sparkline from "./Sparkline";
@@ -106,16 +106,33 @@ export default function SummaryTable({ rows }: Props) {
           const orphanKey = `${r.product_id}|${r.process}|${r.process_label}`;
           const isOrphanLead = isSub && orphanLeads.has(orphanKey);
           return (
+            <Fragment key={`${r.nickname}-${r.process}-${r.level}-${r.process_label}`}>
+              {/* subs-only product: show a grayed, non-clickable major header
+                  so the sub rows don't appear to dangle under nothing. */}
+              {isOrphanLead && (
+                <tr style={{ ...styles.tr, ...styles.trDisabled }}>
+                  <td style={styles.tdLeft}>
+                    <b>{r.product_id}</b> <span style={styles.proc}>/ {r.process}</span>
+                    {r.display_name && r.display_name !== r.product_id && (
+                      <div style={styles.subName}>{r.display_name}</div>
+                    )}
+                  </td>
+                  <td style={styles.td}>—</td>
+                  <td style={styles.td}>—</td>
+                  <td style={styles.td}>—</td>
+                  <td style={styles.td} />
+                  <td style={styles.tdLeft} />
+                </tr>
+              )}
             <tr
-              key={`${r.nickname}-${r.process}-${r.level}-${r.process_label}`}
-              style={{ ...styles.tr, ...(warn ? styles.trWarn : {}), ...(isSub && !isOrphanLead ? styles.trSub : {}) }}
+              style={{ ...styles.tr, ...(warn ? styles.trWarn : {}), ...(isSub ? styles.trSub : {}) }}
               onClick={() => navigate(
                 `/explore/${encodeURIComponent(r.product_id)}/${r.process}` +
                 (isSub ? `?sub=${encodeURIComponent(r.process_label)}` : "")
               )}
             >
-              <td style={{ ...styles.tdLeft, ...(isSub && !isOrphanLead ? styles.tdLeftSub : {}) }}>
-                {isSub && !isOrphanLead ? (
+              <td style={{ ...styles.tdLeft, ...(isSub ? styles.tdLeftSub : {}) }}>
+                {isSub ? (
                   <>
                     <span style={styles.subGlyph}>└</span>
                     <span style={styles.proc}>{r.process_label}</span>
@@ -146,6 +163,7 @@ export default function SummaryTable({ rows }: Props) {
                 ))}
               </td>
             </tr>
+            </Fragment>
           );
         })}
       </tbody>
@@ -160,6 +178,7 @@ const styles: Record<string, React.CSSProperties> = {
   tr: { cursor: "pointer", borderBottom: "var(--border-soft)" },
   trWarn: { background: "rgba(224, 62, 62, 0.05)" },
   trSub: { opacity: 0.85 },
+  trDisabled: { cursor: "default", opacity: 0.5, background: "var(--warm-white)" },
   td: { textAlign: "right", padding: "10px 14px", fontVariantNumeric: "tabular-nums" },
   tdLeft: { textAlign: "left", padding: "10px 14px" },
   tdLeftSub: { paddingLeft: 28 },
