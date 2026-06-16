@@ -50,7 +50,7 @@ export default function ExplorePage() {
     <main style={styles.container}>
       <header style={styles.header}>
         <div style={styles.headerLeft}>
-          <button onClick={() => navigate("/dashboard")} style={styles.back}>← Dashboard</button>
+          <button onClick={() => navigate("/dashboard")} style={styles.back}>← Back</button>
           <div>
             <div style={styles.breadcrumb}>
               Explore · Lot Drill-down{data?.display_name ? ` · ${data.display_name}` : ""}

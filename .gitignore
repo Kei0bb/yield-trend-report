@@ -54,6 +54,9 @@ htmlcov/
 backend/product_config.yaml
 !backend/product_config.yaml.example
 
+# 異常検知設定
+backend/anomaly_config.yaml
+
 # bin マッピングは bin_mappings/ 配下に品種別 CSV を配置
 # 本体 *.csv は環境別管理（gitignore）、サンプル *.csv.example と README はコミット
 backend/bin_mappings/*.csv
