@@ -11,22 +11,36 @@
 #                  A single value; '%' enables an Oracle LIKE wildcard.
 #   bin_group    : bin_mappings/<bin_group>.csv (without extension)
 #   bin_groups   : optional per-process overrides, e.g. {ft: main_ft}
-#   processes    : logical process (cp / ft / slt) -> list of DB PROCESS values.
-#                  ALWAYS write a list, even for one value: ft: [cFT1]
+#   processes    : logical process (cp / ft / slt) → DB PROCESS value(s).
 #
-# How processes drives the Dashboard
-# ----------------------------------
-#   The list values are the actual strings in the DB PROCESS column; the query
-#   filters on them (merged = PROCESS IN (...), sub = PROCESS = <value>).
-#   The major-process name shown is the logical key in upper case (cp -> "CP").
+# processes entry forms
+# ─────────────────────
+#   scalar  ft: cFT1
+#               → major row queries PROCESS = 'cFT1'; no sub rows
 #
-#     cp: [CP1, CP2]   →   CP   (major, merged: PROCESS IN ('CP1','CP2'))
-#                            └ CP1   (sub: PROCESS = 'CP1')
-#                            └ CP2   (sub: PROCESS = 'CP2')
+#   list    cp: [CP, CP1, CP2]
+#               → first element is the major row (PROCESS = 'CP', clean roll-up)
+#                 remaining elements are sub rows (each PROCESS = 'CP1' etc.)
+#                 NOT stacked — the major row does NOT include CP1/CP2 data
+#             cp: [cFT1]
+#               → single-element list treated as scalar (major only, no subs)
 #
-#   2+ values  → major (merged) row + one sub row per value
-#   1 value    → major row only (a lone sub would duplicate it)
-#   key omitted→ single row matching PROCESS = '<CP|FT|SLT>'
+#   dict    cp: {major: CP, subs: [CP1, CP2]}
+#               → explicit form; same semantics as the list above
+#           cp: {major: CP}
+#               → major row only, no sub rows
+#           cp: {subs: [CP1, CP2]}
+#               → NO major row; only CP1 and CP2 sub rows
+#                 (useful when DB has no clean roll-up PROCESS value)
+#
+#   key absent (omitted entirely)
+#               → single row querying PROCESS = '<CP|FT|SLT>' literally
+#                 (backward-compatible default)
+#
+# Dashboard layout example for Orion:
+#   CP (major: PROCESS='CP')        FT (major: PROCESS='cFT1')
+#     └ CP1  (PROCESS='CP1')          └ cFT2  (PROCESS='cFT2')
+#     └ CP2  (PROCESS='CP2')
 # ─────────────────────────────────────────────────────────────────
 products:
   Product-A:
@@ -71,17 +85,22 @@ products:
       ft: [cFT1]
       slt: [cSLT1]
 
-  # Multi sub-process example: CP and FT each have several DB PROCESS values.
-  # Dashboard renders, per logical process, a merged "major" row plus one
-  # indented sub-process row per value:
-  #   CP (merged: CP1+CP2)        FT (merged: cFT1+cFT2)
-  #     └ CP1                       └ cFT1
-  #     └ CP2                       └ cFT2
+  # Multi sub-process example: CP has a clean roll-up in the DB, plus two
+  # sub-process PROCESS values; FT also has a major + one sub.
+  # The major row queries ONLY its own value — no stacking/double-counting.
+  #
+  #   Dashboard layout:
+  #     CP  (major: PROCESS='CP')       FT  (major: PROCESS='cFT1')
+  #       └ CP1  (PROCESS='CP1')          └ cFT2  (PROCESS='cFT2')
+  #       └ CP2  (PROCESS='CP2')
   Orion:
     display_name: Orion
     product_id: ORN-100
     bin_group: main
     processes:
-      cp: [CP1, CP2]
-      ft: [cFT1, cFT2]
+      cp: [CP, CP1, CP2]      # major row 'CP' (clean) + sub rows CP1, CP2 (NOT stacked)
+      ft: [cFT1, cFT2]        # major 'cFT1' + sub cFT2
       slt: [cSLT1]
+
+  # Subs-only example: DB has no clean roll-up for CP; show only individual steps.
+  # cp: {subs: [CP1, CP2]}   # no major row, only CP1/CP2 sub rows

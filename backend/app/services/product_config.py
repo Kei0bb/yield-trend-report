@@ -16,15 +16,37 @@ DEFAULT_BIN_GROUP = "default"
 _FT_FAMILY = {"SLT"}
 
 
-def _as_str(val) -> str:
-    """Normalise a scalar / list config value to a ';'-delimited string so the
-    downstream resolvers (which split on ';'/',') work for both YAML lists and
-    plain strings. Returns '' for None/empty."""
-    if val is None:
-        return ""
-    if isinstance(val, (list, tuple)):
-        return ";".join(str(v).strip() for v in val if str(v).strip())
-    return str(val).strip()
+def _parse_process_entry(entry):
+    """Return (major: str|None, subs: list[str]).
+
+    None major means the major row is suppressed (subs-only config).
+
+    Accepted forms:
+      scalar  ft: cFT1            → major='cFT1', subs=[]
+      list    cp: [CP, CP1, CP2]  → major='CP' (first), subs=['CP1','CP2']
+      list-1  ft: [cFT1]          → major='cFT1', subs=[]
+      dict    cp: {major: CP, subs: [CP1, CP2]}
+      subs-only cp: {subs: [CP1, CP2]} → major=None, subs=['CP1','CP2']
+      major-only cp: {major: CP}       → major='CP', subs=[]
+    """
+    if entry is None:
+        return None, []
+    if isinstance(entry, dict):
+        major_raw = entry.get("major")
+        major = str(major_raw).strip() if major_raw not in (None, "") else None
+        subs_raw = entry.get("subs") or []
+        if isinstance(subs_raw, str):
+            subs_raw = [subs_raw]
+        subs = [str(s).strip() for s in subs_raw if str(s).strip()]
+        return major, subs
+    if isinstance(entry, (list, tuple)):
+        vals = [str(v).strip() for v in entry if str(v).strip()]
+        if not vals:
+            return None, []
+        return vals[0], vals[1:]
+    # scalar
+    s = str(entry).strip()
+    return (s or None), []
 
 
 def _config_from_yaml() -> dict[str, dict[str, str]] | None:
@@ -37,7 +59,17 @@ def _config_from_yaml() -> dict[str, dict[str, str]] | None:
             product_id: ...            # single id; '%' LIKE wildcard allowed
             bin_group: ...
             bin_groups: {ft: ..., slt: ...}   # optional per-process overrides
-            processes: {cp: ..., ft: cFT1, slt: cSLT1}  # DB PROCESS values
+            processes:                 # DB PROCESS values per logical process
+              cp: CP                  # scalar → single major row
+              ft: [cFT1, cFT2]        # list → first=major, rest=sub rows
+              slt: {major: cSLT1}     # dict with optional 'subs' key
+              # subs-only: cp: {subs: [CP1, CP2]} → no major row, sub rows only
+
+    Per process (cp/ft/slt), three internal keys are stored:
+      <p>_set   : "1" when the key was present in the YAML processes mapping
+      <p>_major : the DB PROCESS value for the major row, or "" when suppressed
+      <p>_subs  : ";"-joined sub-process DB PROCESS values
+
     A bare top-level mapping (no `products:` key) is also accepted.
     """
     with PRODUCT_CONFIG_YAML.open(encoding="utf-8") as f:
@@ -51,16 +83,27 @@ def _config_from_yaml() -> dict[str, dict[str, str]] | None:
         name = str(nickname).strip()
         processes = entry.get("processes") or {}
         bin_groups = entry.get("bin_groups") or {}
-        config[name] = {
-            "display_name": _as_str(entry.get("display_name")) or name,
-            "product_id": _as_str(entry.get("product_id")),
-            "bin_group": _as_str(entry.get("bin_group")) or DEFAULT_BIN_GROUP,
-            "ft_bin_group": _as_str(bin_groups.get("ft")),
-            "slt_bin_group": _as_str(bin_groups.get("slt")),
-            "cp_processes": _as_str(processes.get("cp")),
-            "ft_processes": _as_str(processes.get("ft")),
-            "slt_processes": _as_str(processes.get("slt")),
+
+        row: dict[str, str] = {
+            "display_name": str(entry.get("display_name") or name).strip() or name,
+            "product_id": str(entry.get("product_id") or "").strip(),
+            "bin_group": str(entry.get("bin_group") or "").strip() or DEFAULT_BIN_GROUP,
+            "ft_bin_group": str(bin_groups.get("ft") or "").strip(),
+            "slt_bin_group": str(bin_groups.get("slt") or "").strip(),
         }
+
+        for proc in ("cp", "ft", "slt"):
+            if isinstance(processes, dict) and proc in processes:
+                major, subs = _parse_process_entry(processes[proc])
+                row[f"{proc}_set"] = "1"
+                row[f"{proc}_major"] = major or ""
+                row[f"{proc}_subs"] = ";".join(subs)
+            else:
+                row[f"{proc}_set"] = ""
+                row[f"{proc}_major"] = ""
+                row[f"{proc}_subs"] = ""
+
+        config[name] = row
     return config or None
 
 
@@ -70,7 +113,8 @@ def load_product_config() -> dict[str, dict[str, str]] | None:
 
     FT/SLT data lives in the CP schema under the *same* PRODUCT_ID as CP,
     distinguished only by the PROCESS column (e.g. 'cFT1'), so a product has a
-    single `product_id`; per-process PROCESS values come from cp/ft/slt_processes.
+    single `product_id`; per-process PROCESS values come from cp/ft/slt_major
+    and cp/ft/slt_subs.
 
     Returns None when product_config.yaml is absent (falls back to DB enumeration
     or mock). Cached for the process lifetime — restart the server after edits.
@@ -110,21 +154,48 @@ def resolve_display_name(nickname: str) -> str:
     return config[nickname].get("display_name", nickname)
 
 
-def resolve_process_filter(nickname: str, process: str) -> list[str] | None:
-    """Return the list of DB PROCESS values to filter for a given nickname + process.
+def resolve_major_process(nickname: str, process: str) -> str | None:
+    """The DB PROCESS value the major row queries, or None to suppress the major row.
 
-    Returns None when no filter is configured (use exact process match).
-    Example: ft_processes="cFT1;cFT2" → ["cFT1", "cFT2"] when process="FT"
+    Unconfigured process key → the literal process name (preserves default behavior).
+    """
+    config = load_product_config()
+    if config is None or nickname not in config:
+        return process.upper()
+    entry = config[nickname]
+    if entry.get(f"{process.lower()}_set") != "1":
+        return process.upper()          # key absent → default literal
+    major = entry.get(f"{process.lower()}_major", "")
+    return major or None                # present but empty → suppress major row
+
+
+def resolve_sub_processes(nickname: str, process: str) -> list[str]:
+    """Sub-process DB PROCESS values shown as indented sub rows ([] when none)."""
+    config = load_product_config()
+    if config is None or nickname not in config:
+        return []
+    raw = config[nickname].get(f"{process.lower()}_subs", "")
+    return [v for v in (x.strip() for x in raw.split(";")) if v]
+
+
+def resolve_process_filter(nickname: str, process: str) -> list[str] | None:
+    """DB PROCESS values for the merged/major view (Report + Explore-no-sub + dashboard).
+
+    Returns [major] when a major is set, else the subs list, else None
+    (caller then queries using the literal process name).
+
+    Used by yield_service.py (Report/PDF) and lot_service.py (Explore fallback).
     """
     config = load_product_config()
     if config is None or nickname not in config:
         return None
-    key = f"{process.lower()}_processes"
-    raw = config[nickname].get(key, "")
-    if not raw:
+    if config[nickname].get(f"{process.lower()}_set") != "1":
         return None
-    values = [v.strip() for v in raw.replace(",", ";").split(";")]
-    return [v for v in values if v] or None
+    major = config[nickname].get(f"{process.lower()}_major", "")
+    if major:
+        return [major]
+    subs = resolve_sub_processes(nickname, process)
+    return subs or None
 
 
 def resolve_bin_group(nickname: str, process: str = "") -> str:

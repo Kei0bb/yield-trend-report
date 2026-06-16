@@ -6,7 +6,8 @@ from app.services.lot_service import SUPPORTED_PROCESSES, get_lots, period_month
 from app.services.product_config import (
     primary_product_id,
     resolve_display_name,
-    resolve_process_filter,
+    resolve_major_process,
+    resolve_sub_processes,
 )
 from app.services.yield_service import get_products
 
@@ -71,12 +72,15 @@ def _build_row(
 def build_summary(months: int = 6, process: str = "all") -> dict:
     """Build the dashboard summary for every configured product × target process.
 
-    For each nickname × major process, emits:
-    - A **major row** (level=0) covering all sub-processes combined.
-    - Sub rows (level=1) only when the process has **2 or more** configured DB
-      PROCESS values — one per value, querying that single value. A process with
-      a single value (or none) is shown as the major row alone, since a lone sub
-      row would just duplicate the major row.
+    For each nickname × major process, emits rows according to the process config:
+    - **Major row** (level=0): present when ``resolve_major_process`` returns a
+      non-None value; queries exactly that single DB PROCESS value (no stacking).
+    - **Sub rows** (level=1): one per value from ``resolve_sub_processes``, each
+      querying that single DB PROCESS value, shown indented under the major.
+    - **Subs-only** (no major row): when the config has ``subs`` but no ``major``
+      (e.g. ``cp: {subs: [CP1, CP2]}``), only the sub rows are emitted.
+    - **Key absent**: defaults to a single major row querying the literal process
+      name (e.g. "CP"), with no sub rows — preserves prior behavior.
     """
     start, end = period_months(months)
     nicknames = get_products()
@@ -85,27 +89,28 @@ def build_summary(months: int = 6, process: str = "all") -> dict:
     rows: list[SummaryRow] = []
     for nickname in nicknames:
         for proc in processes:
-            # Major row (all sub-processes combined).
-            major_row = _build_row(nickname, proc, months, level=0, process_label=proc)
-            if major_row is None:
-                continue
-            rows.append(major_row)
+            # Major row: queries exactly its single major DB PROCESS value.
+            major = resolve_major_process(nickname, proc)
+            if major is not None:
+                major_row = _build_row(
+                    nickname, proc, months,
+                    level=0,
+                    process_label=proc,
+                    process_values=[major],
+                )
+                if major_row is not None:
+                    rows.append(major_row)
 
-            # Sub-process rows — only when there are 2+ values (a lone value
-            # would merely duplicate the major row).
-            sub_values = resolve_process_filter(nickname, proc)
-            if sub_values and len(sub_values) >= 2:
-                for value in sub_values:
-                    sub_row = _build_row(
-                        nickname,
-                        proc,
-                        months,
-                        level=1,
-                        process_label=value,
-                        process_values=[value],
-                    )
-                    if sub_row is not None:
-                        rows.append(sub_row)
+            # Sub rows: one per sub-process value, each queried individually.
+            for value in resolve_sub_processes(nickname, proc):
+                sub_row = _build_row(
+                    nickname, proc, months,
+                    level=1,
+                    process_label=value,
+                    process_values=[value],
+                )
+                if sub_row is not None:
+                    rows.append(sub_row)
 
     resp = DashboardSummaryResponse(
         generated_at=datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds"),

@@ -11,25 +11,34 @@ interface Props {
 
 /** Sort only the major (level 0) rows, then re-attach each major's sub rows
  *  (level 1) immediately after it. This preserves the major+sub grouping
- *  regardless of the chosen sort key. */
+ *  regardless of the chosen sort key.
+ *
+ *  A group may start with a level-1 row when the product uses subs-only config
+ *  (no major row). Such an "orphan-lead" group is sorted by its first row. */
 function sortGrouped(rows: SummaryRow[], sortKey: SortKey, asc: boolean): SummaryRow[] {
-  // Build groups: each group = [major, ...subs]
+  // Build groups: each group = [major-or-first-sub, ...remaining-subs]
   const groups: SummaryRow[][] = [];
   for (const row of rows) {
     if (row.level === 0) {
       groups.push([row]);
     } else {
-      // Attach sub to the most recent major group
-      if (groups.length > 0) {
-        groups[groups.length - 1].push(row);
+      // Attach sub to the most recent group that belongs to the same
+      // product+process (handles subs-only groups correctly).
+      const last = groups[groups.length - 1];
+      if (
+        groups.length > 0 &&
+        last[0].product_id === row.product_id &&
+        last[0].process === row.process
+      ) {
+        last.push(row);
       } else {
-        // Orphaned sub row (shouldn't happen) — treat as its own group
+        // Orphan sub row (subs-only config) — start a new group
         groups.push([row]);
       }
     }
   }
 
-  // Sort groups by the major row's sort key
+  // Sort groups by the first row's sort key
   groups.sort((ga, gb) => {
     const av = ga[0][sortKey];
     const bv = gb[0][sortKey];
@@ -50,6 +59,24 @@ export default function SummaryTable({ rows }: Props) {
   const [asc, setAsc] = useState(true);
 
   const sorted = sortGrouped(rows, sortKey, asc);
+
+  // Pre-compute which level-1 rows are "orphan leads" (first in their
+  // product+process group with no preceding level-0 major row).
+  const orphanLeads = new Set<string>();
+  {
+    // Track the last-seen level-0 key per product+process
+    const seenMajor = new Set<string>();
+    for (const r of sorted) {
+      const groupKey = `${r.product_id}|${r.process}`;
+      if (r.level === 0) {
+        seenMajor.add(groupKey);
+      } else if (!seenMajor.has(groupKey)) {
+        // First encounter of this product+process at level 1 with no major → orphan lead
+        orphanLeads.add(`${groupKey}|${r.process_label}`);
+        seenMajor.add(groupKey); // mark as seen so only the FIRST sub is orphan-lead
+      }
+    }
+  }
 
   const toggleSort = (k: SortKey) => {
     if (k === sortKey) setAsc(!asc);
@@ -76,17 +103,19 @@ export default function SummaryTable({ rows }: Props) {
           const warn = r.warnings.length > 0;
           const deltaColor = r.delta == null ? "var(--gray-400)" : r.delta < 0 ? "var(--red)" : "var(--green)";
           const isSub = r.level === 1;
+          const orphanKey = `${r.product_id}|${r.process}|${r.process_label}`;
+          const isOrphanLead = isSub && orphanLeads.has(orphanKey);
           return (
             <tr
               key={`${r.nickname}-${r.process}-${r.level}-${r.process_label}`}
-              style={{ ...styles.tr, ...(warn ? styles.trWarn : {}), ...(isSub ? styles.trSub : {}) }}
+              style={{ ...styles.tr, ...(warn ? styles.trWarn : {}), ...(isSub && !isOrphanLead ? styles.trSub : {}) }}
               onClick={() => navigate(
                 `/explore/${encodeURIComponent(r.product_id)}/${r.process}` +
                 (isSub ? `?sub=${encodeURIComponent(r.process_label)}` : "")
               )}
             >
-              <td style={{ ...styles.tdLeft, ...(isSub ? styles.tdLeftSub : {}) }}>
-                {isSub ? (
+              <td style={{ ...styles.tdLeft, ...(isSub && !isOrphanLead ? styles.tdLeftSub : {}) }}>
+                {isSub && !isOrphanLead ? (
                   <>
                     <span style={styles.subGlyph}>└</span>
                     <span style={styles.proc}>{r.process_label}</span>
