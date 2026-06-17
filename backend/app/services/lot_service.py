@@ -61,11 +61,16 @@ def _aggregate(
     process: str,
     *,
     raw_bins: bool = False,
+    split_by_rev: bool = False,
 ) -> list[LotData]:
     """Aggregate a raw DataFrame into a list of LotData.
 
     When *raw_bins* is True, skip the bin-group CSV mapping and use the DB
     ``bin_name`` column directly as the bin category.
+
+    When *split_by_rev* is True, group by (lot_id, test_program_rev) instead of
+    just lot_id, so a lot containing multiple distinct TP revs is split into
+    one LotData row per rev.
     """
     if df.empty:
         return []
@@ -76,8 +81,22 @@ def _aggregate(
     else:
         df = apply_bin_groups(df, bin_group, process)  # adds 'bin_code' = group name
 
+    if split_by_rev and "test_program_rev" in df.columns:
+        df = df.copy()
+        df["test_program_rev"] = df["test_program_rev"].fillna("")
+        group_cols = ["lot_id", "test_program_rev"]
+    else:
+        group_cols = ["lot_id"]
+
     lots: list[LotData] = []
-    for lot_id, g in df.groupby("lot_id", sort=False):
+    for key, g in df.groupby(group_cols, sort=False):
+        if isinstance(key, tuple) and len(key) > 1:
+            lot_id_val, rev_val = key[0], key[1]
+        elif isinstance(key, tuple):
+            lot_id_val, rev_val = key[0], None
+        else:
+            lot_id_val, rev_val = key, None
+
         wafer_count = int(g["wafer_id"].nunique())
         lot_yield = round(float(g.groupby("wafer_id")["yield_pct"].first().mean()), 2)
         total_gross = float(g.groupby("wafer_id")["gross_die"].first().sum())
@@ -91,14 +110,16 @@ def _aggregate(
                 bin_name=str(bin_name), bin_codes=raw_codes,
                 count=count, percent=percent,
             ))
-        if "test_program_rev" in g.columns:
+        if split_by_rev:
+            test_program_rev = str(rev_val or "")
+        elif "test_program_rev" in g.columns:
             revs = sorted({str(v).strip() for v in g["test_program_rev"].dropna().tolist() if str(v).strip()})
             test_program_rev = ", ".join(revs)
         else:
             test_program_rev = ""
 
         lots.append(LotData(
-            lot_id=str(lot_id),
+            lot_id=str(lot_id_val),
             lot_date=str(g["lot_date"].iloc[0]),
             wafer_count=wafer_count,
             yield_pct=lot_yield,
@@ -107,7 +128,7 @@ def _aggregate(
             test_program_rev=test_program_rev,
         ))
 
-    lots.sort(key=lambda l: (l.lot_date, l.lot_id))
+    lots.sort(key=lambda l: (l.lot_date, l.lot_id, l.test_program_rev))
     return lots
 
 
@@ -118,6 +139,7 @@ def get_lots(
     *,
     raw_bins: bool = False,
     process_values: list[str] | None = None,
+    split_by_rev: bool = False,
 ) -> list[LotData]:
     """Return lot-granular data for a product+process, oldest→newest, with
     anomaly warnings attached to the latest lot.
@@ -132,10 +154,12 @@ def get_lots(
         process_values: When provided, bypass ``resolve_process_filter`` and
             query exactly these DB PROCESS values. Used to build sub-process
             rows on the dashboard.
+        split_by_rev: When True, split a lot containing multiple distinct TP
+            revs into one LotData row per rev (Explore page only).
     """
     df = _load_dataframe(nickname, process, months, process_values=process_values)
     bin_group = resolve_bin_group(nickname, process)
-    lots = _aggregate(df, bin_group, process, raw_bins=raw_bins)
+    lots = _aggregate(df, bin_group, process, raw_bins=raw_bins, split_by_rev=split_by_rev)
     if lots:
         cfg = resolve_config(nickname, load_anomaly_config())
         warns = evaluate(lots, cfg)

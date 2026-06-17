@@ -4,13 +4,23 @@ import { fetchExploreLots } from "../api/client";
 import type { ExploreLotsResponse, ProcessData } from "../types";
 import YieldChart from "../components/YieldChart";
 import LotTable from "../components/explore/LotTable";
+import { last8 } from "../utils/tpRev";
 
 /** Map the lot-granular Explore response into the Report-style ProcessData
  *  (lots = x-axis labels, yield_avg = yield line, fail_bins = stacked bars),
- *  so the trend view is identical to the Report tab's YieldChart. */
+ *  so the trend view is identical to the Report tab's YieldChart.
+ *
+ *  A lot_id can repeat when split across multiple TP revs, so x-axis labels
+ *  are disambiguated with the rev's last-8 chars whenever a lot_id occurs
+ *  more than once. */
 function toProcessData(data: ExploreLotsResponse): ProcessData {
+  const counts: Record<string, number> = {};
+  data.lots.forEach((l) => { counts[l.lot_id] = (counts[l.lot_id] || 0) + 1; });
+  const labelFor = (l: typeof data.lots[number]) =>
+    counts[l.lot_id] > 1 && l.test_program_rev ? `${l.lot_id} (${last8(l.test_program_rev)})` : l.lot_id;
+
   return {
-    lots: data.lots.map((l) => l.lot_id),
+    lots: data.lots.map(labelFor),
     yield_avg: data.lots.map((l) => l.yield_pct),
     fail_bins: Object.fromEntries(
       data.available_bins.map((bin) => [
@@ -33,14 +43,9 @@ export default function ExplorePage() {
   // major process is shown.
   const label = sub || process;
 
-  const load = (force = false) =>
-    fetchExploreLots(productId, process, 6, sub || undefined, force)
-      .then((d) => { setData(d); })
-      .catch((e) => { console.error(e); setError("Failed to load lot data."); });
-
   useEffect(() => {
     let active = true;
-    fetchExploreLots(productId, process, 6, sub || undefined, false)
+    fetchExploreLots(productId, process, 6, sub || undefined)
       .then((d) => { if (active) setData(d); })
       .catch((e) => { console.error(e); if (active) setError("Failed to load lot data."); });
     return () => { active = false; };
@@ -56,7 +61,6 @@ export default function ExplorePage() {
       <header style={styles.header}>
         <div style={styles.headerLeft}>
           <button onClick={() => navigate("/dashboard")} style={styles.back}>← Back</button>
-          <button onClick={() => load(true)} style={styles.back}>🔄 Refresh</button>
           <div>
             <div style={styles.breadcrumb}>
               Explore · Lot Drill-down{data?.display_name ? ` · ${data.display_name}` : ""}

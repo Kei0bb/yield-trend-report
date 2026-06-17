@@ -1,4 +1,5 @@
 import type { LotData } from "../../types";
+import { last8 } from "../../utils/tpRev";
 
 interface Props {
   lots: LotData[];
@@ -43,12 +44,12 @@ export default function LotTable({ lots, availableBins }: Props) {
         </thead>
         <tbody>
           {rows.map((lot) => (
-            <tr key={lot.lot_id} style={lot.warnings.length ? styles.warn : undefined}>
+            <tr key={`${lot.lot_id}|${lot.test_program_rev}`} style={lot.warnings.length ? styles.warn : undefined}>
               <td style={styles.tdLeft}>
                 <span title={lot.lot_id} style={styles.cellTrunc}>{lot.lot_id}</span>
               </td>
               <td style={styles.tdLeft}>
-                <span title={lot.test_program_rev} style={styles.cellTrunc}>{lot.test_program_rev || "—"}</span>
+                <span title={lot.test_program_rev} style={styles.cellTrunc}>{last8(lot.test_program_rev) || "—"}</span>
               </td>
               <td style={styles.td}>{lot.lot_date}</td>
               <td style={styles.td}>{lot.wafer_count}</td>

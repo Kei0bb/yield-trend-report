@@ -15,7 +15,6 @@ def explore_lots(
     process: str = Query(...),
     months: int = Query(6, ge=1, le=24),
     sub: str | None = Query(None),
-    force: bool = Query(False),
 ) -> ExploreLotsResponse:
     # Resolve the UI-facing product_id back to its internal nickname (used for
     # bin_group / query resolution). Falls back to the value itself when the
@@ -40,5 +39,4 @@ def explore_lots(
     return get_or_compute(
         f"explore:{product_id}:{process}:{months}:{sub or ''}",
         _compute,
-        force=force,
     )

@@ -9,12 +9,14 @@ interface Props {
   rows: SummaryRow[];
 }
 
-/** Sort only the major (level 0) rows, then re-attach each major's sub rows
- *  (level 1) immediately after it. This preserves the major+sub grouping
- *  regardless of the chosen sort key.
- *
- *  A group may start with a level-1 row when the product uses subs-only config
- *  (no major row). Such an "orphan-lead" group is sorted by its first row. */
+const PROC_ORDER: Record<string, number> = { CP: 0, FT: 1, SLT: 2 };
+
+/** Group rows into process-groups (each = a major row + its subs, OR an
+ *  orphan subs-only group), then bucket those groups by product_id. Within a
+ *  product, groups are ordered by a fixed process order (CP, then FT, then
+ *  anything else). Products are ordered by the chosen sort key, read from
+ *  each product's representative row (its CP group's first row if present,
+ *  else its first group's first row). Respects `asc`. */
 function sortGrouped(rows: SummaryRow[], sortKey: SortKey, asc: boolean): SummaryRow[] {
   // Build groups: each group = [major-or-first-sub, ...remaining-subs]
   const groups: SummaryRow[][] = [];
@@ -38,10 +40,39 @@ function sortGrouped(rows: SummaryRow[], sortKey: SortKey, asc: boolean): Summar
     }
   }
 
-  // Sort groups by the first row's sort key
-  groups.sort((ga, gb) => {
-    const av = ga[0][sortKey];
-    const bv = gb[0][sortKey];
+  // Bucket process-groups by product_id, preserving first-seen product order.
+  const productOrder: string[] = [];
+  const productGroups = new Map<string, SummaryRow[][]>();
+  for (const group of groups) {
+    const pid = group[0].product_id;
+    if (!productGroups.has(pid)) {
+      productGroups.set(pid, []);
+      productOrder.push(pid);
+    }
+    productGroups.get(pid)!.push(group);
+  }
+
+  // Within each product, order process-groups by fixed CP -> FT -> other.
+  for (const pid of productOrder) {
+    const procGroups = productGroups.get(pid)!;
+    procGroups.sort((ga, gb) => {
+      const oa = PROC_ORDER[ga[0].process] ?? Number.MAX_SAFE_INTEGER;
+      const ob = PROC_ORDER[gb[0].process] ?? Number.MAX_SAFE_INTEGER;
+      return oa - ob;
+    });
+  }
+
+  // Sort products by the chosen sort key, read from each product's
+  // representative row: its CP group's first row if present, else its
+  // first group's first row.
+  productOrder.sort((pa, pb) => {
+    const repFor = (pid: string): SummaryRow => {
+      const procGroups = productGroups.get(pid)!;
+      const cpGroup = procGroups.find((g) => g[0].process === "CP");
+      return (cpGroup ?? procGroups[0])[0];
+    };
+    const av = repFor(pa)[sortKey];
+    const bv = repFor(pb)[sortKey];
     if (av == null) return 1;
     if (bv == null) return -1;
     if (av < bv) return asc ? -1 : 1;
@@ -49,8 +80,15 @@ function sortGrouped(rows: SummaryRow[], sortKey: SortKey, asc: boolean): Summar
     return 0;
   });
 
-  // Flatten back to a single array
-  return groups.flat();
+  // Flatten back to a single array: for each product (in sorted order), its
+  // process-groups in fixed CP->FT order, each as [major(+subs)] or orphan subs.
+  const result: SummaryRow[] = [];
+  for (const pid of productOrder) {
+    for (const group of productGroups.get(pid)!) {
+      result.push(...group);
+    }
+  }
+  return result;
 }
 
 export default function SummaryTable({ rows }: Props) {
@@ -107,7 +145,7 @@ export default function SummaryTable({ rows }: Props) {
           const isOrphanLead = isSub && orphanLeads.has(orphanKey);
           return (
             <Fragment key={`${r.nickname}-${r.process}-${r.level}-${r.process_label}`}>
-              {/* subs-only product: show a grayed, non-clickable major header
+              {/* subs-only product: show a filled, non-clickable major header
                   so the sub rows don't appear to dangle under nothing. */}
               {isOrphanLead && (
                 <tr style={{ ...styles.tr, ...styles.trDisabled }}>
@@ -178,7 +216,7 @@ const styles: Record<string, React.CSSProperties> = {
   tr: { cursor: "pointer", borderBottom: "var(--border-soft)" },
   trWarn: { background: "rgba(224, 62, 62, 0.05)" },
   trSub: { opacity: 0.85 },
-  trDisabled: { cursor: "default", opacity: 0.5, background: "var(--warm-white)" },
+  trDisabled: { cursor: "default", background: "var(--warm-white)", color: "var(--gray-500)" },
   td: { textAlign: "right", padding: "10px 14px", fontVariantNumeric: "tabular-nums" },
   tdLeft: { textAlign: "left", padding: "10px 14px" },
   tdLeftSub: { paddingLeft: 28 },

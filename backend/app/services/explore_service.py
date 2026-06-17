@@ -38,7 +38,7 @@ def build_explore(
     When *process_values* is given, only those DB PROCESS values are queried
     (sub-process drill-down); otherwise the process's full merged set is used.
     """
-    lots = get_lots(nickname, process, months, raw_bins=True, process_values=process_values)
+    lots = get_lots(nickname, process, months, raw_bins=True, process_values=process_values, split_by_rev=True)
     if not lots:
         return lots, []
 
