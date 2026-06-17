@@ -4,6 +4,7 @@ from app.models.schemas import ExploreLotsResponse
 from app.services.explore_service import build_explore
 from app.services.lot_service import period_months
 from app.services.product_config import nickname_for_product_id, resolve_display_name
+from app.services.ttl_cache import get_or_compute
 
 router = APIRouter()
 
@@ -14,6 +15,7 @@ def explore_lots(
     process: str = Query(...),
     months: int = Query(6, ge=1, le=24),
     sub: str | None = Query(None),
+    force: bool = Query(False),
 ) -> ExploreLotsResponse:
     # Resolve the UI-facing product_id back to its internal nickname (used for
     # bin_group / query resolution). Falls back to the value itself when the
@@ -22,13 +24,21 @@ def explore_lots(
     # `sub` (a single DB PROCESS value) drills into one sub-process; without it
     # the process's full merged set is queried.
     process_values = [sub] if sub else None
-    lots, available_bins = build_explore(nickname, process, months, process_values=process_values)
-    start, end = period_months(months)
-    return ExploreLotsResponse(
-        product_id=product_id,
-        display_name=resolve_display_name(nickname),
-        process=sub or process,
-        period={"months": months, "start": start, "end": end},
-        lots=lots,
-        available_bins=available_bins,
+
+    def _compute() -> ExploreLotsResponse:
+        lots, available_bins = build_explore(nickname, process, months, process_values=process_values)
+        start, end = period_months(months)
+        return ExploreLotsResponse(
+            product_id=product_id,
+            display_name=resolve_display_name(nickname),
+            process=sub or process,
+            period={"months": months, "start": start, "end": end},
+            lots=lots,
+            available_bins=available_bins,
+        )
+
+    return get_or_compute(
+        f"explore:{product_id}:{process}:{months}:{sub or ''}",
+        _compute,
+        force=force,
     )

@@ -33,9 +33,14 @@ export default function ExplorePage() {
   // major process is shown.
   const label = sub || process;
 
+  const load = (force = false) =>
+    fetchExploreLots(productId, process, 6, sub || undefined, force)
+      .then((d) => { setData(d); })
+      .catch((e) => { console.error(e); setError("Failed to load lot data."); });
+
   useEffect(() => {
     let active = true;
-    fetchExploreLots(productId, process, 6, sub || undefined)
+    fetchExploreLots(productId, process, 6, sub || undefined, false)
       .then((d) => { if (active) setData(d); })
       .catch((e) => { console.error(e); if (active) setError("Failed to load lot data."); });
     return () => { active = false; };
@@ -51,6 +56,7 @@ export default function ExplorePage() {
       <header style={styles.header}>
         <div style={styles.headerLeft}>
           <button onClick={() => navigate("/dashboard")} style={styles.back}>← Back</button>
+          <button onClick={() => load(true)} style={styles.back}>🔄 Refresh</button>
           <div>
             <div style={styles.breadcrumb}>
               Explore · Lot Drill-down{data?.display_name ? ` · ${data.display_name}` : ""}

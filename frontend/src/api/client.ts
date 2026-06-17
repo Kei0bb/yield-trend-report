@@ -38,19 +38,19 @@ export async function fetchHealth(): Promise<{ status: string; mock: boolean }> 
 }
 
 export async function fetchDashboardSummary(
-  months = 6, process = "all"
+  months = 6, process = "all", force = false
 ): Promise<DashboardSummaryResponse> {
   const res = await api.get<DashboardSummaryResponse>("/dashboard/summary", {
-    params: { months, process },
+    params: { months, process, force },
   });
   return res.data;
 }
 
 export async function fetchExploreLots(
-  productId: string, process: string, months = 6, sub?: string
+  productId: string, process: string, months = 6, sub?: string, force = false
 ): Promise<ExploreLotsResponse> {
   const res = await api.get<ExploreLotsResponse>("/explore/lots", {
-    params: { product_id: productId, process, months, ...(sub ? { sub } : {}) },
+    params: { product_id: productId, process, months, ...(sub ? { sub } : {}), ...(force ? { force: true } : {}) },
   });
   return res.data;
 }

@@ -10,11 +10,11 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (force = false) => {
     setLoading(true);
     setError(null);
     try {
-      setData(await fetchDashboardSummary(months, process));
+      setData(await fetchDashboardSummary(months, process, force));
     } catch (e) {
       console.error(e);
       setError("Failed to load dashboard data.");
@@ -23,7 +23,7 @@ export default function DashboardPage() {
     }
   }, [months, process]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(false); }, [load]);
 
   return (
     <main style={styles.container}>
@@ -49,7 +49,7 @@ export default function DashboardPage() {
             <option value="FT">FT</option>
           </select>
         </label>
-        <button onClick={load} disabled={loading} style={styles.refresh}>
+        <button onClick={() => load(true)} disabled={loading} style={styles.refresh}>
           {loading ? "Refreshing…" : "🔄 Refresh"}
         </button>
         {data && <span style={styles.updated}>Updated: {new Date(data.generated_at).toLocaleString()}</span>}

@@ -91,6 +91,12 @@ def _aggregate(
                 bin_name=str(bin_name), bin_codes=raw_codes,
                 count=count, percent=percent,
             ))
+        if "test_program_rev" in g.columns:
+            revs = sorted({str(v).strip() for v in g["test_program_rev"].dropna().tolist() if str(v).strip()})
+            test_program_rev = ", ".join(revs)
+        else:
+            test_program_rev = ""
+
         lots.append(LotData(
             lot_id=str(lot_id),
             lot_date=str(g["lot_date"].iloc[0]),
@@ -98,6 +104,7 @@ def _aggregate(
             yield_pct=lot_yield,
             bin_breakdown=breakdown,
             warnings=[],
+            test_program_rev=test_program_rev,
         ))
 
     lots.sort(key=lambda l: (l.lot_date, l.lot_id))

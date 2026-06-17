@@ -7,6 +7,8 @@ from app.services.yield_queries import build_product_id_where, _PROCESS_SPEC
 
 logger = logging.getLogger(__name__)
 
+TEST_PROGRAM_COLUMN = "REV01"  # SEMI_CP_HEADER column holding the test program revision (e.g. 'REV01')
+
 # Column names for query_lot_data results, in the SAME order as the SELECT in
 # build_lot_query (lot_date is the 2nd column, not appended last). Keeping this
 # aligned with the SELECT is essential: pandas labels positionally, so a wrong
@@ -20,6 +22,7 @@ LOT_COLUMNS = [
     "raw_bin_code",
     "bin_name",
     "bin_fail_count",
+    "test_program_rev",
 ]
 
 # Real per-lot identifier column by process (vs. yield_queries' ISO-week rollup).
@@ -69,7 +72,8 @@ def build_lot_query(
             h.EFFECTIVE_NUM                                AS gross_die,
             b.BIN_CODE                                     AS raw_bin_code,
             b.BIN_NAME                                     AS bin_name,
-            b.BIN_COUNT                                    AS bin_fail_count
+            b.BIN_COUNT                                    AS bin_fail_count,
+            h.{TEST_PROGRAM_COLUMN}                          AS test_program_rev
         FROM {spec['header']} h
         {spec['join_type']} {spec['bin_sum']} b
           ON {join_clause}

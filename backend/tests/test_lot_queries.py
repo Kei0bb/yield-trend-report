@@ -35,7 +35,7 @@ def test_query_lot_data_aligns_columns_with_select_order(monkeypatch):
     bin_name strings don't land in the numeric bin_fail_count column.
 
     SELECT order is: lot_id, lot_date, wafer_id, yield_pct, gross_die,
-    raw_bin_code, bin_name, bin_fail_count.
+    raw_bin_code, bin_name, bin_fail_count, test_program_rev.
     """
     db_row = (
         "LOT-001",       # lot_id
@@ -46,6 +46,7 @@ def test_query_lot_data_aligns_columns_with_select_order(monkeypatch):
         2,               # raw_bin_code
         "IDDQ2_LV",      # bin_name (a string!)
         12,              # bin_fail_count
+        "REV01",         # test_program_rev
     )
     cursor = MagicMock()
     cursor.fetchall.return_value = [db_row]
@@ -60,3 +61,4 @@ def test_query_lot_data_aligns_columns_with_select_order(monkeypatch):
     assert df.loc[0, "lot_date"] == "2026-05-01"
     assert df.loc[0, "bin_name"] == "IDDQ2_LV"
     assert int(df.loc[0, "bin_fail_count"]) == 12
+    assert df.loc[0, "test_program_rev"] == "REV01"

@@ -45,6 +45,7 @@ class LotData(BaseModel):
     yield_pct: float
     bin_breakdown: list[BinBreakdown] = []
     warnings: list[Warning] = []
+    test_program_rev: str = ""
 
 
 class ExploreLotsResponse(BaseModel):

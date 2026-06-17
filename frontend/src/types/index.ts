@@ -72,6 +72,7 @@ export interface LotData {
   yield_pct: number;
   bin_breakdown: BinBreakdown[];
   warnings: Warning[];
+  test_program_rev: string;
 }
 
 export interface ExploreLotsResponse {

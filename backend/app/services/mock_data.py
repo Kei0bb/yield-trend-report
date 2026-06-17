@@ -106,7 +106,8 @@ def mock_lot_dataframe(product: str, process: str, months: int = 6) -> pd.DataFr
                     "raw_bin_code": bin_code,
                     "bin_name": _BIN_NAMES.get(bin_code, f"Bin{bin_code}"),
                     "bin_fail_count": fail_count,
+                    "test_program_rev": "REV01",
                 })
 
-    columns = COMMON_COLUMNS + ["lot_date"]
+    columns = COMMON_COLUMNS + ["lot_date", "test_program_rev"]
     return pd.DataFrame(rows, columns=columns)
