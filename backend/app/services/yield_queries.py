@@ -115,7 +115,7 @@ def query_yield_data(
           ON {join_clause}
         WHERE {pid_where}
           AND {process_where}
-          AND h.REWORK_NEW   = 0
+          AND b.REWORK_NEW   = 0
           AND h.{date_col}  >= TO_DATE(:start_month || '-01', 'YYYY-MM-DD')
           AND h.{date_col}   < ADD_MONTHS(
                                   TO_DATE(:end_month || '-01', 'YYYY-MM-DD'), 1)
