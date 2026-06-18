@@ -75,15 +75,19 @@ def _aggregate(
     if df.empty:
         return []
     if raw_bins:
-        # Use the DB bin_name directly as the category column; skip CSV mapping.
-        df = df.copy()
-        df["bin_code"] = df["bin_name"]
+        # Aggregate by the numeric bin code (raw_bin_code); BinName can vary
+        # across wafers for the same code, so keying by name would split one
+        # physical bin across columns.
+        bin_key_col = "raw_bin_code"
     else:
         df = apply_bin_groups(df, bin_group, process)  # adds 'bin_code' = group name
+        bin_key_col = "bin_code"
 
     if split_by_rev and "test_program_rev" in df.columns:
         df = df.copy()
-        df["test_program_rev"] = df["test_program_rev"].fillna("")
+        df["test_program_rev"] = (
+            df["test_program_rev"].fillna("").astype(str).map(lambda s: s[-8:] if len(s) > 8 else s)
+        )
         group_cols = ["lot_id", "test_program_rev"]
     else:
         group_cols = ["lot_id"]
@@ -102,12 +106,20 @@ def _aggregate(
         total_gross = float(g.groupby("wafer_id")["gross_die"].first().sum())
 
         breakdown: list[BinBreakdown] = []
-        for bin_name, bg in g.groupby("bin_code", sort=False):
+        for key, bg in g.groupby(bin_key_col, sort=False):
             count = int(bg["bin_fail_count"].sum())
             percent = round(count / total_gross * 100, 3) if total_gross else 0.0
             raw_codes = sorted({int(c) for c in bg["raw_bin_code"].tolist()})
+            if raw_bins:
+                code = int(key)
+                names = bg["bin_name"].astype(str)
+                mode = names.mode()
+                repr_name = mode.iloc[0] if not mode.empty else (names.iloc[0] if len(names) else "")
+                label = f"{code}_{repr_name}"
+            else:
+                label = str(key)
             breakdown.append(BinBreakdown(
-                bin_name=str(bin_name), bin_codes=raw_codes,
+                bin_name=label, bin_codes=raw_codes,
                 count=count, percent=percent,
             ))
         if split_by_rev:

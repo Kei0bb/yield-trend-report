@@ -13,19 +13,19 @@ export default function LotTable({ lots, availableBins }: Props) {
   };
   const rows = [...lots].reverse();
 
-  const minWidth = 150 + 96 + 96 + 64 + 72 + availableBins.length * 64 + 120;
+  const minWidth = 116 + 80 + 84 + 48 + 58 + availableBins.length * 60 + 96;
 
   return (
     <div style={styles.scroll}>
       <table style={{ ...styles.table, minWidth }}>
         <colgroup>
-          <col style={{ width: 150 }} />
+          <col style={{ width: 116 }} />
+          <col style={{ width: 80 }} />
+          <col style={{ width: 84 }} />
+          <col style={{ width: 48 }} />
+          <col style={{ width: 58 }} />
+          {availableBins.map((b) => <col key={b} style={{ width: 60 }} />)}
           <col style={{ width: 96 }} />
-          <col style={{ width: 96 }} />
-          <col style={{ width: 64 }} />
-          <col style={{ width: 72 }} />
-          {availableBins.map((b) => <col key={b} style={{ width: 64 }} />)}
-          <col style={{ width: 120 }} />
         </colgroup>
         <thead>
           <tr>
