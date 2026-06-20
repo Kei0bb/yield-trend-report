@@ -62,12 +62,23 @@ def aggregate_lot_data(
         else:
             yield_avg.append(None)
 
-    bin_data = (
-        df.groupby(["lot_id", "bin_code"])
-        .agg(fail_sum=("bin_fail_count", "sum"), gross_sum=("gross_die", "sum"))
-        .reset_index()
+    # Denominator = the lot's TOTAL gross die, counting each wafer's gross_die
+    # ONCE. Summing gross_die over the (lot, bin) rows would count a wafer's
+    # gross_die once per fail-bin row it has — and after bin-group mapping
+    # collapses several raw bins into one group, that inflates the denominator
+    # several-fold and makes bin% far too low. Mirror lot_service._aggregate.
+    gross_by_lot = (
+        df.groupby(["lot_id", "wafer_id"])["gross_die"].first()
+        .groupby("lot_id").sum()
     )
-    bin_data["bin_pct"] = (bin_data["fail_sum"] / bin_data["gross_sum"] * 100).round(3)
+    bin_data = (
+        df.groupby(["lot_id", "bin_code"])["bin_fail_count"].sum()
+        .reset_index(name="fail_sum")
+    )
+    bin_data["gross_sum"] = bin_data["lot_id"].map(gross_by_lot)
+    bin_data["bin_pct"] = (
+        bin_data["fail_sum"] / bin_data["gross_sum"].where(bin_data["gross_sum"] > 0) * 100
+    ).round(3).fillna(0.0)
 
     pivot = (
         bin_data.pivot(index="lot_id", columns="bin_code", values="bin_pct")
