@@ -1,10 +1,8 @@
 import { useEffect, useState } from "react";
 import ReportView from "../components/ReportView";
 import ErrorBanner from "../components/ErrorBanner";
-import { fetchProducts, fetchHealth, fetchYieldData, exportPdf } from "../api/client";
+import { fetchProducts, fetchHealth, fetchYieldData, exportPdf, fetchProcessUnits } from "../api/client";
 import type { Product, YieldRequest, YieldResponse } from "../types";
-
-const PROCESSES = ["CP", "FT", "SLT"];
 
 function formatYM(d: Date): string {
   const y = d.getFullYear();
@@ -21,7 +19,8 @@ function addMonths(d: Date, n: number): Date {
 export default function ReportPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [productId, setProductId] = useState("");
-  const [processes, setProcesses] = useState<string[]>(["CP", "FT", "SLT"]);
+  const [units, setUnits] = useState<{ family: string; label: string }[]>([]);
+  const [processes, setProcesses] = useState<string[]>([]);
   const [isMock, setIsMock] = useState<boolean | null>(null);
 
   const [data, setData] = useState<YieldResponse | null>(null);
@@ -36,6 +35,24 @@ export default function ReportPage() {
     });
     fetchHealth().then((h) => setIsMock(h.mock)).catch(() => setIsMock(null));
   }, []);
+
+  useEffect(() => {
+    if (!productId) {
+      setUnits([]);
+      setProcesses([]);
+      return;
+    }
+    fetchProcessUnits(productId)
+      .then((list) => {
+        setUnits(list);
+        setProcesses(list.map((u) => u.label));
+      })
+      .catch((err) => {
+        console.error("Failed to fetch process units:", err);
+        setUnits([]);
+        setProcesses([]);
+      });
+  }, [productId]);
 
   const toggleProcess = (p: string) =>
     setProcesses((prev) =>
@@ -94,16 +111,16 @@ export default function ReportPage() {
           <div style={styles.field}>
             <span style={styles.fieldLabel}>Process</span>
             <div style={styles.chipGroup}>
-              {PROCESSES.map((p) => {
-                const active = processes.includes(p);
+              {units.map((u) => {
+                const active = processes.includes(u.label);
                 return (
                   <button
-                    key={p}
+                    key={u.label}
                     type="button"
-                    onClick={() => toggleProcess(p)}
+                    onClick={() => toggleProcess(u.label)}
                     style={{ ...styles.chip, ...(active ? styles.chipActive : {}) }}
                   >
-                    {p}
+                    {u.label}
                   </button>
                 );
               })}

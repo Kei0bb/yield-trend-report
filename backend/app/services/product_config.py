@@ -1,3 +1,4 @@
+import json
 import logging
 from functools import lru_cache
 
@@ -49,6 +50,44 @@ def _parse_process_entry(entry):
     return (s or None), []
 
 
+def _parse_report_units(raw, nickname: str) -> list[dict]:
+    """Parse a product's `report:` list into validated unit dicts.
+
+    Each entry needs non-empty family/label and a non-empty values list
+    (a scalar string is accepted and wrapped into a single-element list).
+    Malformed entries are skipped with a logged warning.
+    """
+    if not raw:
+        return []
+    if not isinstance(raw, (list, tuple)):
+        logger.warning("product_config.yaml: %s.report is not a list — ignoring", nickname)
+        return []
+
+    units: list[dict] = []
+    for entry in raw:
+        if not isinstance(entry, dict):
+            logger.warning("product_config.yaml: %s.report entry %r is not a mapping — skipping", nickname, entry)
+            continue
+        family_raw = entry.get("family")
+        label_raw = entry.get("label")
+        values_raw = entry.get("values")
+
+        family = str(family_raw).strip().upper() if family_raw not in (None, "") else ""
+        label = str(label_raw).strip() if label_raw not in (None, "") else ""
+        if isinstance(values_raw, str):
+            values_raw = [values_raw]
+        values = [str(v).strip() for v in (values_raw or []) if str(v).strip()]
+
+        if not family or not label or not values:
+            logger.warning(
+                "product_config.yaml: %s.report entry %r missing family/label/values — skipping",
+                nickname, entry,
+            )
+            continue
+        units.append({"family": family, "label": label, "values": values})
+    return units
+
+
 def _config_from_yaml() -> dict[str, dict[str, str]] | None:
     """Parse product_config.yaml into the flat internal shape.
 
@@ -69,6 +108,14 @@ def _config_from_yaml() -> dict[str, dict[str, str]] | None:
       <p>_set   : "1" when the key was present in the YAML processes mapping
       <p>_major : the DB PROCESS value for the major row, or "" when suppressed
       <p>_subs  : ";"-joined sub-process DB PROCESS values
+
+    Optional `report:` key (explicit form only) defines the Report/PDF output
+    units for the product, each with a family (cp/ft/slt), a display label,
+    and the DB PROCESS values to query (merged into one series when >1):
+        report:
+          - {family: cp, label: "CP",  values: [CP]}
+          - {family: cp, label: "CP1", values: [CP1]}
+    Stored as JSON under the "report" key; see resolve_report_units().
 
     A bare top-level mapping (no `products:` key) is also accepted.
     """
@@ -102,6 +149,9 @@ def _config_from_yaml() -> dict[str, dict[str, str]] | None:
                 row[f"{proc}_set"] = ""
                 row[f"{proc}_major"] = ""
                 row[f"{proc}_subs"] = ""
+
+        report_units = _parse_report_units(entry.get("report"), name)
+        row["report"] = json.dumps(report_units)
 
         config[name] = row
     return config or None
@@ -196,6 +246,36 @@ def resolve_process_filter(nickname: str, process: str) -> list[str] | None:
         return [major]
     subs = resolve_sub_processes(nickname, process)
     return subs or None
+
+
+def resolve_report_units(nickname: str) -> list[dict]:
+    """Ordered Report/PDF output units for a product:
+    [{"family": "CP", "label": "CP1", "values": ["CP1"]}, ...].
+
+    `values` may be None in the fallback, meaning "resolve via resolve_process_filter".
+    Fallback (no `report:` / unconfigured) = CP, FT, SLT (current behavior).
+    """
+    config = load_product_config()
+    fallback = [{"family": f, "label": f, "values": None} for f in ("CP", "FT", "SLT")]
+    if config is None or nickname not in config:
+        return fallback
+    raw = config[nickname].get("report", "")
+    if raw:
+        try:
+            units = json.loads(raw)
+        except Exception:
+            units = []
+        if units:
+            return units
+    return fallback
+
+
+def resolve_report_unit(nickname: str, label: str) -> dict | None:
+    """Look up a single report unit by its label, or None."""
+    for u in resolve_report_units(nickname):
+        if u.get("label") == label:
+            return u
+    return None
 
 
 def resolve_bin_group(nickname: str, process: str = "") -> str:

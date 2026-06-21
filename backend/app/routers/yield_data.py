@@ -8,10 +8,13 @@ from app.services.product_config import (
     group_by_display_name,
     list_products as list_products_with_ids,
     load_product_config,
+    nickname_for_product_id,
     resolve_bin_group,
     resolve_display_name,
     resolve_process_filter,
     resolve_product_ids,
+    resolve_report_unit,
+    resolve_report_units,
     to_nicknames,
 )
 from app.services.yield_service import get_products, get_yield_data_merged
@@ -107,17 +110,33 @@ def debug_probe(nickname: str, process: str, start_month: str, end_month: str) -
 
 @router.post("/yield-data")
 def fetch_yield_data(req: YieldRequest) -> YieldResponse:
-    """Fetch yield + bin data, merging nicknames that share the same display_name."""
+    """Fetch yield + bin data, merging nicknames that share the same display_name.
+
+    `req.processes` carries Report unit LABELS (e.g. "CP", "CP1", "cFT1"), resolved
+    per display_name group via resolve_report_unit/resolve_report_units so each
+    product can define its own config-driven set of units (falls back to CP/FT/SLT).
+    """
     groups = group_by_display_name(to_nicknames(req.products))
 
     data: dict = {}
-    for process in req.processes:
-        data[process] = {}
+    for label in req.processes:
+        data[label] = {}
         for display_name, nicknames in groups.items():
-            data[process][display_name] = get_yield_data_merged(
+            unit = resolve_report_unit(nicknames[0], label)
+            family = unit["family"] if unit else label.upper()
+            values = unit["values"] if unit else None
+            data[label][display_name] = get_yield_data_merged(
                 nicknames=nicknames,
                 start_month=req.start_month,
                 end_month=req.end_month,
-                process=process,
+                process=family,
+                process_values=values,
             )
     return YieldResponse(data=data)
+
+
+@router.get("/process-units")
+def process_units(product_id: str) -> list[dict]:
+    """Selectable Report process units for a product: [{family, label}]."""
+    nickname = nickname_for_product_id(product_id) or product_id
+    return [{"family": u["family"], "label": u["label"]} for u in resolve_report_units(nickname)]

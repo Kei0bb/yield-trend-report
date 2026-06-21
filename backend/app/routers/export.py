@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
 
 from app.models.schemas import ProcessData, YieldRequest
-from app.services.product_config import group_by_display_name, to_nicknames
+from app.services.product_config import group_by_display_name, resolve_report_unit, to_nicknames
 from app.services.yield_service import get_yield_data_merged
 from app.services.pdf_service import generate_pdf
 
@@ -23,26 +23,30 @@ def export_pdf(req: YieldRequest) -> Response:
     groups = group_by_display_name(to_nicknames(req.products))
     display_names = list(groups.keys())
 
-    # data[process][display_name] = ProcessData
-    # 個別の process / product のデータ取得失敗で PDF 全体を 500 にしない
+    # data[label][display_name] = ProcessData
+    # 個別の label / product のデータ取得失敗で PDF 全体を 500 にしない
     data: dict = {}
-    for process in req.processes:
-        data[process] = {}
+    for label in req.processes:
+        data[label] = {}
         for display_name, nicknames in groups.items():
             try:
-                data[process][display_name] = get_yield_data_merged(
+                unit = resolve_report_unit(nicknames[0], label)
+                family = unit["family"] if unit else label.upper()
+                values = unit["values"] if unit else None
+                data[label][display_name] = get_yield_data_merged(
                     nicknames=nicknames,
                     start_month=req.start_month,
                     end_month=req.end_month,
-                    process=process,
+                    process=family,
+                    process_values=values,
                 )
             except Exception:
                 logger.error(
-                    "yield data fetch failed: process=%s display=%s nicknames=%s\n%s",
-                    process, display_name, nicknames, traceback.format_exc(),
+                    "yield data fetch failed: label=%s display=%s nicknames=%s\n%s",
+                    label, display_name, nicknames, traceback.format_exc(),
                 )
-                # 空データで埋めて他の process / product は処理継続
-                data[process][display_name] = ProcessData(lots=[], yield_avg=[], fail_bins={})
+                # 空データで埋めて他の label / product は処理継続
+                data[label][display_name] = ProcessData(lots=[], yield_avg=[], fail_bins={})
 
     products_label = "_vs_".join(display_names)
     try:

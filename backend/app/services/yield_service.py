@@ -55,12 +55,18 @@ def get_yield_data_merged(
     start_month: str,
     end_month: str,
     process: str,
+    process_values: list[str] | None = None,
 ) -> ProcessData:
     """Fetch and aggregate yield data for one or more nicknames as a single series.
 
     All nicknames are resolved to PRODUCT_IDs, which are queried together in one
     SQL statement. Nicknames sharing the same display_name represent revision variants
     of the same product and should be merged this way.
+
+    `process` is the logical family (cp/ft/slt) used for bin_group resolution.
+    `process_values`, when given, overrides the DB PROCESS value(s) to query
+    (e.g. a Report unit's explicit `values` list) instead of auto-resolving via
+    resolve_process_filter — used by config-driven Report/PDF units.
     """
     target_lots = latest_iso_weeks(anchor_from_end_month(end_month), FIXED_WEEK_COUNT)
 
@@ -75,7 +81,8 @@ def get_yield_data_merged(
 
     if settings.USE_MOCK_DATA:
         display = resolve_display_name(nicknames[0])
-        df = mock_yield_dataframe(display, start_month, end_month, process)
+        seed_proc = process_values[0] if process_values else process
+        df = mock_yield_dataframe(display, start_month, end_month, seed_proc)
     else:
         all_pids: list[str] = []
         for nickname in nicknames:
@@ -99,8 +106,10 @@ def get_yield_data_merged(
                 fail_bins={},
             )
 
-        # Resolve sub-process filter (e.g. ft_processes="FT1" → only query PROCESS=FT1)
-        process_values = resolve_process_filter(nicknames[0], process)
+        # Resolve sub-process filter (e.g. ft_processes="FT1" → only query PROCESS=FT1),
+        # unless the caller already supplied an explicit override (report units).
+        if process_values is None:
+            process_values = resolve_process_filter(nicknames[0], process)
 
         df = query_yield_data(process, all_pids, start_month, end_month, process_values=process_values)
 

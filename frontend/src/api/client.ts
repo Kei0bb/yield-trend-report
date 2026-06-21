@@ -55,3 +55,12 @@ export async function fetchExploreLots(
   return res.data;
 }
 
+export async function fetchProcessUnits(
+  productId: string
+): Promise<{ family: string; label: string }[]> {
+  const res = await api.get<{ family: string; label: string }[]>("/process-units", {
+    params: { product_id: productId },
+  });
+  return res.data;
+}
+
