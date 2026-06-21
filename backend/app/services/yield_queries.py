@@ -14,6 +14,7 @@ COMMON_COLUMNS = [
     "raw_bin_code",
     "bin_name",
     "bin_fail_count",
+    "substrate_id",
 ]
 
 # Per-process table and JOIN key definitions.
@@ -109,7 +110,8 @@ def query_yield_data(
             h.EFFECTIVE_NUM                                AS gross_die,
             b.BIN_CODE                                     AS raw_bin_code,
             b.BIN_NAME                                     AS bin_name,
-            b.BIN_COUNT                                    AS bin_fail_count
+            b.BIN_COUNT                                    AS bin_fail_count,
+            h.SUBSTRATE_ID                                 AS substrate_id
         FROM {spec['header']} h
         {spec['join_type']} {spec['bin_sum']} b
           ON {join_clause}

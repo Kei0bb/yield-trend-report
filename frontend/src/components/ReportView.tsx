@@ -6,8 +6,6 @@ interface ReportViewProps {
   request: YieldRequest | null;
 }
 
-const PROCESS_ORDER = ["CP", "FT", "SLT"];
-
 export default function ReportView({ data, request }: ReportViewProps) {
   if (!data || !request) {
     return (
@@ -25,9 +23,7 @@ export default function ReportView({ data, request }: ReportViewProps) {
     );
   }
 
-  const sortedProcesses = Object.keys(data.data).sort(
-    (a, b) => PROCESS_ORDER.indexOf(a) - PROCESS_ORDER.indexOf(b)
-  );
+  const sortedProcesses = request.processes.filter((p) => p in data.data);
 
   // display_name = first key of the first process's data (the backend groups by
   // display_name, merging revision variants of the same product into one series).

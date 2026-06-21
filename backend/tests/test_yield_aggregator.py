@@ -41,3 +41,24 @@ def test_bin_pct_not_deflated_by_mapped_group_collision():
     ])
     out = aggregate_lot_data(df, target_lots=["2026W01"])
     assert out.fail_bins["GroupX"] == [6.0]
+
+
+def test_bin_pct_denominator_is_substrate_aware_not_wafer_id_alone():
+    """WAFER_ID is only the per-substrate slot number, so it repeats across the
+    multiple substrates rolled into one ISO-week lot_id. The denominator must
+    dedupe by SUBSTRATE_ID + WAFER_ID, not WAFER_ID alone — otherwise same-numbered
+    wafers on different substrates collapse into one, shrinking the denominator
+    and inflating bin% past 100%.
+
+    1 lot, 2 substrates, each with ONE wafer both labeled wafer_id="1",
+    gross_die=1000 each (total gross = 2000). binA fails 100 on each substrate
+    (total fail = 200) → 200/2000 = 10.0% (NOT 200/1000 = 20.0%).
+    """
+    cols = ["lot_id", "substrate_id", "wafer_id", "yield_pct", "gross_die",
+             "raw_bin_code", "bin_name", "bin_code", "bin_fail_count"]
+    df = pd.DataFrame([
+        ("2026W01", "S1", "1", 90.0, 1000, 100, "binA", "binA", 100),
+        ("2026W01", "S2", "1", 90.0, 1000, 100, "binA", "binA", 100),
+    ], columns=cols)
+    out = aggregate_lot_data(df, target_lots=["2026W01"])
+    assert out.fail_bins["binA"] == [10.0]

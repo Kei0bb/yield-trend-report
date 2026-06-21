@@ -61,11 +61,16 @@ export default function ReportPage() {
 
   const buildRequest = (): YieldRequest => {
     const now = new Date();
+    // Order by the units array (config order from /process-units) so toggling
+    // chips can't scramble the chart order — the Report renders in this order.
+    const orderedProcesses = units.length
+      ? units.map((u) => u.label).filter((label) => processes.includes(label))
+      : processes;
     return {
       products: [productId],
       start_month: formatYM(addMonths(now, -2)),  // fixed 3-month window ending this month
       end_month: formatYM(now),
-      processes,
+      processes: orderedProcesses,
     };
   };
 

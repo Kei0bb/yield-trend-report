@@ -52,6 +52,7 @@ def mock_yield_dataframe(product: str, start_month: str, end_month: str, process
                 "raw_bin_code": bin_code,
                 "bin_name": _BIN_NAMES.get(bin_code, f"Bin{bin_code}"),
                 "bin_fail_count": fail_count,
+                "substrate_id": "MOCK1",
             })
 
     return pd.DataFrame(rows, columns=COMMON_COLUMNS)

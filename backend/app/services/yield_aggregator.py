@@ -67,9 +67,14 @@ def aggregate_lot_data(
     # gross_die once per fail-bin row it has — and after bin-group mapping
     # collapses several raw bins into one group, that inflates the denominator
     # several-fold and makes bin% far too low. Mirror lot_service._aggregate.
+    # Count each PHYSICAL wafer's gross_die once. In the Report, lot_id is an ISO
+    # week and WAFER_ID is only the per-substrate slot number, so WAFER_ID repeats
+    # across the week's substrates — dedupe by SUBSTRATE_ID + WAFER_ID (when
+    # available) so the denominator isn't shrunk N-fold (which inflates bin% >100%).
+    wafer_keys = ["lot_id"] + (["substrate_id"] if "substrate_id" in df.columns else []) + ["wafer_id"]
     gross_by_lot = (
-        df.groupby(["lot_id", "wafer_id"])["gross_die"].first()
-        .groupby("lot_id").sum()
+        df.groupby(wafer_keys)["gross_die"].first()
+        .groupby(level="lot_id").sum()
     )
     bin_data = (
         df.groupby(["lot_id", "bin_code"])["bin_fail_count"].sum()
