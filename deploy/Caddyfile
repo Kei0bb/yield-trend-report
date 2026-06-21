@@ -1,0 +1,66 @@
+# ─────────────────────────────────────────────────────────────────────────
+# Caddyfile — Yield Portal reverse proxy (internal LAN)
+#
+# Role: take browser requests on port 80 (any hostname: the FQDN
+#       yieldportal.socionext.com, the Windows computer name, or the IP)
+#       and forward them to the FastAPI app listening on 127.0.0.1:8000.
+#
+# The app (uvicorn) is bound to 127.0.0.1 so it is NOT reachable from the
+# network directly — only Caddy is. See docs/deploy-windows.md for setup.
+#
+# Run:   caddy run --config Caddyfile
+# (or install as a Windows service via NSSM — see the runbook.)
+# ─────────────────────────────────────────────────────────────────────────
+
+# Listen on port 80 for ALL hostnames. Plain HTTP (no certificate needed).
+# Works the moment IT points yieldportal.socionext.com at this machine's IP.
+:80 {
+	encode zstd gzip
+
+	# Forward everything to the FastAPI app.
+	reverse_proxy 127.0.0.1:8000
+
+	# Optional: write access logs to a file.
+	log {
+		output file C:\caddy\logs\access.log {
+			roll_size 10MiB
+			roll_keep 5
+		}
+	}
+}
+
+# ═════════════════════════════════════════════════════════════════════════
+# LATER — when you want HTTPS (https://yieldportal.socionext.com)
+# ═════════════════════════════════════════════════════════════════════════
+# Replace the `:80 { ... }` block above with ONE of the following.
+#
+# ── Option A: Caddy's own internal CA (no internet, no IT cert needed) ──
+#   Caddy generates a local certificate automatically. Each client PC must
+#   trust Caddy's root CA once (export it and have IT push it, or install
+#   manually). Good for LAN-only HTTPS.
+#
+#     yieldportal.socionext.com {
+#         tls internal
+#         encode zstd gzip
+#         reverse_proxy 127.0.0.1:8000
+#     }
+#
+# ── Option B: a certificate issued by your corporate CA ──
+#   Ask IT for a cert + key for yieldportal.socionext.com, save them on the
+#   machine, and point Caddy at the files. Browsers trust it with no warning
+#   because the corporate root CA is already on managed PCs.
+#
+#     yieldportal.socionext.com {
+#         tls C:\caddy\certs\yieldportal.crt C:\caddy\certs\yieldportal.key
+#         encode zstd gzip
+#         reverse_proxy 127.0.0.1:8000
+#     }
+#
+# ── LATER — simple access control (Basic auth) ──
+#   Generate a password hash:  caddy hash-password
+#   Then add inside the site block:
+#
+#     basicauth {
+#         # username  <hash from "caddy hash-password">
+#         viewer  $2a$14$....................................................
+#     }
