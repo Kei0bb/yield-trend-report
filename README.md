@@ -20,10 +20,15 @@ Oracle DB から Wafer 単位データを取得し、Lot 毎に集計。CP / FT 
 | 機能 | 詳細 |
 |------|------|
 | 3 ページ構成 | Dashboard（製品×工程の集計表）/ Report（単一製品の Yield トレンド + PDF）/ Explore（Lot 単位ドリルダウン） |
-| 製品 / 工程選択 | 上部ツールバーで `product_id` を選択（製品名は副表示）、CP / FT / SLT 選択、期間 3 / 6 / 12 ヶ月 |
+| 製品 / 工程選択 | 上部ツールバーで `product_id` を選択（製品名は副表示）、期間 3 / 6 / 12 ヶ月。工程チップは製品ごとに `product_config.yaml` の設定に応じて動的表示（下記参照） |
+| 製品ごとの出力工程設定 | `product_config.yaml` の `report:` で、製品別に大工程/小工程（CP, CP1, cFT1 など）の出力単位を任意の順序で定義可能。大工程なし（小工程のみ）の構成も可。未設定時は CP/FT/SLT の従来動作にフォールバック |
 | 複合チャート | Lot 平均 Yield 折れ線（右 Y 軸）+ 不良 Bin Stacked Bar（左 Y 軸）。週単位で必ず最新 12 ISO 週分を表示 |
 | Web プレビュー | Plotly でインタラクティブ表示（ズーム / ホバー / 凡例トグル） |
 | PDF エクスポート | "Export PDF" ボタンでサーバー生成（ReportLab + Plotly→kaleido）。A4 横向き、ロゴ / CONFIDENTIAL バッジ / ページ番号付き |
+| Dashboard | 製品×工程の集計表。大工程＋小工程（major/sub）を親子行で表示し、CP→FT の順序を固定 |
+| Explore | Lot 単位ドリルダウン。TP rev（テストプログラム改版、末尾 8 文字で識別）ごとに行を分割し、Bin は `BinNo_BinName` 表記で表示 |
+| 異常検知 | Yield 低下や Bin 急増を検知して警告バッジを表示（しきい値は `anomaly_config.yaml`） |
+| キャッシュ | Dashboard / Explore の集計結果をインメモリで 3 時間 TTL キャッシュ（バックエンド再起動でクリア） |
 | モックモード | Oracle 不要でモックデータで即起動 (`USE_MOCK_DATA=true`) |
 | 接続状態表示 | 上部ツールバーに "Mock data" / "Live DB" をリアルタイム表示 |
 
@@ -51,26 +56,37 @@ Oracle DB から Wafer 単位データを取得し、Lot 毎に集計。CP / FT 
 Report_gen/
 ├── backend/
 │   ├── app/
-│   │   ├── main.py               # FastAPI アプリ本体・CORS 設定
+│   │   ├── main.py               # FastAPI アプリ本体・CORS 設定・ルーター登録
 │   │   ├── config.py             # pydantic-settings（環境変数 + .env 読み込み）
 │   │   ├── database.py           # Oracle 接続プール管理
 │   │   ├── logging_config.py     # LOG_LEVEL env で制御する統一ログ設定
 │   │   ├── models/
 │   │   │   └── schemas.py        # Pydantic スキーマ
 │   │   ├── routers/
-│   │   │   └── yield_data.py     # GET /api/products, POST /api/yield-data, debug endpoints
+│   │   │   ├── yield_data.py     # GET /api/products, /api/process-units, POST /api/yield-data, debug endpoints
+│   │   │   ├── dashboard.py      # GET /api/dashboard/summary
+│   │   │   ├── explore.py        # GET /api/explore/lots
+│   │   │   ├── export.py         # POST /api/export-pdf
+│   │   │   └── anomaly_config.py # GET /api/anomaly/config
 │   │   ├── services/
-│   │   │   ├── yield_service.py  # オーケストレータ（薄いエントリポイント）
-│   │   │   ├── product_config.py # product_config.yaml 読み込み・nickname 解決（lru_cache）
-│   │   │   ├── bin_mapping.py    # bin_mappings/*.csv 読み込み・Bin コード変換（lru_cache）
-│   │   │   ├── yield_queries.py  # Oracle SQL ビルダ + 実行（CP/FT/SLT 統合）
+│   │   │   ├── yield_service.py    # Report 用オーケストレータ（薄いエントリポイント）
+│   │   │   ├── yield_queries.py    # Report 向け Oracle SQL ビルダ + 実行（CP/FT/SLT 統合）
 │   │   │   ├── yield_aggregator.py # DataFrame → ProcessData 集計（最新 12 週パディング）
-│   │   │   ├── pdf_service.py    # ReportLab + Plotly→PNG で PDF 生成
-│   │   │   └── mock_data.py      # モックデータ生成
+│   │   │   ├── lot_queries.py      # Explore 向け Lot 単位 Oracle SQL ビルダ + 実行
+│   │   │   ├── lot_service.py      # Explore 用オーケストレータ（TP rev 分割・Bin 集計）
+│   │   │   ├── summary_service.py  # Dashboard 集計（製品×工程、major/sub 行構成）
+│   │   │   ├── explore_service.py  # Explore レスポンス整形
+│   │   │   ├── anomaly_service.py  # 異常検知（Yield 低下 / Bin 急増の判定）
+│   │   │   ├── product_config.py   # product_config.yaml 読み込み・nickname/report units 解決（lru_cache）
+│   │   │   ├── bin_mapping.py      # bin_mappings/*.csv 読み込み・Bin コード変換（lru_cache）
+│   │   │   ├── pdf_service.py      # ReportLab + Plotly→PNG で PDF 生成
+│   │   │   ├── mock_data.py        # モックデータ生成
+│   │   │   └── ttl_cache.py        # Dashboard/Explore 用インメモリ TTL キャッシュ
 │   │   └── utils/
 │   │       └── csv_loader.py     # CSV 読み込み共通ヘルパー・パス定数
 │   ├── bin_mappings/             # 製品別 Bin マッピング CSV（*.csv.example を参照）
 │   ├── product_config.yaml       # 製品設定（*.yaml.example を参照）
+│   ├── anomaly_config.yaml       # 異常検知しきい値設定
 │   ├── pyproject.toml
 │   └── .env                      # ← gitignore 済み（下記テンプレート参照）
 ├── assets/
@@ -83,14 +99,26 @@ Report_gen/
 │       ├── theme.ts              # BIN_COLORS / PRODUCT_COLORS / FONT_FAMILY（共通定数）
 │       ├── index.css             # Notion デザイントークン（CSS 変数）
 │       ├── api/client.ts         # axios API クライアント
+│       ├── pages/
+│       │   ├── DashboardPage.tsx # Dashboard ページ
+│       │   ├── ExplorePage.tsx   # Explore ページ
+│       │   └── ReportPage.tsx    # Report ページ（上部ツールバー制御）
 │       ├── components/
-│       │   ├── Sidebar.tsx       # フィルターパネル
+│       │   ├── TopNav.tsx        # 上部ナビゲーション・フィルター
 │       │   ├── ReportView.tsx    # レポートメイン表示
 │       │   ├── YieldChart.tsx    # 複合チャートカード
 │       │   ├── PlotlyChart.tsx   # react-plotly.js CJS 互換ラッパー
-│       │   └── ErrorBanner.tsx   # インラインエラー表示
+│       │   ├── ErrorBanner.tsx   # インラインエラー表示
+│       │   ├── dashboard/
+│       │   │   ├── SummaryTable.tsx # Dashboard 集計テーブル
+│       │   │   └── Sparkline.tsx    # テーブル内の小型トレンド表示
+│       │   └── explore/
+│       │       └── LotTable.tsx     # Explore の Lot 単位テーブル
+│       ├── utils/
+│       │   └── tpRev.ts          # TP rev（テストプログラム改版）の末尾 8 文字抽出
 │       └── types/index.ts        # TypeScript 型定義
 └── docs/
+    ├── deploy-windows.md         # Windows デプロイ手順書
     └── specs/                    # 設計ドキュメント
 ```
 
@@ -183,6 +211,16 @@ CORS_ORIGINS=["http://localhost:5173"]
 
 ---
 
+## 製品設定 (product_config.yaml)
+
+製品ごとの DB 解決・Bin マッピング・Report 出力単位は `backend/product_config.yaml` で設定します。詳細・記法は `product_config.yaml.example` を参照してください。
+
+- **`processes:`** — 論理工程（`cp` / `ft` / `slt`）→ DB の `PROCESS` 列の値を対応付けます。`scalar`（単一値）/ `list`（先頭が major、残りが sub）/ `dict`（`{major, subs}` で明示指定、major 無しの subs-only も可）の 3 形式に対応。
+- **`report:`** — Report 画面 / PDF が出力する工程単位を明示的に指定します。`{family, label, values}` のオブジェクトのリストで、画面のチップ・PDF のページが定義順に並びます。未指定時は CP/FT/SLT の従来動作にフォールバックします。
+- **`bin_group`** — `bin_mappings/<bin_group>.csv` を参照し、Bin コード→グループ名の変換に使用します（工程ごとの上書きは `bin_groups`）。
+
+---
+
 ## API エンドポイント
 
 | メソッド | パス | 説明 |
@@ -190,8 +228,11 @@ CORS_ORIGINS=["http://localhost:5173"]
 | `GET` | `/health` | ヘルスチェック（`mock: true/false` 付き） |
 | `GET` | `/api/products` | 製品一覧取得（`{product_id, display_name}` の配列） |
 | `POST` | `/api/yield-data` | Yield + Bin データ取得（`products` は `product_id`） |
+| `GET` | `/api/process-units` | 製品ごとの選択可能な工程単位を取得（Report チップの動的表示用） |
+| `POST` | `/api/export-pdf` | PDF 生成（ReportLab + Plotly→kaleido） |
 | `GET` | `/api/dashboard/summary` | ダッシュボード集計（製品×工程） |
 | `GET` | `/api/explore/lots` | Lot 単位ドリルダウン（`product_id` + `process`） |
+| `GET` | `/api/anomaly/config` | 異常検知のしきい値設定を取得 |
 | `GET` | `/api/debug/config` | 設定ファイル読み込み状況の確認 |
 | `GET` | `/api/debug/probe` | 実 DB クエリの診断（行数・エラー確認） |
 
@@ -237,8 +278,13 @@ JOIN キーは `SUBSTRATE_ID` + `WAFER_ID` + `PROCESS`、Lot 識別列は `SUBST
 旧 `SEMI_FT_*` テーブルは参照しません。
 
 データは Wafer 単位（bin_code ごとに複数行）。アプリ側で Lot 毎に集計します。  
-Report の `lot_id` は `MODIFIED_DATE` から ISO 年週形式（`IYYY"W"IW`）で生成、Explore は実 `SUBSTRATE_ID` 単位で表示します。  
-Bin 不良率 = `BIN_COUNT / EFFECTIVE_NUM × 100`
+Report の `lot_id` は `MODIFIED_DATE` から ISO 年週形式（`IYYY"W"IW`）で生成、Explore は実 `SUBSTRATE_ID` 単位で表示します。
+
+Bin 不良率 = `Σ BIN_COUNT / Lot の総 Gross Die 数 × 100`。
+分母は Lot に属する物理 Wafer の `EFFECTIVE_NUM`（Gross Die 数）を **Wafer ごとに 1 回だけ** 数えた合計です。
+Report では `lot_id` が ISO 週ロールアップのため、`WAFER_ID` 単独では週内の別 Wafer（別 `SUBSTRATE_ID`）と衝突する点に注意し、`SUBSTRATE_ID` + `WAFER_ID` で重複排除してから合計します（単純に bin 行ごとに合計すると Wafer の Gross Die 数を bin の数だけ重複加算してしまい、分母が膨れて bin% が異常に低くなる）。
+
+> **`REWORK_NEW = 0` は `SEMI_CP_HEADER` と `SEMI_CP_BIN_SUM` の両方に適用** し、最新リテスト結果のみを集計します。片側だけに適用すると、片方の最新行がもう片方の全リテスト行とマッチして fail bin が二重計上され、yield% + Σbin% が 100% を超える不整合が発生します。
 
 ---
 
@@ -268,10 +314,16 @@ curl "http://localhost:8000/api/debug/probe?nickname=Product-A&process=FT&start_
 
 ## 社内サーバーへのデプロイ
 
+**Windows 共有マシンへのデプロイ**（リバースプロキシ Caddy + Windows サービス化で `http://yieldportal.socionext.com` のように IP:ポート無しでアクセス）が現在の主なデプロイ方法です。手順は **[docs/deploy-windows.md](docs/deploy-windows.md)** を参照してください。
+
+以下は汎用的な代替手段として、Linux 上で systemd を使う場合の手順です。
+
+### Linux (systemd) の場合
+
 1 サーバー構成のため、フロントを事前ビルドし FastAPI から配信します。
 nginx / Apache などの静的配信サーバーは不要です。
 
-### 1. フロントエンドをビルド
+#### 1. フロントエンドをビルド
 
 ```bash
 cd frontend
@@ -279,7 +331,7 @@ npm install
 npm run build   # → frontend/dist/
 ```
 
-### 2. バックエンドを systemd で常駐起動
+#### 2. バックエンドを systemd で常駐起動
 
 ```ini
 [Unit]
