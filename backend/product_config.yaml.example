@@ -37,11 +37,19 @@
 #               → single row querying PROCESS = '<CP|FT|SLT>' literally
 #                 (backward-compatible default)
 #
-# report (optional, EXPLICIT form only)
-# ───────────────────────────────────────
+# report (REQUIRED for a product to appear on the Report page)
+# ───────────────────────────────────────────────────────────────
 #   Defines the Report page / PDF output units for a product: one chart on
-#   screen and one page in the PDF per unit, in the listed order. When absent
-#   the Report falls back to the current CP/FT/SLT behavior (via processes:).
+#   screen and one page in the PDF per unit, in the listed order.
+#
+#   IMPORTANT: once product_config.yaml exists, a product is selectable on
+#   the Report page ONLY if it has a non-empty, valid `report:` list. There
+#   is NO implicit CP/FT/SLT fallback per-product anymore — a configured
+#   product with no `report:` (or an empty/malformed one) simply does not
+#   appear on the Report page (GET /api/report-products excludes it), even
+#   though it can still appear on the Dashboard/Explore via `processes:`.
+#   The CP/FT/SLT fallback only kicks in when product_config.yaml itself is
+#   absent (mock/legacy mode) or the nickname is completely unconfigured.
 #
 #     report:
 #       - {family: cp, label: "CP",   values: [CP]}     # major CP
@@ -55,6 +63,15 @@
 #   values : non-empty list of DB PROCESS values to query; >1 entries are
 #            merged into one series (no implicit "stacking" otherwise)
 #
+# target (optional)
+# ──────────────────
+#   A single fixed numeric yield target (%) for the product, drawn as a
+#   faint dashed reference line on the Dashboard sparkline/Latest-yield cell
+#   AND on the Explore trend chart. NOT shown on the Report page or in the
+#   PDF export (those stay visually frozen).
+#
+#     target: 90
+#
 # Dashboard layout example for Orion:
 #   CP (major: PROCESS='CP')        FT (major: PROCESS='cFT1')
 #     └ CP1  (PROCESS='CP1')          └ cFT2  (PROCESS='cFT2')
@@ -65,43 +82,63 @@ products:
     display_name: Product-A
     product_id: P12345-A
     bin_group: main
+    target: 90
     processes:
       ft: [cFT1]
       slt: [cSLT1]
+    report:
+      - {family: cp, label: "CP", values: [CP]}
+      - {family: ft, label: "FT", values: [cFT1]}
+      - {family: slt, label: "SLT", values: [cSLT1]}
 
   # Revision sharing the same display_name → merged with Product-A
   Product-A-rev2:
     display_name: Product-A
     product_id: P12346-A
     bin_group: main
+    target: 90
     processes:
       ft: [cFT1]
       slt: [cSLT1]
+    report:
+      - {family: cp, label: "CP", values: [CP]}
+      - {family: ft, label: "FT", values: [cFT1]}
+      - {family: slt, label: "SLT", values: [cSLT1]}
 
   Product-B:
     display_name: Product-B
     product_id: P12345-B
     bin_group: main_b
+    target: 92
     processes:
       ft: [cFT1]
       slt: [cSLT1]
+    report:
+      - {family: cp, label: "CP", values: [CP]}
+      - {family: ft, label: "FT", values: [cFT1]}
+      - {family: slt, label: "SLT", values: [cSLT1]}
 
   SCT101:
     display_name: SCT101
     product_id: SCT101A
     bin_group: main
+    target: 88
     processes:
       ft: [cFT1]
       slt: [cSLT1]
+    report:
+      - {family: cp, label: "CP", values: [CP]}
+      - {family: ft, label: "FT", values: [cFT1]}
+      - {family: slt, label: "SLT", values: [cSLT1]}
 
   # LIKE wildcard example: matches SC0G29AP3-ES, -ES-9Q1, ... in one query.
-  # Also demonstrates the optional `report:` key: explicit Report/PDF units
-  # (one chart on screen + one PDF page per unit, in this order) instead of
-  # the default CP/FT/SLT chips.
+  # Also demonstrates the required `report:` key: explicit Report/PDF units
+  # (one chart on screen + one PDF page per unit, in this order).
   Phoenix:
     display_name: Phoenix
     product_id: SC0G29AP3%
     bin_group: Phoenix
+    target: 91
     processes:
       cp: [CP, CP1, CP2]
       ft: {subs: [cFT1]}
@@ -113,6 +150,9 @@ products:
   # Multi sub-process example: CP has a clean roll-up in the DB, plus two
   # sub-process PROCESS values; FT also has a major + one sub.
   # The major row queries ONLY its own value — no stacking/double-counting.
+  # NOTE: this product has no `report:` block, so it appears on the
+  # Dashboard/Explore (via `processes:`) but is EXCLUDED from the Report page
+  # (GET /api/report-products) — demonstrates the new explicit-report rule.
   #
   #   Dashboard layout:
   #     CP  (major: PROCESS='CP')       FT  (major: PROCESS='cFT1')

@@ -48,6 +48,7 @@ export interface SummaryRow {
   latest_lot_date: string | null;
   avg_yield_6m: number | null;
   delta: number | null;
+  target?: number | null;
   sparkline: SparkPoint[];
   warnings: Warning[];
 }
@@ -82,4 +83,5 @@ export interface ExploreLotsResponse {
   period: { months: number; start: string; end: string };
   lots: LotData[];
   available_bins: string[];
+  target?: number | null;
 }

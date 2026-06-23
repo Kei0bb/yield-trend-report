@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import ReportView from "../components/ReportView";
 import ErrorBanner from "../components/ErrorBanner";
-import { fetchProducts, fetchHealth, fetchYieldData, exportPdf, fetchProcessUnits } from "../api/client";
+import { fetchReportProducts, fetchHealth, fetchYieldData, exportPdf, fetchProcessUnits } from "../api/client";
 import type { Product, YieldRequest, YieldResponse } from "../types";
 
 function formatYM(d: Date): string {
@@ -29,7 +29,7 @@ export default function ReportPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchProducts().then((list) => {
+    fetchReportProducts().then((list) => {
       setProducts(list);
       if (list.length > 0) setProductId(list[0].product_id);
     });

@@ -74,7 +74,7 @@ export default function ExplorePage() {
       {data && data.lots.length === 0 && <p style={styles.empty}>No lots found.</p>}
       {data && processData && data.lots.length > 0 && (
         <div style={styles.stack}>
-          <YieldChart processName={label} data={processData} />
+          <YieldChart processName={label} data={processData} target={data.target} />
           <div style={styles.card}>
             <LotTable lots={data.lots} availableBins={data.available_bins} />
           </div>

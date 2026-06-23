@@ -5,9 +5,10 @@ import { BIN_COLORS, FONT_FAMILY, YIELD_LINE_COLOR } from "../theme";
 interface YieldChartProps {
   processName: string;
   data: ProcessData;
+  target?: number | null;
 }
 
-export default function YieldChart({ processName, data }: YieldChartProps) {
+export default function YieldChart({ processName, data, target }: YieldChartProps) {
   // Yield axis fixed at 0-100 with a small top margin so points at 100 don't clip.
   const yieldRange: [number, number] = [0, 102];
 
@@ -41,6 +42,40 @@ export default function YieldChart({ processName, data }: YieldChartProps) {
     hovertemplate: "%{x}<br>Yield: %{y:.2f}%<extra></extra>",
   };
 
+  // Optional product-level target reference line on the yield (y2) axis.
+  // Report/PDF never pass `target`, so this stays a no-op there.
+  const hasTarget = target != null;
+  const targetShapes: Partial<Plotly.Shape>[] = hasTarget
+    ? [
+        {
+          type: "line",
+          xref: "paper",
+          x0: 0,
+          x1: 1,
+          yref: "y2",
+          y0: target,
+          y1: target,
+          line: { color: "rgba(224,62,62,0.6)", width: 1.5, dash: "dash" },
+        },
+      ]
+    : [];
+  const targetAnnotations: Partial<Plotly.Annotations>[] = hasTarget
+    ? [
+        {
+          xref: "paper",
+          x: 1,
+          xanchor: "right",
+          yref: "y2",
+          y: target,
+          yanchor: "bottom",
+          text: `Target ${target}%`,
+          showarrow: false,
+          font: { size: 10, color: "rgba(224,62,62,0.8)" },
+          bgcolor: "rgba(255,255,255,0.7)",
+        },
+      ]
+    : [];
+
   const layout: Partial<Plotly.Layout> = {
     barmode: "stack",
     font: { family: FONT_FAMILY, size: 11, color: "#37352f" },
@@ -53,6 +88,8 @@ export default function YieldChart({ processName, data }: YieldChartProps) {
     paper_bgcolor: "#ffffff",
     height: 420,
     hoverlabel: { bgcolor: "#ffffff", bordercolor: "rgba(0,0,0,0.1)", font: { family: FONT_FAMILY, size: 11, color: "#37352f" } },
+    shapes: targetShapes,
+    annotations: targetAnnotations,
   };
 
   return (

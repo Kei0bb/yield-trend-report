@@ -131,6 +131,7 @@ export default function SummaryTable({ rows }: Props) {
           <th style={styles.thLeft} onClick={() => toggleSort("product_id")}>Product ID / Proc</th>
           <th style={styles.th} onClick={() => toggleSort("latest_yield")}>Latest</th>
           <th style={styles.th} onClick={() => toggleSort("avg_yield_6m")}>Avg</th>
+          <th style={styles.th}>Target</th>
           <th style={styles.th} onClick={() => toggleSort("delta")}>Delta</th>
           <th style={styles.th}>Trend</th>
           <th style={styles.thLeft}>Alerts</th>
@@ -140,6 +141,7 @@ export default function SummaryTable({ rows }: Props) {
         {sorted.map((r) => {
           const warn = r.warnings.length > 0;
           const deltaColor = r.delta == null ? "var(--gray-400)" : r.delta < 0 ? "var(--red)" : "var(--green)";
+          const belowTarget = r.latest_yield != null && r.target != null && r.latest_yield < r.target;
           const isSub = r.level === 1;
           const orphanKey = `${r.product_id}|${r.process}|${r.process_label}`;
           const isOrphanLead = isSub && orphanLeads.has(orphanKey);
@@ -155,6 +157,7 @@ export default function SummaryTable({ rows }: Props) {
                       <div style={styles.subName}>{r.display_name}</div>
                     )}
                   </td>
+                  <td style={styles.td}>—</td>
                   <td style={styles.td}>—</td>
                   <td style={styles.td}>—</td>
                   <td style={styles.td}>—</td>
@@ -184,8 +187,11 @@ export default function SummaryTable({ rows }: Props) {
                   </>
                 )}
               </td>
-              <td style={styles.td}>{fmt(r.latest_yield, "%")}</td>
+              <td style={{ ...styles.td, ...(belowTarget ? { color: "var(--red)" } : {}) }}>
+                {fmt(r.latest_yield, "%")}
+              </td>
               <td style={styles.td}>{fmt(r.avg_yield_6m, "%")}</td>
+              <td style={styles.td}>{fmt(r.target ?? null, "%")}</td>
               <td style={{ ...styles.td, color: deltaColor }}>
                 {r.delta == null ? "—" : `${r.delta < 0 ? "▼" : "▲"} ${Math.abs(r.delta).toFixed(1)}`}
               </td>
@@ -193,6 +199,7 @@ export default function SummaryTable({ rows }: Props) {
                 <Sparkline
                   values={r.sparkline.map((p) => p.yield_pct)}
                   color={warn ? "#e03e3e" : "#0075de"}
+                  target={r.target}
                 />
               </td>
               <td style={styles.tdLeft}>

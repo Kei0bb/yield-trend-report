@@ -55,6 +55,7 @@ class ExploreLotsResponse(BaseModel):
     period: dict
     lots: list[LotData]
     available_bins: list[str]
+    target: float | None = None
 
 
 class SparkPoint(BaseModel):
@@ -75,6 +76,7 @@ class SummaryRow(BaseModel):
     latest_lot_date: str | None
     avg_yield_6m: float | None
     delta: float | None
+    target: float | None = None
     sparkline: list[SparkPoint] = []
     warnings: list[Warning] = []
 

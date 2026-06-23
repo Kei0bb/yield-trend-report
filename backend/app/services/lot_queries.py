@@ -63,7 +63,7 @@ def build_lot_query(
     sql = f"""
         SELECT
             h.{lot_col}                                    AS lot_id,
-            TO_CHAR(MIN(h.{date_col}) OVER (PARTITION BY h.{lot_col}),
+            TO_CHAR(MAX(h.{date_col}) OVER (PARTITION BY h.{lot_col}),
                     'YYYY-MM-DD')                          AS lot_date,
             h.WAFER_ID                                     AS wafer_id,
             CASE WHEN h.EFFECTIVE_NUM > 0

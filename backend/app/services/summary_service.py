@@ -8,6 +8,7 @@ from app.services.product_config import (
     resolve_display_name,
     resolve_major_process,
     resolve_sub_processes,
+    resolve_target,
 )
 from app.services.yield_service import get_products
 
@@ -63,6 +64,7 @@ def _build_row(
         latest_lot_date=latest.lot_date,
         avg_yield_6m=avg,
         delta=round(latest.yield_pct - avg, 2),
+        target=resolve_target(nickname),
         sparkline=[SparkPoint(lot_id=l.lot_id, lot_date=l.lot_date, yield_pct=l.yield_pct)
                    for l in lots],
         warnings=latest.warnings,

@@ -109,13 +109,18 @@ def _config_from_yaml() -> dict[str, dict[str, str]] | None:
       <p>_major : the DB PROCESS value for the major row, or "" when suppressed
       <p>_subs  : ";"-joined sub-process DB PROCESS values
 
-    Optional `report:` key (explicit form only) defines the Report/PDF output
-    units for the product, each with a family (cp/ft/slt), a display label,
-    and the DB PROCESS values to query (merged into one series when >1):
+    `report:` key (REQUIRED for a product to appear on the Report page) defines
+    the Report/PDF output units for the product, each with a family (cp/ft/slt),
+    a display label, and the DB PROCESS values to query (merged into one series
+    when >1):
         report:
           - {family: cp, label: "CP",  values: [CP]}
           - {family: cp, label: "CP1", values: [CP1]}
-    Stored as JSON under the "report" key; see resolve_report_units().
+    Stored as JSON under the "report" key; see resolve_report_units(). A
+    configured product with no `report:` (or an empty/invalid one) is simply
+    excluded from the Report page — there is no implicit CP/FT/SLT fallback
+    once product_config.yaml exists. (The CP/FT/SLT fallback only applies when
+    the yaml file itself is absent or the nickname is unconfigured.)
 
     A bare top-level mapping (no `products:` key) is also accepted.
     """
@@ -137,6 +142,7 @@ def _config_from_yaml() -> dict[str, dict[str, str]] | None:
             "bin_group": str(entry.get("bin_group") or "").strip() or DEFAULT_BIN_GROUP,
             "ft_bin_group": str(bin_groups.get("ft") or "").strip(),
             "slt_bin_group": str(bin_groups.get("slt") or "").strip(),
+            "target": str(entry.get("target") or "").strip(),
         }
 
         for proc in ("cp", "ft", "slt"):
@@ -253,21 +259,28 @@ def resolve_report_units(nickname: str) -> list[dict]:
     [{"family": "CP", "label": "CP1", "values": ["CP1"]}, ...].
 
     `values` may be None in the fallback, meaning "resolve via resolve_process_filter".
-    Fallback (no `report:` / unconfigured) = CP, FT, SLT (current behavior).
+
+    A product appears in the Report ONLY if it has a non-empty, valid `report:`
+    list — there is no implicit CP/FT/SLT fallback per-product anymore. The
+    CP/FT/SLT fallback is used ONLY when product_config.yaml is absent entirely
+    (config is None) or the nickname is unconfigured, preserving mock/legacy
+    behavior in those cases.
     """
     config = load_product_config()
     fallback = [{"family": f, "label": f, "values": None} for f in ("CP", "FT", "SLT")]
     if config is None or nickname not in config:
-        return fallback
+        return fallback          # no config file / unknown nickname -> mock/legacy behavior
     raw = config[nickname].get("report", "")
-    if raw:
-        try:
-            units = json.loads(raw)
-        except Exception:
-            units = []
-        if units:
-            return units
-    return fallback
+    try:
+        units = json.loads(raw) if raw else []
+    except Exception:
+        units = []
+    return units                 # explicit: may be [] meaning "hidden from Report"
+
+
+def is_report_enabled(nickname: str) -> bool:
+    """True when the product has at least one valid Report unit."""
+    return bool(resolve_report_units(nickname))
 
 
 def resolve_report_unit(nickname: str, label: str) -> dict | None:
@@ -298,6 +311,20 @@ def resolve_bin_group(nickname: str, process: str = "") -> str:
         if specific:
             return specific
     return entry.get("bin_group", "") or DEFAULT_BIN_GROUP
+
+
+def resolve_target(nickname: str) -> float | None:
+    """Product-level yield target (%) for Dashboard/Explore reference line, or None."""
+    config = load_product_config()
+    if config is None or nickname not in config:
+        return None
+    raw = config[nickname].get("target", "")
+    if not raw:
+        return None
+    try:
+        return float(raw)
+    except ValueError:
+        return None
 
 
 def group_by_display_name(nicknames: list[str]) -> dict[str, list[str]]:
@@ -354,4 +381,16 @@ def list_products() -> list[dict[str, str]]:
     return [
         {"product_id": primary_product_id(nick), "display_name": entry.get("display_name", nick)}
         for nick, entry in config.items()
+    ]
+
+
+def list_report_products() -> list[dict[str, str]]:
+    """Report-page product list: configured products with a non-empty report: block."""
+    config = load_product_config()
+    if not config:
+        return []
+    return [
+        {"product_id": primary_product_id(nick), "display_name": entry.get("display_name", nick)}
+        for nick, entry in config.items()
+        if is_report_enabled(nick)
     ]

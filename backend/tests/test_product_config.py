@@ -2,9 +2,12 @@ import textwrap
 
 import app.services.product_config as product_config
 from app.services.product_config import (
+    is_report_enabled,
+    list_report_products,
     load_product_config,
     resolve_report_unit,
     resolve_report_units,
+    resolve_target,
 )
 
 
@@ -115,7 +118,9 @@ def test_resolve_report_unit_unknown_label_returns_none(tmp_path, monkeypatch):
     load_product_config.cache_clear()
 
 
-def test_fallback_when_no_report_key(tmp_path, monkeypatch):
+def test_configured_product_without_report_key_returns_empty(tmp_path, monkeypatch):
+    """New semantics: a configured product with no `report:` block is simply
+    excluded from the Report page — no implicit CP/FT/SLT fallback."""
     _write_config(tmp_path, monkeypatch, """
         products:
           Product-A:
@@ -126,7 +131,19 @@ def test_fallback_when_no_report_key(tmp_path, monkeypatch):
               slt: cSLT1
         """)
 
-    units = resolve_report_units("Product-A")
+    assert resolve_report_units("Product-A") == []
+    assert is_report_enabled("Product-A") is False
+    load_product_config.cache_clear()
+
+
+def test_fallback_when_config_file_absent(tmp_path, monkeypatch):
+    """When product_config.yaml does not exist at all, resolve_report_units
+    still returns the legacy CP/FT/SLT fallback (mock mode)."""
+    missing_path = tmp_path / "does_not_exist.yaml"
+    monkeypatch.setattr(product_config, "PRODUCT_CONFIG_YAML", missing_path)
+    load_product_config.cache_clear()
+
+    units = resolve_report_units("AnyNickname")
     assert units == [
         {"family": "CP", "label": "CP", "values": None},
         {"family": "FT", "label": "FT", "values": None},

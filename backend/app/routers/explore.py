@@ -3,7 +3,11 @@ from fastapi import APIRouter, Query
 from app.models.schemas import ExploreLotsResponse
 from app.services.explore_service import build_explore
 from app.services.lot_service import period_months
-from app.services.product_config import nickname_for_product_id, resolve_display_name
+from app.services.product_config import (
+    nickname_for_product_id,
+    resolve_display_name,
+    resolve_target,
+)
 from app.services.ttl_cache import get_or_compute
 
 router = APIRouter()
@@ -34,6 +38,7 @@ def explore_lots(
             period={"months": months, "start": start, "end": end},
             lots=lots,
             available_bins=available_bins,
+            target=resolve_target(nickname),
         )
 
     return get_or_compute(

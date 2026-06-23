@@ -13,6 +13,11 @@ export async function fetchProducts(): Promise<Product[]> {
   return res.data;
 }
 
+export async function fetchReportProducts(): Promise<Product[]> {
+  const res = await api.get<Product[]>("/report-products");
+  return res.data;
+}
+
 export async function fetchYieldData(req: YieldRequest): Promise<YieldResponse> {
   const res = await api.post<YieldResponse>("/yield-data", req);
   return res.data;

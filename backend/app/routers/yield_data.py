@@ -7,6 +7,7 @@ from app.services.bin_mapping import load_bin_mapping
 from app.services.product_config import (
     group_by_display_name,
     list_products as list_products_with_ids,
+    list_report_products,
     load_product_config,
     nickname_for_product_id,
     resolve_bin_group,
@@ -35,6 +36,17 @@ def list_products() -> list[dict[str, str]]:
     if configured:
         return configured
     return [{"product_id": p, "display_name": p} for p in get_products()]
+
+
+@router.get("/report-products")
+def report_products() -> list[dict[str, str]]:
+    """Products selectable on the Report page (require an explicit report: block)."""
+    configured = list_report_products()
+    if configured:
+        return configured
+    if load_product_config() is None:
+        return [{"product_id": p, "display_name": p} for p in get_products()]
+    return []
 
 
 @router.get("/debug/config")
