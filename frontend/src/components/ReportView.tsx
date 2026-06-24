@@ -1,5 +1,6 @@
 import type { YieldRequest, YieldResponse } from "../types";
 import YieldChart from "./YieldChart";
+import { BIN_COLORS } from "../theme";
 
 interface ReportViewProps {
   data: YieldResponse | null;
@@ -24,6 +25,22 @@ export default function ReportView({ data, request }: ReportViewProps) {
   }
 
   const sortedProcesses = request.processes.filter((p) => p in data.data);
+
+  // Shared bin-name -> color map across all processes, so the same bin name
+  // gets the same color in every chart (first-appearance order across
+  // sortedProcesses, then within each process's fail_bins keys).
+  const binNameOrder: string[] = [];
+  for (const process of sortedProcesses) {
+    const processData = Object.values(data.data[process])[0];
+    if (!processData) continue;
+    for (const binName of Object.keys(processData.fail_bins)) {
+      if (!binNameOrder.includes(binName)) binNameOrder.push(binName);
+    }
+  }
+  const colorMap: Record<string, string> = {};
+  binNameOrder.forEach((binName, i) => {
+    colorMap[binName] = BIN_COLORS[i % BIN_COLORS.length];
+  });
 
   // display_name = first key of the first process's data (the backend groups by
   // display_name, merging revision variants of the same product into one series).
@@ -79,7 +96,7 @@ export default function ReportView({ data, request }: ReportViewProps) {
           const processData = Object.values(data.data[process])[0];
           if (!processData) return null;
           return (
-            <YieldChart key={process} processName={process} data={processData} />
+            <YieldChart key={process} processName={process} data={processData} colorMap={colorMap} />
           );
         })}
       </div>

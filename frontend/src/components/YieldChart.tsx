@@ -6,9 +6,10 @@ interface YieldChartProps {
   processName: string;
   data: ProcessData;
   target?: number | null;
+  colorMap?: Record<string, string>;
 }
 
-export default function YieldChart({ processName, data, target }: YieldChartProps) {
+export default function YieldChart({ processName, data, target, colorMap }: YieldChartProps) {
   // Yield axis fixed at 0-100 with a small top margin so points at 100 don't clip.
   const yieldRange: [number, number] = [0, 102];
 
@@ -21,7 +22,7 @@ export default function YieldChart({ processName, data, target }: YieldChartProp
         y: data.fail_bins[binName] ?? data.lots.map(() => 0),
         name: binName,
         type: "bar" as const,
-        marker: { color: BIN_COLORS[bIdx % BIN_COLORS.length], opacity: 0.9 },
+        marker: { color: (colorMap && colorMap[binName]) ?? BIN_COLORS[bIdx % BIN_COLORS.length], opacity: 0.9 },
         yaxis: "y",
         hovertemplate: `%{x}<br>${binName}: %{y:.3f}%<extra></extra>`,
       } as unknown as Plotly.Data)
@@ -59,22 +60,6 @@ export default function YieldChart({ processName, data, target }: YieldChartProp
         },
       ]
     : [];
-  const targetAnnotations: Partial<Plotly.Annotations>[] = hasTarget
-    ? [
-        {
-          xref: "paper",
-          x: 1,
-          xanchor: "right",
-          yref: "y2",
-          y: target,
-          yanchor: "bottom",
-          text: `Target ${target}%`,
-          showarrow: false,
-          font: { size: 10, color: "rgba(224,62,62,0.8)" },
-          bgcolor: "rgba(255,255,255,0.7)",
-        },
-      ]
-    : [];
 
   const layout: Partial<Plotly.Layout> = {
     barmode: "stack",
@@ -89,7 +74,6 @@ export default function YieldChart({ processName, data, target }: YieldChartProp
     height: 420,
     hoverlabel: { bgcolor: "#ffffff", bordercolor: "rgba(0,0,0,0.1)", font: { family: FONT_FAMILY, size: 11, color: "#37352f" } },
     shapes: targetShapes,
-    annotations: targetAnnotations,
   };
 
   return (
@@ -104,6 +88,12 @@ export default function YieldChart({ processName, data, target }: YieldChartProp
             <div style={styles.statLabel}>Latest yield</div>
             <div style={styles.statValue}>{latestYield.toFixed(2)}%</div>
           </div>
+          {hasTarget && (
+            <div style={styles.statItem}>
+              <div style={styles.statLabel}>Target</div>
+              <div style={styles.statValue}>{target}%</div>
+            </div>
+          )}
         </div>
       </div>
       <Plot

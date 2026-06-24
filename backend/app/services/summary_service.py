@@ -46,7 +46,7 @@ def _build_row(
     Uses ``raw_bins=True`` so anomaly bin-surge alerts are computed on the raw DB
     bin names (no CSV bin-map dependency), consistent with the Explore page.
     """
-    lots = get_lots(nickname, process, months, raw_bins=True, process_values=process_values)
+    lots = get_lots(nickname, process, months, raw_bins=True, process_values=process_values, split_by_rev=True)
     if not lots:
         return None
     latest = lots[-1]

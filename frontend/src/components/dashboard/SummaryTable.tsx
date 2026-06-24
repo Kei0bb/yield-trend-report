@@ -7,6 +7,7 @@ type SortKey = "product_id" | "process" | "latest_yield" | "avg_yield_6m" | "del
 
 interface Props {
   rows: SummaryRow[];
+  months: number;
 }
 
 const PROC_ORDER: Record<string, number> = { CP: 0, FT: 1, SLT: 2 };
@@ -91,7 +92,7 @@ function sortGrouped(rows: SummaryRow[], sortKey: SortKey, asc: boolean): Summar
   return result;
 }
 
-export default function SummaryTable({ rows }: Props) {
+export default function SummaryTable({ rows, months }: Props) {
   const navigate = useNavigate();
   const [sortKey, setSortKey] = useState<SortKey>("delta");
   const [asc, setAsc] = useState(true);
@@ -130,7 +131,7 @@ export default function SummaryTable({ rows }: Props) {
         <tr>
           <th style={styles.thLeft} onClick={() => toggleSort("product_id")}>Product ID / Proc</th>
           <th style={styles.th} onClick={() => toggleSort("latest_yield")}>Latest</th>
-          <th style={styles.th} onClick={() => toggleSort("avg_yield_6m")}>Avg</th>
+          <th style={styles.th} onClick={() => toggleSort("avg_yield_6m")}>{months}m Avg</th>
           <th style={styles.th}>Target</th>
           <th style={styles.th} onClick={() => toggleSort("delta")}>Delta</th>
           <th style={styles.th}>Trend</th>

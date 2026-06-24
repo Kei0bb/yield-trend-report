@@ -58,7 +58,7 @@ export default function DashboardPage() {
       {error && <div style={styles.error}>{error}</div>}
       {data && (
         <div style={styles.card}>
-          <SummaryTable rows={data.rows} />
+          <SummaryTable rows={data.rows} months={data.period.months} />
         </div>
       )}
       {data && data.rows.length === 0 && !loading && <p style={styles.empty}>No data available.</p>}
