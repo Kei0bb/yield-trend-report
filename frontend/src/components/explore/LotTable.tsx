@@ -13,26 +13,29 @@ export default function LotTable({ lots, availableBins }: Props) {
   };
   const rows = [...lots].reverse();
 
-  const minWidth = 116 + 80 + 84 + 48 + 58 + availableBins.length * 60 + 96;
+  // Left identity columns are fixed-width to their content (Lot ID 6ch,
+  // Prog Rev 8ch, Date 10ch, Wafers 2ch), all left-aligned; the freed space
+  // goes to wider bin and alert columns.
+  const minWidth = 68 + 84 + 92 + 40 + 58 + availableBins.length * 76 + 220;
 
   return (
     <div style={styles.scroll}>
       <table style={{ ...styles.table, minWidth }}>
         <colgroup>
-          <col style={{ width: 116 }} />
-          <col style={{ width: 80 }} />
+          <col style={{ width: 68 }} />
           <col style={{ width: 84 }} />
-          <col style={{ width: 48 }} />
+          <col style={{ width: 92 }} />
+          <col style={{ width: 40 }} />
           <col style={{ width: 58 }} />
-          {availableBins.map((b) => <col key={b} style={{ width: 60 }} />)}
-          <col style={{ width: 96 }} />
+          {availableBins.map((b) => <col key={b} style={{ width: 76 }} />)}
+          <col style={{ width: 220 }} />
         </colgroup>
         <thead>
           <tr>
             <th style={styles.thLeft}>Lot ID</th>
             <th style={styles.thLeft}>Prog Rev</th>
-            <th style={styles.th}>Date</th>
-            <th style={styles.th}>Wafers</th>
+            <th style={styles.thLeft}>Date</th>
+            <th style={styles.thLeft}>Wafers</th>
             <th style={styles.th}>Yield</th>
             {availableBins.map((b) => (
               <th key={b} style={styles.th}>
@@ -51,8 +54,8 @@ export default function LotTable({ lots, availableBins }: Props) {
               <td style={styles.tdLeft}>
                 <span title={lot.test_program_rev} style={styles.cellTrunc}>{last8(lot.test_program_rev) || "—"}</span>
               </td>
-              <td style={styles.td}>{lot.lot_date}</td>
-              <td style={styles.td}>{lot.wafer_count}</td>
+              <td style={styles.tdLeft}>{lot.lot_date}</td>
+              <td style={styles.tdLeft}>{lot.wafer_count}</td>
               <td style={styles.td}>{lot.yield_pct.toFixed(1)}%</td>
               {availableBins.map((b) => <td key={b} style={styles.td}>{pctFor(lot, b).toFixed(2)}%</td>)}
               <td style={styles.tdLeft}>
