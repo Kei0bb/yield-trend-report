@@ -166,3 +166,46 @@ def test_fallback_when_unconfigured_nickname(tmp_path, monkeypatch):
         {"family": "SLT", "label": "SLT", "values": None},
     ]
     load_product_config.cache_clear()
+
+
+def test_resolve_target_mapping_form(tmp_path, monkeypatch):
+    """target: is a per-process mapping; only listed labels resolve."""
+    _write_config(tmp_path, monkeypatch, """
+        products:
+          Product-A:
+            product_id: P12345-A
+            target:
+              CP: 90
+              cFT1: 84
+        """)
+
+    assert resolve_target("Product-A", "CP") == 90.0
+    assert resolve_target("Product-A", "cFT1") == 84.0
+    # FT (major label) was never listed in the mapping -> no line
+    assert resolve_target("Product-A", "FT") is None
+    load_product_config.cache_clear()
+
+
+def test_resolve_target_scalar_is_ignored(tmp_path, monkeypatch):
+    """A non-mapping `target:` (old scalar form) is ignored with a warning."""
+    _write_config(tmp_path, monkeypatch, """
+        products:
+          Product-A:
+            product_id: P12345-A
+            target: 90
+        """)
+
+    assert resolve_target("Product-A", "CP") is None
+    load_product_config.cache_clear()
+
+
+def test_resolve_target_no_target_key(tmp_path, monkeypatch):
+    """No `target:` key at all -> always None."""
+    _write_config(tmp_path, monkeypatch, """
+        products:
+          Product-A:
+            product_id: P12345-A
+        """)
+
+    assert resolve_target("Product-A", "CP") is None
+    load_product_config.cache_clear()

@@ -38,7 +38,7 @@ def explore_lots(
             period={"months": months, "start": start, "end": end},
             lots=lots,
             available_bins=available_bins,
-            target=resolve_target(nickname),
+            target=resolve_target(nickname, sub or process),
         )
 
     return get_or_compute(

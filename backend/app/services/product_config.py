@@ -88,6 +88,28 @@ def _parse_report_units(raw, nickname: str) -> list[dict]:
     return units
 
 
+def _parse_target(raw, nickname: str) -> dict[str, float]:
+    """Parse a product's `target:` mapping {process_label: percent}.
+
+    Scalars / non-mappings are ignored with a warning (per-process only).
+    """
+    if raw in (None, ""):
+        return {}
+    if isinstance(raw, dict):
+        out: dict[str, float] = {}
+        for k, v in raw.items():
+            key = str(k).strip()
+            if not key:
+                continue
+            try:
+                out[key] = float(v)
+            except (ValueError, TypeError):
+                logger.warning("product_config.yaml: %s.target[%r]=%r is not numeric — skipping", nickname, k, v)
+        return out
+    logger.warning("product_config.yaml: %s.target must be a mapping {label: value}, not a scalar — ignoring", nickname)
+    return {}
+
+
 def _config_from_yaml() -> dict[str, dict[str, str]] | None:
     """Parse product_config.yaml into the flat internal shape.
 
@@ -142,7 +164,7 @@ def _config_from_yaml() -> dict[str, dict[str, str]] | None:
             "bin_group": str(entry.get("bin_group") or "").strip() or DEFAULT_BIN_GROUP,
             "ft_bin_group": str(bin_groups.get("ft") or "").strip(),
             "slt_bin_group": str(bin_groups.get("slt") or "").strip(),
-            "target": str(entry.get("target") or "").strip(),
+            "target": json.dumps(_parse_target(entry.get("target"), name)),
         }
 
         for proc in ("cp", "ft", "slt"):
@@ -313,17 +335,26 @@ def resolve_bin_group(nickname: str, process: str = "") -> str:
     return entry.get("bin_group", "") or DEFAULT_BIN_GROUP
 
 
-def resolve_target(nickname: str) -> float | None:
-    """Product-level yield target (%) for Dashboard/Explore reference line, or None."""
+def resolve_target(nickname: str, label: str | None = None) -> float | None:
+    """Per-process yield target (%) for the Dashboard/Explore reference line.
+
+    `label` is the process label: "CP"/"FT"/"SLT" for majors, or the DB
+    PROCESS value for sub-processes. Returns None when unset.
+    """
     config = load_product_config()
-    if config is None or nickname not in config:
+    if config is None or nickname not in config or label is None:
         return None
     raw = config[nickname].get("target", "")
-    if not raw:
-        return None
     try:
-        return float(raw)
-    except ValueError:
+        mapping = json.loads(raw) if raw else {}
+    except Exception:
+        return None
+    if not isinstance(mapping, dict):
+        return None
+    val = mapping.get(label)
+    try:
+        return float(val) if val is not None else None
+    except (ValueError, TypeError):
         return None
 
 

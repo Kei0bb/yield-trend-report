@@ -64,7 +64,7 @@ def _build_row(
         latest_lot_date=latest.lot_date,
         avg_yield_6m=avg,
         delta=round(latest.yield_pct - avg, 2),
-        target=resolve_target(nickname),
+        target=resolve_target(nickname, process_label or process),
         sparkline=[SparkPoint(lot_id=l.lot_id, lot_date=l.lot_date, yield_pct=l.yield_pct)
                    for l in lots],
         warnings=latest.warnings,

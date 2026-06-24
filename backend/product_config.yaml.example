@@ -65,12 +65,26 @@
 #
 # target (optional)
 # ──────────────────
-#   A single fixed numeric yield target (%) for the product, drawn as a
-#   faint dashed reference line on the Dashboard sparkline/Latest-yield cell
-#   AND on the Explore trend chart. NOT shown on the Report page or in the
-#   PDF export (those stay visually frozen).
+#   Per-process numeric yield targets (%), drawn as a faint dashed reference
+#   line on the Dashboard sparkline/Latest-yield cell AND on the Explore trend
+#   chart. NOT shown on the Report page or in the PDF export (those stay
+#   visually frozen).
 #
-#     target: 90
+#   MUST be a mapping {label: value} — there is no scalar form and no
+#   `default` key. A scalar `target: 90` is ignored (logged warning).
+#
+#   The lookup label depends on row level:
+#     - Dashboard major row / Explore (no sub selected): the major process
+#       name "CP" / "FT" / "SLT"
+#     - Dashboard sub row / Explore (sub selected): the sub-process's DB
+#       PROCESS value, e.g. "cFT1"
+#   A label with no entry in the mapping draws no reference line.
+#
+#     target:
+#       CP: 90        # major CP row
+#       FT: 85        # major FT row
+#       SLT: 80       # major SLT row
+#       cFT1: 84      # FT's sub-process row (PROCESS='cFT1')
 #
 # Dashboard layout example for Orion:
 #   CP (major: PROCESS='CP')        FT (major: PROCESS='cFT1')
@@ -82,7 +96,11 @@ products:
     display_name: Product-A
     product_id: P12345-A
     bin_group: main
-    target: 90
+    target:
+      CP: 90
+      FT: 85
+      SLT: 80
+      cFT1: 84
     processes:
       ft: [cFT1]
       slt: [cSLT1]
@@ -96,7 +114,11 @@ products:
     display_name: Product-A
     product_id: P12346-A
     bin_group: main
-    target: 90
+    target:
+      CP: 90
+      FT: 85
+      SLT: 80
+      cFT1: 84
     processes:
       ft: [cFT1]
       slt: [cSLT1]
@@ -109,7 +131,11 @@ products:
     display_name: Product-B
     product_id: P12345-B
     bin_group: main_b
-    target: 92
+    target:
+      CP: 92
+      FT: 87
+      SLT: 82
+      cFT1: 86
     processes:
       ft: [cFT1]
       slt: [cSLT1]
@@ -122,7 +148,11 @@ products:
     display_name: SCT101
     product_id: SCT101A
     bin_group: main
-    target: 88
+    target:
+      CP: 88
+      FT: 83
+      SLT: 78
+      cFT1: 82
     processes:
       ft: [cFT1]
       slt: [cSLT1]
@@ -134,11 +164,16 @@ products:
   # LIKE wildcard example: matches SC0G29AP3-ES, -ES-9Q1, ... in one query.
   # Also demonstrates the required `report:` key: explicit Report/PDF units
   # (one chart on screen + one PDF page per unit, in this order).
+  # target keys here use the sub-process DB PROCESS values (CP1/CP2/cFT1)
+  # since CP/FT have no clean major roll-up in this product.
   Phoenix:
     display_name: Phoenix
     product_id: SC0G29AP3%
     bin_group: Phoenix
-    target: 91
+    target:
+      CP1: 91
+      CP2: 89
+      cFT1: 86
     processes:
       cp: [CP, CP1, CP2]
       ft: {subs: [cFT1]}
