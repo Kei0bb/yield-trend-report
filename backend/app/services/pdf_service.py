@@ -12,7 +12,6 @@ from datetime import date, timedelta
 from pathlib import Path
 
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.units import mm
 from reportlab.lib.utils import ImageReader
@@ -57,18 +56,6 @@ HEADER_DIVIDER_OFFSET = 4 * mm  # ヘッダー底から下線までの距離 (�
 FOOTER_H = 10 * mm           # footer band
 
 
-# 品種ごとの色（複数品種比較用）
-PRODUCT_COLORS = [
-    "#0075de",  # notion blue
-    "#e03e3e",  # red
-    "#1aae39",  # green
-    "#dd5b00",  # orange
-    "#391c57",  # purple
-    "#e9b949",  # yellow
-    "#097fe8",  # focus blue
-    "#ff64c8",  # pink
-]
-
 # ---------------------------------------------------------------------------
 # Chart rendering
 # ---------------------------------------------------------------------------
@@ -78,6 +65,7 @@ def _create_chart_image(
     proc_data: ProcessData,
     width: int = 1000,
     height: int = 460,
+    color_map: dict[str, str] | None = None,
 ) -> bytes:
     """単一品種: Bin stacked bar + Yield line"""
     fig = go.Figure()
@@ -88,7 +76,7 @@ def _create_chart_image(
             x=proc_data.lots,
             y=proc_data.fail_bins[bin_name],
             name=bin_name,
-            marker_color=BIN_COLORS[i % len(BIN_COLORS)],
+            marker_color=(color_map or {}).get(bin_name, BIN_COLORS[i % len(BIN_COLORS)]),
             opacity=0.9,
             yaxis="y",
         ))
@@ -147,111 +135,6 @@ def _create_chart_image(
         height=height,
     )
 
-    return fig.to_image(format="png", scale=2)
-
-
-def _create_multi_chart_image(
-    process_name: str,
-    products: list[str],
-    product_data: dict[str, ProcessData],
-    width: int = 1100,
-    height: int = 500,
-) -> bytes:
-    """
-    複数（改版）品種: 同一チャートに grouped stacked bar + 品種別 Yield line
-    Work Week ごとに品種別 Bin stack を横に並べ、Yield ラインを重ね描き。
-    """
-    # Yield scale fixed at 0-100 with a small top margin so points at 100 don't clip.
-    y_range = [0, 102]
-
-    # 全 bin 名のユニオン
-    all_bin_names: list[str] = []
-    for p in products:
-        for b in product_data[p].fail_bins.keys():
-            if b not in all_bin_names:
-                all_bin_names.append(b)
-
-    fig = make_subplots(specs=[[{"secondary_y": True}]])
-
-    # Bar traces: product × bin
-    for p_idx, product in enumerate(products):
-        proc_data = product_data[product]
-        for b_idx, bin_name in enumerate(all_bin_names):
-            y_vals = proc_data.fail_bins.get(bin_name, [0] * len(proc_data.lots))
-            fig.add_trace(
-                go.Bar(
-                    x=proc_data.lots,
-                    y=y_vals,
-                    name=bin_name,
-                    marker_color=BIN_COLORS[b_idx % len(BIN_COLORS)],
-                    opacity=0.9,
-                    offsetgroup=product,        # 同じ product のbinsは積み上げ
-                    legendgroup=bin_name,
-                    showlegend=(p_idx == 0),    # 凡例は最初の品種のみ
-                    hovertemplate=f"<b>{product}</b> @ %{{x}}<br>{bin_name}: %{{y:.3f}}%<extra></extra>",
-                ),
-                secondary_y=False,
-            )
-
-    # Yield line: 品種別
-    for i, product in enumerate(products):
-        proc_data = product_data[product]
-        color = PRODUCT_COLORS[i % len(PRODUCT_COLORS)]
-        fig.add_trace(
-            go.Scatter(
-                x=proc_data.lots,
-                y=proc_data.yield_avg,
-                name=f"Yield · {product}",
-                mode="lines+markers",
-                line=dict(color=color, width=2),
-                marker=dict(size=6, color=color),
-                legendgroup=f"yield_{product}",
-                hovertemplate=f"<b>{product}</b> @ %{{x}}<br>Yield: %{{y:.2f}}%<extra></extra>",
-            ),
-            secondary_y=True,
-        )
-
-    fig.update_yaxes(
-        title_text="Fail Bin (%)",
-        range=[0, 102],  # 0-100 fixed + margin
-        tickfont=dict(size=11, color=SUBTEXT_COLOR),
-        gridcolor="rgba(0,0,0,0.04)",
-        secondary_y=False,
-    )
-    fig.update_yaxes(
-        title_text="Yield (%)",
-        range=y_range,
-        tickfont=dict(size=11, color=SUBTEXT_COLOR),
-        showgrid=False,
-        secondary_y=True,
-    )
-    fig.update_xaxes(
-        title_text="Work Week",
-        tickangle=-30,
-        tickfont=dict(size=11, color=SUBTEXT_COLOR),
-        gridcolor="rgba(0,0,0,0.04)",
-    )
-
-    fig.update_layout(
-        barmode="stack",
-        bargap=0.25,
-        bargroupgap=0.08,
-        font=dict(family=FONT_FAMILY, size=12, color=TEXT_COLOR),
-        legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=-0.38,
-            xanchor="center",
-            x=0.5,
-            font=dict(size=11, color=SUBTEXT_COLOR, family=FONT_FAMILY),
-            bgcolor="rgba(0,0,0,0)",
-        ),
-        margin=dict(l=60, r=60, t=20, b=110),
-        plot_bgcolor="#ffffff",
-        paper_bgcolor="#ffffff",
-        width=width,
-        height=height,
-    )
     return fig.to_image(format="png", scale=2)
 
 
@@ -415,8 +298,7 @@ def generate_pdf(
     page_width, page_height = landscape(A4)
     c = canvas.Canvas(buf, pagesize=landscape(A4))
 
-    multi = len(products) > 1
-    title_label = " vs ".join(products) if multi else products[0]
+    title_label = products[0]
 
     # データがある工程のみ対象。全工程データ無しの場合は空 PDF を避けるため
     # リクエスト工程をそのまま使い、データ無しならプレースホルダ表示する。
@@ -427,6 +309,21 @@ def generate_pdf(
     if not processes:
         processes = list(data.keys()) or ["CP"]
     total_pages = len(processes)
+
+    # Shared bin-name -> color map across ALL processes/products so the same
+    # bin keeps one color on every page (first-appearance order over the
+    # displayed processes, then products). Mirrors the web Report's ReportView.
+    bin_order: list[str] = []
+    for process_name in processes:
+        prod_dict = data.get(process_name, {})
+        for product in products:
+            pdata = prod_dict.get(product)
+            if not pdata:
+                continue
+            for b in pdata.fail_bins.keys():
+                if b not in bin_order:
+                    bin_order.append(b)
+    color_map = {b: BIN_COLORS[i % len(BIN_COLORS)] for i, b in enumerate(bin_order)}
 
     for page_num, process_name in enumerate(processes, start=1):
         prod_dict = data[process_name]
@@ -442,10 +339,7 @@ def generate_pdf(
         chart_bytes: bytes | None = None
         if has_data:
             try:
-                if multi:
-                    chart_bytes = _create_multi_chart_image(process_name, products, prod_dict)
-                else:
-                    chart_bytes = _create_chart_image(process_name, prod_dict[products[0]])
+                chart_bytes = _create_chart_image(process_name, prod_dict[products[0]], color_map=color_map)
             except Exception as e:
                 import logging
                 logging.getLogger(__name__).error(
