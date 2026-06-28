@@ -14,8 +14,11 @@ from app.services.product_config import (
     resolve_process_filter,
     resolve_product_ids,
 )
+from app.services.ttl_cache import TTLCache
 
 logger = logging.getLogger(__name__)
+
+_lot_df_cache = TTLCache(maxsize=64)
 
 SUPPORTED_PROCESSES = {"CP", "FT", "SLT"}
 
@@ -35,24 +38,35 @@ def _load_dataframe(
     months: int,
     process_values: list[str] | None = None,
 ) -> pd.DataFrame:
-    """Load raw lot data for a nickname + process.
+    """Load raw lot data for a nickname + process (result is cached per-key).
 
     When *process_values* is provided it overrides ``resolve_process_filter``
     and queries exactly those DB PROCESS values (used by sub-process rows).
+    Returns a *copy* of the cached DataFrame so callers may mutate freely.
     """
-    if process.upper() not in SUPPORTED_PROCESSES:
-        return pd.DataFrame(columns=LOT_COLUMNS)
-    if settings.USE_MOCK_DATA:
-        # In mock mode, use the first explicit process value as the seed string
-        # so different sub-processes produce distinct series.
-        mock_process = process_values[0] if process_values else process.upper()
-        return mock_lot_dataframe(nickname, mock_process, months)
-    product_ids = resolve_product_ids(nickname, process)
-    if not product_ids:
-        return pd.DataFrame(columns=LOT_COLUMNS)
-    start, end = period_months(months)
-    resolved = process_values if process_values is not None else resolve_process_filter(nickname, process)
-    return query_lot_data(process, product_ids, start, end, resolved)
+    key = f"lotdf:{nickname}:{process}:{months}:{','.join(process_values or [])}"
+
+    def _compute() -> pd.DataFrame:
+        if process.upper() not in SUPPORTED_PROCESSES:
+            return pd.DataFrame(columns=LOT_COLUMNS)
+        if settings.USE_MOCK_DATA:
+            # In mock mode, use the first explicit process value as the seed string
+            # so different sub-processes produce distinct series.
+            mock_process = process_values[0] if process_values else process.upper()
+            return mock_lot_dataframe(nickname, mock_process, months)
+        product_ids = resolve_product_ids(nickname, process)
+        if not product_ids:
+            return pd.DataFrame(columns=LOT_COLUMNS)
+        start, end = period_months(months)
+        resolved = process_values if process_values is not None else resolve_process_filter(nickname, process)
+        return query_lot_data(process, product_ids, start, end, resolved)
+
+    return _lot_df_cache.get_or_compute(key, _compute).copy()
+
+
+def clear_lot_df_cache() -> None:
+    """Clear the lot DataFrame cache (call on force-refresh)."""
+    _lot_df_cache.clear()
 
 
 def _aggregate(
