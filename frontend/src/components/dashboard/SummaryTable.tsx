@@ -240,5 +240,5 @@ const styles: Record<string, React.CSSProperties> = {
   subGlyph: { color: "var(--gray-400)", marginRight: 6, userSelect: "none" },
   subName: { color: "var(--gray-400)", fontSize: 11, marginTop: 2 },
   badge: { display: "inline-block", background: "rgba(224, 62, 62, 0.1)", color: "var(--red)", fontSize: 11, fontWeight: 500, padding: "2px 8px", borderRadius: 999, marginRight: 4 },
-  spacer: { height: 12 },
+  spacer: { height: 6, background: "var(--white)" },
 };
