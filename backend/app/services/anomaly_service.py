@@ -12,7 +12,7 @@ ANOMALY_CONFIG_YAML = Path(__file__).parent.parent.parent / "anomaly_config.yaml
 _EMPTY_CONFIG: dict = {
     "defaults": {
         "yield_drop": {"threshold_pct": 3.0, "min_lots": 3},
-        "bin_surge": {"multiplier": 2.0, "min_percent": 1.0},
+        "bin_surge": {"delta_pct": 3.0},
     },
     "overrides": {},
 }
@@ -83,8 +83,7 @@ def evaluate(lots: list, config: dict) -> list[dict]:
 
     # --- C: fail-bin surge vs past average per bin ---
     bs = config.get("bin_surge", {})
-    multiplier = bs.get("multiplier", 2.0)
-    min_percent = bs.get("min_percent", 1.0)
+    delta_pct = bs.get("delta_pct", 3.0)  # 絶対差分 (最新 - 過去平均) のしきい値 [%pt]
     past_pct: dict[str, list[float]] = {}
     bin_codes_by_name: dict[str, list[int]] = {}
     for lot in past:
@@ -96,11 +95,12 @@ def evaluate(lots: list, config: dict) -> list[dict]:
         if not history:
             continue
         avg = sum(history) / len(history)
-        if avg >= min_percent and b.percent >= avg * multiplier:
+        delta = b.percent - avg
+        if delta >= delta_pct:
             codes = b.bin_codes or bin_codes_by_name.get(b.bin_name, [])
             warnings.append({
                 "type": "bin_surge",
-                "message": f"{b.bin_name} is {b.percent / avg:.1f}x the prior average",
+                "message": f"{b.bin_name} +{delta:.1f}%pt vs prior avg",
                 "severity": "warn",
                 "bin_code": codes[0] if codes else None,
             })

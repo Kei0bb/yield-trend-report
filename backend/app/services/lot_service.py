@@ -25,6 +25,8 @@ SUPPORTED_PROCESSES = {"CP", "FT", "SLT"}
 
 def period_months(months: int) -> tuple[str, str]:
     """Return (start_month, end_month) as 'YYYY-MM' spanning the last `months` months."""
+    # Dashboard/Explore のロットクエリは最大6ヶ月で十分 — それ以上は速度のみ悪化する
+    months = min(months, 6)
     today = date.today()
     end = f"{today.year:04d}-{today.month:02d}"
     start_date = today - timedelta(days=months * 30)

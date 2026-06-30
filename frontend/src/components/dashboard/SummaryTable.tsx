@@ -15,10 +15,10 @@ const PROC_ORDER: Record<string, number> = { CP: 0, FT: 1, SLT: 2 };
 /** Group rows into process-groups (each = a major row + its subs, OR an
  *  orphan subs-only group), then bucket those groups by product_id. Within a
  *  product, groups are ordered by a fixed process order (CP, then FT, then
- *  anything else). Products are ordered by the chosen sort key, read from
- *  each product's representative row (its CP group's first row if present,
- *  else its first group's first row). Respects `asc`. */
-function sortGrouped(rows: SummaryRow[], sortKey: SortKey, asc: boolean): SummaryRow[] {
+ *  anything else). When sortKey is null, products are kept in first-seen
+ *  (config) order. When sortKey is non-null, products are sorted by that key.
+ *  Respects `asc`. */
+function sortGrouped(rows: SummaryRow[], sortKey: SortKey | null, asc: boolean): SummaryRow[] {
   // Build groups: each group = [major-or-first-sub, ...remaining-subs]
   const groups: SummaryRow[][] = [];
   for (const row of rows) {
@@ -63,23 +63,23 @@ function sortGrouped(rows: SummaryRow[], sortKey: SortKey, asc: boolean): Summar
     });
   }
 
-  // Sort products by the chosen sort key, read from each product's
-  // representative row: its CP group's first row if present, else its
-  // first group's first row.
-  productOrder.sort((pa, pb) => {
-    const repFor = (pid: string): SummaryRow => {
-      const procGroups = productGroups.get(pid)!;
-      const cpGroup = procGroups.find((g) => g[0].process === "CP");
-      return (cpGroup ?? procGroups[0])[0];
-    };
-    const av = repFor(pa)[sortKey];
-    const bv = repFor(pb)[sortKey];
-    if (av == null) return 1;
-    if (bv == null) return -1;
-    if (av < bv) return asc ? -1 : 1;
-    if (av > bv) return asc ? 1 : -1;
-    return 0;
-  });
+  // Sort products by the chosen sort key (skip if null = preserve config order).
+  if (sortKey !== null) {
+    productOrder.sort((pa, pb) => {
+      const repFor = (pid: string): SummaryRow => {
+        const procGroups = productGroups.get(pid)!;
+        const cpGroup = procGroups.find((g) => g[0].process === "CP");
+        return (cpGroup ?? procGroups[0])[0];
+      };
+      const av = repFor(pa)[sortKey];
+      const bv = repFor(pb)[sortKey];
+      if (av == null) return 1;
+      if (bv == null) return -1;
+      if (av < bv) return asc ? -1 : 1;
+      if (av > bv) return asc ? 1 : -1;
+      return 0;
+    });
+  }
 
   // Flatten back to a single array: for each product (in sorted order), its
   // process-groups in fixed CP->FT order, each as [major(+subs)] or orphan subs.
@@ -94,7 +94,7 @@ function sortGrouped(rows: SummaryRow[], sortKey: SortKey, asc: boolean): Summar
 
 export default function SummaryTable({ rows, months }: Props) {
   const navigate = useNavigate();
-  const [sortKey, setSortKey] = useState<SortKey>("delta");
+  const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [asc, setAsc] = useState(true);
 
   const sorted = sortGrouped(rows, sortKey, asc);
@@ -129,29 +129,30 @@ export default function SummaryTable({ rows, months }: Props) {
     <table style={styles.table}>
       <thead>
         <tr>
-          <th style={styles.thLeft} onClick={() => toggleSort("product_id")}>Product ID / Proc</th>
-          <th style={styles.th} onClick={() => toggleSort("latest_yield")}>Latest</th>
-          <th style={styles.th} onClick={() => toggleSort("avg_yield_6m")}>{months}m Avg</th>
+          <th style={styles.thLeft} onClick={() => toggleSort("product_id")}>Product ID / Proc{sortKey === "product_id" ? (asc ? " ▲" : " ▼") : ""}</th>
+          <th style={styles.th} onClick={() => toggleSort("latest_yield")}>Latest{sortKey === "latest_yield" ? (asc ? " ▲" : " ▼") : ""}</th>
+          <th style={styles.th} onClick={() => toggleSort("avg_yield_6m")}>{months}m Avg{sortKey === "avg_yield_6m" ? (asc ? " ▲" : " ▼") : ""}</th>
           <th style={styles.th}>Target</th>
-          <th style={styles.th} onClick={() => toggleSort("delta")}>Delta</th>
+          <th style={styles.th} onClick={() => toggleSort("delta")}>Delta{sortKey === "delta" ? (asc ? " ▲" : " ▼") : ""}</th>
           <th style={styles.th}>Trend</th>
           <th style={styles.thLeft}>Alerts</th>
         </tr>
       </thead>
       <tbody>
-        {sorted.map((r) => {
+        {sorted.map((r, i) => {
           const warn = r.warnings.length > 0;
           const deltaColor = r.delta == null ? "var(--gray-400)" : r.delta < 0 ? "var(--red)" : "var(--green)";
           const belowTarget = r.latest_yield != null && r.target != null && r.latest_yield < r.target;
           const isSub = r.level === 1;
           const orphanKey = `${r.product_id}|${r.process}|${r.process_label}`;
           const isOrphanLead = isSub && orphanLeads.has(orphanKey);
+          const isProductStart = i !== 0 && sorted[i].product_id !== sorted[i - 1].product_id;
           return (
             <Fragment key={`${r.nickname}-${r.process}-${r.level}-${r.process_label}`}>
               {/* subs-only product: show a filled, non-clickable major header
                   so the sub rows don't appear to dangle under nothing. */}
               {isOrphanLead && (
-                <tr style={{ ...styles.tr, ...styles.trDisabled }}>
+                <tr style={{ ...styles.tr, ...styles.trDisabled, ...(isProductStart ? styles.productTopBorder : {}) }}>
                   <td style={styles.tdLeft}>
                     <b>{r.product_id}</b> <span style={styles.proc}>/ {r.process}</span>
                     {r.display_name && r.display_name !== r.product_id && (
@@ -167,7 +168,7 @@ export default function SummaryTable({ rows, months }: Props) {
                 </tr>
               )}
             <tr
-              style={{ ...styles.tr, ...(warn ? styles.trWarn : {}), ...(isSub ? styles.trSub : {}) }}
+              style={{ ...styles.tr, ...(warn ? styles.trWarn : {}), ...(isSub ? styles.trSub : {}), ...(!isOrphanLead && isProductStart ? styles.productTopBorder : {}) }}
               onClick={() => navigate(
                 `/explore/${encodeURIComponent(r.product_id)}/${r.process}` +
                 (isSub ? `?sub=${encodeURIComponent(r.process_label)}` : "")
@@ -232,4 +233,5 @@ const styles: Record<string, React.CSSProperties> = {
   subGlyph: { color: "var(--gray-400)", marginRight: 6, userSelect: "none" },
   subName: { color: "var(--gray-400)", fontSize: 11, marginTop: 2 },
   badge: { display: "inline-block", background: "rgba(224, 62, 62, 0.1)", color: "var(--red)", fontSize: 11, fontWeight: 500, padding: "2px 8px", borderRadius: 999, marginRight: 4 },
+  productTopBorder: { borderTop: "2px solid var(--gray-300)" },
 };

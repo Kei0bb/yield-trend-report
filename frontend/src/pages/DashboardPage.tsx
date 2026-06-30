@@ -36,9 +36,9 @@ export default function DashboardPage() {
         <label style={styles.field}>
           <span style={styles.fieldLabel}>Period</span>
           <select value={months} onChange={(e) => setMonths(Number(e.target.value))} style={styles.select}>
+            <option value={1}>Last 1 month</option>
             <option value={3}>Last 3 months</option>
             <option value={6}>Last 6 months</option>
-            <option value={12}>Last 12 months</option>
           </select>
         </label>
         <label style={styles.field}>

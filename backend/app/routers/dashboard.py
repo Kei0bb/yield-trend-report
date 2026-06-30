@@ -9,7 +9,7 @@ router = APIRouter()
 
 @router.get("/dashboard/summary")
 def dashboard_summary(
-    months: int = Query(6, ge=1, le=24),
+    months: int = Query(3, ge=1, le=6),
     process: str = Query("all"),
     force: bool = Query(False),
 ) -> dict:

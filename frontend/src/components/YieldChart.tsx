@@ -84,16 +84,16 @@ export default function YieldChart({ processName, data, target, colorMap }: Yiel
           <h3 style={styles.title}>Yield Trend</h3>
         </div>
         <div style={styles.stats}>
-          <div style={styles.statItem}>
-            <div style={styles.statLabel}>Latest yield</div>
-            <div style={styles.statValue}>{latestYield.toFixed(2)}%</div>
-          </div>
           {hasTarget && (
             <div style={styles.statItem}>
               <div style={styles.statLabel}>Target</div>
               <div style={styles.statValue}>{target}%</div>
             </div>
           )}
+          <div style={styles.statItem}>
+            <div style={styles.statLabel}>Latest yield</div>
+            <div style={styles.statValue}>{latestYield.toFixed(2)}%</div>
+          </div>
         </div>
       </div>
       <Plot

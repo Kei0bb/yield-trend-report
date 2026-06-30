@@ -16,7 +16,7 @@ export default function LotTable({ lots, availableBins }: Props) {
   // Left identity columns are fixed-width to their content (Lot ID 6ch,
   // Prog Rev 8ch, Date 10ch, Wafers 2ch), all left-aligned; the freed space
   // goes to wider bin and alert columns.
-  const minWidth = 68 + 84 + 92 + 40 + 58 + availableBins.length * 76 + 220;
+  const minWidth = 68 + 84 + 92 + 56 + 58 + availableBins.length * 76 + 220;
 
   return (
     <div style={styles.scroll}>
@@ -25,7 +25,7 @@ export default function LotTable({ lots, availableBins }: Props) {
           <col style={{ width: 68 }} />
           <col style={{ width: 84 }} />
           <col style={{ width: 92 }} />
-          <col style={{ width: 40 }} />
+          <col style={{ width: 56 }} />
           <col style={{ width: 58 }} />
           {availableBins.map((b) => <col key={b} style={{ width: 76 }} />)}
           <col style={{ width: 220 }} />
@@ -35,7 +35,7 @@ export default function LotTable({ lots, availableBins }: Props) {
             <th style={styles.thLeft}>Lot ID</th>
             <th style={styles.thLeft}>Prog Rev</th>
             <th style={styles.thLeft}>Date</th>
-            <th style={styles.thLeft}>Wafers</th>
+            <th style={styles.thLeft}>QTY</th>
             <th style={styles.th}>Yield</th>
             {availableBins.map((b) => (
               <th key={b} style={styles.th}>

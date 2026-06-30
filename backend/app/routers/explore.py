@@ -17,7 +17,7 @@ router = APIRouter()
 def explore_lots(
     product_id: str = Query(...),
     process: str = Query(...),
-    months: int = Query(6, ge=1, le=24),
+    months: int = Query(6, ge=1, le=6),
     sub: str | None = Query(None),
     force: bool = Query(False),
 ) -> ExploreLotsResponse:
