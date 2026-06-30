@@ -149,10 +149,17 @@ export default function SummaryTable({ rows, months }: Props) {
           const isProductStart = i !== 0 && sorted[i].product_id !== sorted[i - 1].product_id;
           return (
             <Fragment key={`${r.nickname}-${r.process}-${r.level}-${r.process_label}`}>
+              {/* Whitespace gap between products (no rule line) — lighter than a
+                  border for separating product groups. */}
+              {isProductStart && (
+                <tr style={styles.spacer} aria-hidden="true">
+                  <td colSpan={7} />
+                </tr>
+              )}
               {/* subs-only product: show a filled, non-clickable major header
                   so the sub rows don't appear to dangle under nothing. */}
               {isOrphanLead && (
-                <tr style={{ ...styles.tr, ...styles.trDisabled, ...(isProductStart ? styles.productTopBorder : {}) }}>
+                <tr style={{ ...styles.tr, ...styles.trDisabled }}>
                   <td style={styles.tdLeft}>
                     <b>{r.product_id}</b> <span style={styles.proc}>/ {r.process}</span>
                     {r.display_name && r.display_name !== r.product_id && (
@@ -168,7 +175,7 @@ export default function SummaryTable({ rows, months }: Props) {
                 </tr>
               )}
             <tr
-              style={{ ...styles.tr, ...(warn ? styles.trWarn : {}), ...(isSub ? styles.trSub : {}), ...(!isOrphanLead && isProductStart ? styles.productTopBorder : {}) }}
+              style={{ ...styles.tr, ...(warn ? styles.trWarn : {}), ...(isSub ? styles.trSub : {}) }}
               onClick={() => navigate(
                 `/explore/${encodeURIComponent(r.product_id)}/${r.process}` +
                 (isSub ? `?sub=${encodeURIComponent(r.process_label)}` : "")
@@ -233,5 +240,5 @@ const styles: Record<string, React.CSSProperties> = {
   subGlyph: { color: "var(--gray-400)", marginRight: 6, userSelect: "none" },
   subName: { color: "var(--gray-400)", fontSize: 11, marginTop: 2 },
   badge: { display: "inline-block", background: "rgba(224, 62, 62, 0.1)", color: "var(--red)", fontSize: 11, fontWeight: 500, padding: "2px 8px", borderRadius: 999, marginRight: 4 },
-  productTopBorder: { borderTop: "2px solid var(--gray-300)" },
+  spacer: { height: 12 },
 };
