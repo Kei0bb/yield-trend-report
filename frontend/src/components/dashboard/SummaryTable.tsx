@@ -147,6 +147,9 @@ export default function SummaryTable({ rows, months }: Props) {
           const orphanKey = `${r.product_id}|${r.process}|${r.process_label}`;
           const isOrphanLead = isSub && orphanLeads.has(orphanKey);
           const isProductStart = i !== 0 && sorted[i].product_id !== sorted[i - 1].product_id;
+          // Last row of a product group: drop its bottom rule so the gap below
+          // reads as open whitespace, not a band bounded by a floating line.
+          const isProductEnd = i === sorted.length - 1 || sorted[i + 1].product_id !== r.product_id;
           return (
             <Fragment key={`${r.nickname}-${r.process}-${r.level}-${r.process_label}`}>
               {/* Whitespace gap between products (no rule line) — lighter than a
@@ -175,7 +178,7 @@ export default function SummaryTable({ rows, months }: Props) {
                 </tr>
               )}
             <tr
-              style={{ ...styles.tr, ...(warn ? styles.trWarn : {}), ...(isSub ? styles.trSub : {}) }}
+              style={{ ...styles.tr, ...(warn ? styles.trWarn : {}), ...(isSub ? styles.trSub : {}), ...(isProductEnd ? styles.trProductEnd : {}) }}
               onClick={() => navigate(
                 `/explore/${encodeURIComponent(r.product_id)}/${r.process}` +
                 (isSub ? `?sub=${encodeURIComponent(r.process_label)}` : "")
@@ -240,5 +243,6 @@ const styles: Record<string, React.CSSProperties> = {
   subGlyph: { color: "var(--gray-400)", marginRight: 6, userSelect: "none" },
   subName: { color: "var(--gray-400)", fontSize: 11, marginTop: 2 },
   badge: { display: "inline-block", background: "rgba(224, 62, 62, 0.1)", color: "var(--red)", fontSize: 11, fontWeight: 500, padding: "2px 8px", borderRadius: 999, marginRight: 4 },
-  spacer: { height: 6, background: "var(--white)" },
+  trProductEnd: { borderBottom: "none" },
+  spacer: { height: 6, background: "var(--warm-white)" },
 };
