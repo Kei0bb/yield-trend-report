@@ -4,6 +4,7 @@ from datetime import date, timedelta
 
 import pandas as pd
 
+from app.services.map_queries import DIE_COLUMNS
 from app.services.yield_aggregator import anchor_from_end_month, latest_iso_weeks
 from app.services.yield_queries import COMMON_COLUMNS
 
@@ -112,3 +113,40 @@ def mock_lot_dataframe(product: str, process: str, months: int = 6) -> pd.DataFr
 
     columns = COMMON_COLUMNS + ["lot_date", "test_program_rev"]
     return pd.DataFrame(rows, columns=columns)
+
+
+def mock_die_dataframe(lot_id: str, process: str) -> pd.DataFrame:
+    """Deterministic per-die mock for the Wafer Map tab.
+
+    Circle of radius 8 (~200 die), integer grid centered on (0, 0).
+    Per wafer: mostly PASS (bin 1) + an edge ring of bin 7, one cluster of
+    bin 13, and a sprinkle of bin 2 — enough structure to eyeball edge/cluster
+    patterns in the UI.
+
+    Uses local `random.Random(seed_string)` instances (not the module-level
+    `random.seed()` used elsewhere in this file) so this generator neither
+    disturbs nor is disturbed by other mock functions' global RNG state.
+    """
+    rng = random.Random(f"{lot_id}|{process}|die")
+    wafer_count = rng.randint(3, 6)
+    rows: list[tuple] = []
+    for w in range(1, wafer_count + 1):
+        wafer_id = str(w)
+        wrng = random.Random(f"{lot_id}|{process}|{w}")
+        # one defect cluster center per wafer
+        cx, cy = wrng.randint(-5, 5), wrng.randint(-5, 5)
+        for y in range(-8, 9):
+            for x in range(-8, 9):
+                r2 = x * x + y * y
+                if r2 > 64:
+                    continue
+                if r2 >= 49 and wrng.random() < 0.35:
+                    code, quality = 7, "FAIL"        # edge ring
+                elif (x - cx) ** 2 + (y - cy) ** 2 <= 2 and wrng.random() < 0.8:
+                    code, quality = 13, "FAIL"       # cluster
+                elif wrng.random() < 0.03:
+                    code, quality = 2, "FAIL"        # random sprinkle
+                else:
+                    code, quality = 1, "PASS"
+                rows.append((lot_id, wafer_id, x, y, code, quality))
+    return pd.DataFrame(rows, columns=DIE_COLUMNS)
