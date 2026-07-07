@@ -8,6 +8,7 @@ import type { Product, WaferMapLotsResponse, WaferMapResponse } from "../types";
 // import BinLegend from "../components/wafermap/BinLegend";
 
 const MAX_LOTS = 12;
+const MONTHS_OPTIONS = [1, 3, 6];
 
 export default function WaferMapPage() {
   const [searchParams] = useSearchParams();
@@ -15,7 +16,10 @@ export default function WaferMapPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [productId, setProductId] = useState(searchParams.get("product_id") ?? "");
   const [process, setProcess] = useState(searchParams.get("process") ?? "CP");
-  const [months, setMonths] = useState(Number(searchParams.get("months") ?? 6));
+  const [months, setMonths] = useState(() => {
+    const m = parseInt(searchParams.get("months") ?? "", 10);
+    return MONTHS_OPTIONS.includes(m) ? m : 6;
+  });
   const [sub, setSub] = useState(searchParams.get("sub") ?? "");
 
   const [lotsData, setLotsData] = useState<WaferMapLotsResponse | null>(null);
@@ -24,7 +28,7 @@ export default function WaferMapPage() {
 
   const [selectedLots, setSelectedLots] = useState<string[]>(() => {
     const l = searchParams.get("lots");
-    return l ? l.split(",").filter(Boolean) : [];
+    return l ? l.split(",").filter(Boolean).slice(0, MAX_LOTS) : [];
   });
 
   const [mapData, setMapData] = useState<WaferMapResponse | null>(null);
@@ -45,19 +49,26 @@ export default function WaferMapPage() {
       });
   }, []);
 
+  // Guards loadLots against out-of-order responses: only the latest request
+  // may write state when product/process changes mid-fetch.
+  const lotsReqIdRef = useRef(0);
+
   const loadLots = useCallback(async () => {
     if (!productId || !process) return;
+    const id = ++lotsReqIdRef.current;
     setLotsLoading(true);
     setLotsError(null);
     try {
       const res = await fetchWaferMapLots(productId, process, months, sub || undefined);
+      if (id !== lotsReqIdRef.current) return; // stale response
       setLotsData(res);
     } catch (e) {
+      if (id !== lotsReqIdRef.current) return; // stale response
       console.error("Failed to load lots:", e);
       setLotsError("Failed to load lots.");
       setLotsData(null);
     } finally {
-      setLotsLoading(false);
+      if (id === lotsReqIdRef.current) setLotsLoading(false);
     }
   }, [productId, process, months, sub]);
 
@@ -92,7 +103,7 @@ export default function WaferMapPage() {
     const spProcess = searchParams.get("process");
     const spLots = searchParams.get("lots");
     if (spProduct && spProcess && spLots) {
-      const lotIds = spLots.split(",").filter(Boolean);
+      const lotIds = spLots.split(",").filter(Boolean).slice(0, MAX_LOTS);
       if (lotIds.length > 0) void handleShowMaps(lotIds);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
