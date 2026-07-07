@@ -195,9 +195,9 @@ C:\nssm\win64\nssm.exe set YieldProxy AppStopMethodConsole 3000
 C:\nssm\win64\nssm.exe set YieldProxy Start SERVICE_AUTO_START
 ```
 
-> nginx は `nginx -s stop` での停止が正式だが、NSSM 経由のプロセス停止でも
-> 実用上問題ない（`AppStopMethodConsole` はその停止方法の待ち時間設定）。
-> 手動で止める場合は `cd C:\nginx && nginx -s stop`。
+> nginx は `nginx -s stop` での停止が正式ですが、NSSM 経由のプロセス停止でも
+> 実用上問題ありません（`AppStopMethodConsole` はその停止方法の待ち時間設定
+> です）。手動で止める場合は `cd C:\nginx && nginx -s stop` を実行してください。
 
 サービスを起動します。
 
@@ -215,8 +215,20 @@ net start YieldProxy
 
 共有マシン自身と、チームメンバーの PC の両方から確認します。
 
+まず共有マシン自身のコマンドプロンプトで、nginx 経由の疎通を確認します。
+
+```bat
+curl http://localhost/health
+```
+
+`{"status":"ok",...}` が返れば、ブラウザ → nginx → uvicorn の経路が
+つながっています。
+
+続いてブラウザでも確認します。
+
 - `http://localhost`（マシン自身から）→ アプリが表示される
-- `http://<コンピュータ名>` → アプリが表示される（例: `http://YIELD-PC`）
+- 別 PC のブラウザで `http://<コンピュータ名>/` を開く → Dashboard が
+  表示される（例: `http://YIELD-PC/`）
 - `http://yieldportal.socionext.com` → **IT 部門の DNS レコードが有効になった
   時点で** アプリが表示される
 
