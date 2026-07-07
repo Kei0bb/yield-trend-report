@@ -3,6 +3,7 @@ import TopNav from "./components/TopNav";
 import ReportPage from "./pages/ReportPage";
 import DashboardPage from "./pages/DashboardPage";
 import ExplorePage from "./pages/ExplorePage";
+import WaferMapPage from "./pages/WaferMapPage";
 
 export default function App() {
   return (
@@ -15,6 +16,7 @@ export default function App() {
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/report" element={<ReportPage />} />
             <Route path="/explore/:productId/:process" element={<ExplorePage />} />
+            <Route path="/wafermap" element={<WaferMapPage />} />
           </Routes>
         </div>
       </div>

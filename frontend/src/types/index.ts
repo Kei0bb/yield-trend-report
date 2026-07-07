@@ -85,3 +85,42 @@ export interface ExploreLotsResponse {
   available_bins: string[];
   target?: number | null;
 }
+
+// ---- Wafer Map types ----
+
+export interface WaferMapWafer {
+  lot_id: string;
+  wafer_id: string;
+  // Parallel arrays, one entry per die; `bin` holds raw DB bin codes.
+  x: number[];
+  y: number[];
+  bin: number[];
+}
+
+export interface WaferMapLegendItem {
+  bin_code: number;
+  label: string;
+  count: number;
+}
+
+export interface WaferMapLotInfo {
+  lot_id: string;
+  lot_date: string;
+  wafer_count: number;
+  test_program_rev: string;
+}
+
+export interface WaferMapLotsResponse {
+  product_id: string;
+  process: string;
+  lots: WaferMapLotInfo[];
+}
+
+export interface WaferMapResponse {
+  product_id: string;
+  display_name: string;
+  process: string;
+  wafers: WaferMapWafer[];
+  legend: WaferMapLegendItem[];
+  pass_bin_codes: number[];
+}

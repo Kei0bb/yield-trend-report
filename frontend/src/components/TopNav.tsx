@@ -4,6 +4,7 @@ import { NavLink } from "react-router-dom";
 const tabs = [
   { to: "/dashboard", label: "Dashboard" },
   { to: "/report", label: "Report" },
+  { to: "/wafermap", label: "Wafer Map" },
 ];
 
 export default function TopNav() {

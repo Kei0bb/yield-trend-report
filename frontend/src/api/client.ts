@@ -2,6 +2,7 @@ import axios from "axios";
 import type {
   Product, YieldRequest, YieldResponse,
   DashboardSummaryResponse, ExploreLotsResponse,
+  WaferMapLotsResponse, WaferMapResponse,
 } from "../types";
 
 const api = axios.create({
@@ -66,6 +67,26 @@ export async function fetchProcessUnits(
   const res = await api.get<{ family: string; label: string }[]>("/process-units", {
     params: { product_id: productId },
   });
+  return res.data;
+}
+
+export async function fetchWaferMapLots(
+  productId: string, process: string, months = 6, sub?: string
+): Promise<WaferMapLotsResponse> {
+  const res = await api.get<WaferMapLotsResponse>("/wafermap/lots", {
+    params: { product_id: productId, process, months, ...(sub ? { sub } : {}) },
+  });
+  return res.data;
+}
+
+export async function fetchWaferMaps(req: {
+  product_id: string;
+  process: string;
+  lot_ids: string[];
+  months: number;
+  sub?: string;
+}): Promise<WaferMapResponse> {
+  const res = await api.post<WaferMapResponse>("/wafermap", req);
   return res.data;
 }
 
