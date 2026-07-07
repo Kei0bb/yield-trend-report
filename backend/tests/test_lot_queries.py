@@ -62,3 +62,14 @@ def test_query_lot_data_aligns_columns_with_select_order(monkeypatch):
     assert df.loc[0, "bin_name"] == "IDDQ2_LV"
     assert int(df.loc[0, "bin_fail_count"]) == 12
     assert df.loc[0, "test_program_rev"] == "REV01"
+
+
+def test_build_lot_query_partitions_lot_date_by_tp_rev():
+    """Regression: lot_date must be MAX(date) per (lot, TP rev), so a lot whose
+    wafers span multiple TP revs dates each rev by its own latest test date
+    rather than inheriting the whole-lot MAX (which glued revs to one date)."""
+    sql, _ = build_lot_query(
+        process="CP", product_ids=["P12345-A"],
+        start_month="2025-01", end_month="2025-06", process_values=["CP"],
+    )
+    assert "PARTITION BY h.SUBSTRATE_ID, h.REV01" in sql

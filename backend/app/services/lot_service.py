@@ -148,7 +148,7 @@ def _aggregate(
 
         lots.append(LotData(
             lot_id=str(lot_id_val),
-            lot_date=str(g["lot_date"].iloc[0]),
+            lot_date=str(g["lot_date"].max()),
             wafer_count=wafer_count,
             yield_pct=lot_yield,
             bin_breakdown=breakdown,
