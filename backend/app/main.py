@@ -24,7 +24,7 @@ logging.getLogger("app").setLevel(logging.INFO)
 
 from app.config import settings
 from app.database import close_pool, init_pool
-from app.routers import anomaly_config, dashboard, explore, export, yield_data
+from app.routers import anomaly_config, dashboard, explore, export, wafer_map, yield_data
 
 
 @asynccontextmanager
@@ -54,6 +54,7 @@ app.include_router(export.router, prefix="/api")
 app.include_router(dashboard.router, prefix="/api")
 app.include_router(explore.router, prefix="/api")
 app.include_router(anomaly_config.router, prefix="/api")
+app.include_router(wafer_map.router, prefix="/api")
 
 
 @app.get("/health")
