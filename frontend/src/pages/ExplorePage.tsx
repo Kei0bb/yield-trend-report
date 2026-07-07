@@ -76,7 +76,13 @@ export default function ExplorePage() {
         <div style={styles.stack}>
           <YieldChart processName={label} data={processData} target={data.target} />
           <div style={styles.card}>
-            <LotTable lots={data.lots} availableBins={data.available_bins} />
+            <LotTable
+              lots={data.lots}
+              availableBins={data.available_bins}
+              productId={productId}
+              process={process}
+              sub={sub || undefined}
+            />
           </div>
         </div>
       )}

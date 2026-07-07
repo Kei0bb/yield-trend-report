@@ -1,12 +1,16 @@
+import { Link } from "react-router-dom";
 import type { LotData } from "../../types";
 import { last8 } from "../../utils/tpRev";
 
 interface Props {
   lots: LotData[];
   availableBins: string[];
+  productId: string;
+  process: string;
+  sub?: string;
 }
 
-export default function LotTable({ lots, availableBins }: Props) {
+export default function LotTable({ lots, availableBins, productId, process, sub }: Props) {
   const pctFor = (lot: LotData, bin: string) => {
     const b = lot.bin_breakdown.find((x) => x.bin_name === bin);
     return b ? b.percent : 0;
@@ -49,7 +53,13 @@ export default function LotTable({ lots, availableBins }: Props) {
           {rows.map((lot) => (
             <tr key={`${lot.lot_id}|${lot.test_program_rev}`} style={lot.warnings.length ? styles.warn : undefined}>
               <td style={styles.tdLeft}>
-                <span title={lot.lot_id} style={styles.cellTrunc}>{lot.lot_id}</span>
+                <Link
+                  to={`/wafermap?product_id=${encodeURIComponent(productId)}&process=${process}&lots=${encodeURIComponent(lot.lot_id)}${sub ? `&sub=${encodeURIComponent(sub)}` : ""}`}
+                  style={styles.lotLink}
+                  title={`${lot.lot_id} のwafer mapを見る`}
+                >
+                  <span style={styles.cellTrunc}>{lot.lot_id}</span>
+                </Link>
               </td>
               <td style={styles.tdLeft}>
                 <span title={lot.test_program_rev} style={styles.cellTrunc}>{last8(lot.test_program_rev) || "—"}</span>
@@ -80,4 +90,5 @@ const styles: Record<string, React.CSSProperties> = {
   badge: { display: "inline-block", background: "rgba(224, 62, 62, 0.1)", color: "var(--red)", fontSize: 10, fontWeight: 500, padding: "2px 7px", borderRadius: 999, marginRight: 4 },
   binHead: { display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
   cellTrunc: { display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
+  lotLink: { display: "block", color: "var(--badge-text)", textDecoration: "none" },
 };
