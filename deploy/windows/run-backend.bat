@@ -2,7 +2,7 @@
 REM ===========================================================================
 REM run-backend.bat — start the Yield Portal FastAPI backend (production)
 REM
-REM Binds to 127.0.0.1 ONLY: the app is reached through Caddy, never directly
+REM Binds to 127.0.0.1 ONLY: the app is reached through nginx, never directly
 REM from the network. Edit APP_DIR below to match this machine.
 REM
 REM Used by the NSSM Windows service "YieldBackend" (see docs/deploy-windows.md),
