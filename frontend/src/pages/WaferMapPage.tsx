@@ -2,13 +2,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { fetchProducts, fetchWaferMapLots, fetchWaferMaps } from "../api/client";
 import type { Product, WaferMapLotsResponse, WaferMapResponse } from "../types";
-
-// TODO(Task 5): uncomment when the grid/legend components land.
-// import WaferMapGrid from "../components/wafermap/WaferMapGrid";
-// import BinLegend from "../components/wafermap/BinLegend";
+import WaferMapGrid from "../components/wafermap/WaferMapGrid";
+import BinLegend from "../components/wafermap/BinLegend";
 
 const MAX_LOTS = 12;
 const MONTHS_OPTIONS = [1, 3, 6];
+
+// Okabe–Ito colorblind-safe categorical palette (fail bins, legend order).
+const PALETTE = ["#0072B2", "#E69F00", "#009E73", "#D55E00", "#CC79A7", "#56B4E9", "#F0E442", "#999999"];
 
 export default function WaferMapPage() {
   const [searchParams] = useSearchParams();
@@ -34,6 +35,7 @@ export default function WaferMapPage() {
   const [mapData, setMapData] = useState<WaferMapResponse | null>(null);
   const [mapLoading, setMapLoading] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
+  const [selectedBin, setSelectedBin] = useState<number | null>(null);
 
   // Load the product list once; default to the first product if none was
   // supplied via the URL (Explore deep-link).
@@ -84,6 +86,7 @@ export default function WaferMapPage() {
         product_id: productId, process, lot_ids: ids, months, sub: sub || undefined,
       });
       setMapData(res);
+      setSelectedBin(null);
     } catch (e) {
       console.error("Failed to load wafer maps:", e);
       setMapError("Failed to load wafer maps.");
@@ -92,6 +95,15 @@ export default function WaferMapPage() {
       setMapLoading(false);
     }
   }, [selectedLots, productId, process, months, sub]);
+
+  const colorFor = useCallback(
+    (bin: number) => {
+      const legend = mapData?.legend ?? [];
+      const i = legend.findIndex((l) => l.bin_code === bin);
+      return i >= 0 && i < PALETTE.length ? PALETTE[i] : "#999999"; // beyond top-8 → gray
+    },
+    [mapData],
+  );
 
   // Explore deep-link entry: if product_id + process + lots were supplied on
   // the URL, auto-fetch the maps once on mount.
@@ -218,11 +230,22 @@ export default function WaferMapPage() {
 
       {mapData && (
         <div style={styles.card}>
-          {/* TODO(Task 5): replace this placeholder with
-              <WaferMapGrid wafers={mapData.wafers} legend={mapData.legend} passBinCodes={mapData.pass_bin_codes} selectedBin={selectedBin} />
-              and <BinLegend legend={mapData.legend} passBinCodes={mapData.pass_bin_codes} selectedBin={selectedBin} onSelectBin={setSelectedBin} /> */}
-          <div style={styles.placeholder}>
+          <div style={styles.mapMeta}>
             {mapData.wafers.length} wafers loaded for {mapData.display_name} / {mapData.process}
+          </div>
+          <BinLegend
+            legend={mapData.legend}
+            colorFor={colorFor}
+            selectedBin={selectedBin}
+            onSelect={setSelectedBin}
+          />
+          <div style={styles.gridSpacer}>
+            <WaferMapGrid
+              wafers={mapData.wafers}
+              colorFor={colorFor}
+              passBinCodes={mapData.pass_bin_codes}
+              selectedBin={selectedBin}
+            />
           </div>
         </div>
       )}
@@ -337,6 +360,7 @@ const styles: Record<string, React.CSSProperties> = {
     boxShadow: "var(--shadow-button)",
   },
   btnDisabled: { opacity: 0.5, cursor: "not-allowed" },
-  placeholder: { color: "var(--gray-400)", fontSize: 14, padding: "12px 0" },
+  mapMeta: { color: "var(--gray-400)", fontSize: 13, marginBottom: 12 },
+  gridSpacer: { marginTop: 16 },
   empty: { color: "var(--gray-400)", fontSize: 14 },
 };
