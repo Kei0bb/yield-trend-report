@@ -15,7 +15,7 @@
   ブラウザ
     │   http://yieldportal.socionext.com   （ポート 80、今のところ平文 HTTP）
     ▼
-  Caddy            ← リバースプロキシ。Windows サービス "YieldCaddy" として動作
+  nginx            ← リバースプロキシ。Windows サービス "YieldProxy" として動作
     │   127.0.0.1:8000 へ転送
     ▼
   uvicorn（FastAPI アプリ）   ← Windows サービス "YieldBackend" として動作
@@ -26,10 +26,10 @@
 
 バックグラウンドで動く 2 つのサービス:
 - **YieldBackend** — アプリ本体（Python/uvicorn）。localhost のみで待ち受け。
-- **YieldCaddy** — ポート 80 の入口。わかりやすい名前でのアクセスを実現する。
+- **YieldProxy** — ポート 80 の入口（nginx）。わかりやすい名前でのアクセスを実現する。
 
-この構成にする理由: アプリ自体は外部に直接公開されず、Caddy だけが唯一の公開
-ポートになります。将来 HTTPS やログイン機能を追加するときも **Caddy 側だけ**
+この構成にする理由: アプリ自体は外部に直接公開されず、nginx だけが唯一の公開
+ポートになります。将来 HTTPS やログイン機能を追加するときも **nginx 側だけ**
 変更すればよく、アプリ本体はそのままで済みます。
 
 ---
@@ -77,17 +77,15 @@ ipconfig
 1. **uv**（Python ランナー）— 未インストールの場合:
    https://docs.astral.sh/uv/getting-started/installation/
 2. **Node.js**（フロントエンドビルド用）: https://nodejs.org/ （LTS 版）
-3. **Caddy**（リバースプロキシ）: https://caddyserver.com/download から
-   `caddy.exe` をダウンロードし、`C:\caddy\caddy.exe` に配置します。
+3. **nginx**（リバースプロキシ）: https://nginx.org/en/download.html から
+   Windows 版 zip をダウンロードし、`C:\nginx` に展開します
+   （実行ファイルは `C:\nginx\nginx.exe`）。
 4. **NSSM**（プログラムを Windows サービス化するツール）:
    https://nssm.cc/download からダウンロードして展開し、`nssm.exe` のパスを
    メモしておきます（例: `C:\nssm\win64\nssm.exe`）。
 
-Caddy が使用するフォルダを作成します。
-
-```bat
-mkdir C:\caddy\logs
-```
+nginx の zip には `logs\` フォルダが最初から含まれているため、フォルダ作成の
+準備は不要です。
 
 ---
 
@@ -121,25 +119,25 @@ ORACLE_PASSWORD=<password>
 
 ---
 
-## 6. Caddy を設定する
+## 6. nginx を設定する
 
-リポジトリの Caddyfile を、サービスが読み込む場所にコピーします。
+リポジトリの `deploy/nginx.conf` を、nginx が読み込む場所に上書き配置します。
 
 ```bat
-copy C:\apps\Report_gen\deploy\Caddyfile C:\caddy\Caddyfile
+copy C:\apps\Report_gen\deploy\nginx.conf C:\nginx\conf\nginx.conf
+```
+
+構文を確認します。
+
+```bat
+cd C:\nginx
+nginx -t
 ```
 
 このファイルは、**どのホスト名でアクセスされても** ポート 80 → `127.0.0.1:8000`
 へ転送するようになっています。そのため FQDN（完全修飾ドメイン名）、コンピュータ
 名、IP アドレスのいずれでもそのまま動作します。HTTP のままであれば編集は
-不要です。
-
-一度手動で起動して動作確認します（起動したままにして、次の手順は別の
-コマンドプロンプトで行ってください）。
-
-```bat
-C:\caddy\caddy.exe run --config C:\caddy\Caddyfile
-```
+不要です。サービスとしての起動は手順 9 で行います。
 
 ---
 
@@ -154,8 +152,8 @@ C:\apps\Report_gen\deploy\windows\run-backend.bat
 ```
 
 そのあと `http://localhost:8000` をブラウザで開き、アプリが表示されることを
-確認します。確認できたら `Ctrl+C` で停止します。（手順 6 の Caddy も起動した
-ままであれば、ポート無しの `http://localhost` でも表示されるはずです。）
+確認します。確認できたら `Ctrl+C` で停止します。（ポート無しの
+`http://localhost` での確認は、手順 9 で nginx をサービス化した後に行います。）
 
 ---
 
@@ -188,19 +186,24 @@ C:\nssm\win64\nssm.exe set YieldBackend AppStdout "C:\apps\Report_gen\backend\lo
 C:\nssm\win64\nssm.exe set YieldBackend AppStderr "C:\apps\Report_gen\backend\logs\service.log"
 ```
 
-**Caddy サービス:**
+**nginx サービス:**
 
 ```bat
-C:\nssm\win64\nssm.exe install YieldCaddy "C:\caddy\caddy.exe" "run --config C:\caddy\Caddyfile"
-C:\nssm\win64\nssm.exe set YieldCaddy AppDirectory "C:\caddy"
-C:\nssm\win64\nssm.exe set YieldCaddy Start SERVICE_AUTO_START
+C:\nssm\win64\nssm.exe install YieldProxy "C:\nginx\nginx.exe"
+C:\nssm\win64\nssm.exe set YieldProxy AppDirectory "C:\nginx"
+C:\nssm\win64\nssm.exe set YieldProxy AppStopMethodConsole 3000
+C:\nssm\win64\nssm.exe set YieldProxy Start SERVICE_AUTO_START
 ```
+
+> nginx は `nginx -s stop` での停止が正式だが、NSSM 経由のプロセス停止でも
+> 実用上問題ない（`AppStopMethodConsole` はその停止方法の待ち時間設定）。
+> 手動で止める場合は `cd C:\nginx && nginx -s stop`。
 
 サービスを起動します。
 
 ```bat
 net start YieldBackend
-net start YieldCaddy
+net start YieldProxy
 ```
 
 （バックエンドのログフォルダが無ければ先に作成してください:
@@ -232,20 +235,30 @@ git pull
 cd frontend && npm install && npm run build
 cd ..\backend && uv sync
 net stop YieldBackend && net start YieldBackend
-REM Caddyfile を変更した場合のみ Caddy の再起動が必要です:
-REM   copy deploy\Caddyfile C:\caddy\Caddyfile  &&  net stop YieldCaddy && net start YieldCaddy
+REM nginx.conf を変更した場合のみ nginx の再起動が必要です:
+REM   copy deploy\nginx.conf C:\nginx\conf\nginx.conf  &&  net stop YieldProxy && net start YieldProxy
 ```
 
 **再起動 / 停止:**
 
 ```bat
 net stop YieldBackend & net start YieldBackend
-net stop YieldCaddy   & net start YieldCaddy
+net stop YieldProxy   & net start YieldProxy
 ```
 
 **ログ:**
 - アプリ: `C:\apps\Report_gen\backend\logs\service.log`
-- Caddy アクセスログ: `C:\caddy\logs\access.log`
+- nginx アクセスログ: `C:\nginx\logs\access.log`
+
+**ログローテーション:** nginx は Windows で自動ローテーションしません。
+ログが肥大したら以下を実行します（必要ならタスクスケジューラで月次実行に
+登録してください）。
+
+```bat
+cd C:\nginx
+move logs\access.log logs\access.old.log
+nginx -s reopen
+```
 
 **キャッシュに関する注意:** アプリは Dashboard / Explore の集計結果を
 メモリ上に 3 時間キャッシュします。`YieldBackend` を再起動するとこの
@@ -258,12 +271,12 @@ net stop YieldCaddy   & net start YieldCaddy
 今は不要です（社内 LAN 限定・閲覧専用・少人数利用のため）が、規模が
 大きくなったときに対応する順序は以下の通りです。
 
-1. **HTTPS** — `deploy/Caddyfile` 内の HTTPS ブロックのコメントを 1 つ外し
-   （社内 LAN 限定なら Caddy 内蔵 CA、それ以外は社内発行の証明書）、
-   `C:\caddy\Caddyfile` にコピーして `YieldCaddy` を再起動します。ログイン
-   機能を追加する前には必須です（パスワードが平文で送信されないように
-   するため）。
-2. **認証** — まずは Caddy の `basicauth`（共有パスワード 1 つ）から始め、
+1. **HTTPS** — `deploy/nginx.conf` 内の HTTPS `server` ブロックのコメントを
+   外し（社内発行の証明書を IT 部門から入手し `C:\nginx\certs\` に配置）、
+   `C:\nginx\conf\nginx.conf` にコピーして `YieldProxy` を再起動します。
+   ログイン機能を追加する前には必須です（パスワードが平文で送信されない
+   ようにするため）。
+2. **認証** — まずは nginx の `auth_basic`（共有パスワード 1 つ）から始め、
    ユーザーごとのアクセス制御や製品単位の権限が必要になったら社内 SSO
    （SAML/OIDC）に移行します。
 3. **シークレット管理** — Oracle のパスワードを平文の `backend\.env` から
@@ -280,9 +293,9 @@ net stop YieldCaddy   & net start YieldCaddy
 
 | 症状 | 確認すること |
 |---|---|
-| `http://localhost:8000` は動くが `http://localhost` が動かない | Caddy が起動していない、またはポート 80 が別のアプリ（IIS?）に使われている。`net start YieldCaddy` を実行し、`C:\caddy\logs` を確認。 |
+| `http://localhost:8000` は動くが `http://localhost` が動かない | nginx が起動していない、またはポート 80 が別のアプリ（IIS?）に使われている。`net start YieldProxy` を実行し、`C:\nginx\logs` を確認。 |
 | チームメンバーが名前/IP でアクセスできない | ポート 80 のファイアウォールルール（手順 8）は設定済みか。DNS レコードは有効か。まず IP 直打ちで確認する。 |
 | FQDN だけ失敗し IP / コンピュータ名は動く | `yieldportal.socionext.com` の DNS レコードがまだこのマシンを指していない — IT 部門に確認する。 |
 | アプリにデータが出ない / DB エラーになる | `backend\.env` の Oracle 設定を確認し、`service.log` を確認。`USE_MOCK_DATA` は `false` になっている必要あり。 |
-| サービスが起動しない | `.bat` や `caddy run` を手動実行して実際のエラーを確認する。NSSM の設定内のパスを確認する（`nssm edit YieldBackend`）。 |
-| ポート 80 が既に使われている | Windows の IIS や「World Wide Web Publishing Service」が使用している可能性 — 停止/無効化するか、Caddy 側の `:80` を別ポートに変更する。 |
+| サービスが起動しない | `.bat` を手動実行、または `cd C:\nginx && nginx -t` で設定の構文エラーを確認する。NSSM の設定内のパスを確認する（`nssm edit YieldBackend`）。 |
+| ポート 80 が既に使われている | Windows の IIS や「World Wide Web Publishing Service」が使用している可能性 — 停止/無効化するか、nginx 側の `listen 80` を別ポートに変更する。 |
