@@ -13,7 +13,7 @@ const LOT_WAFER_SLOTS = 25;
 
 /** Fixed pixel footprint for each wafer cell (canvas or empty placeholder),
  *  so columns/rows never collapse when some slots are empty. */
-const WAFER_SIZE = 52;
+const WAFER_SIZE = 64;
 
 /** Normalize a wafer id for slot matching: "01"/"1"/1 all map to "1";
  *  non-numeric ids pass through unchanged. */

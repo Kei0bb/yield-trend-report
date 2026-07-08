@@ -212,37 +212,37 @@ export default function WaferMapPage() {
               <span style={styles.lotsCounter}>{selectedLots.length}/{MAX_LOTS}</span>
             </div>
           </div>
-          {lotsLoading && <p style={styles.empty}>Loading lots…</p>}
-          {!lotsLoading && lotsData && lotsData.lots.length === 0 && (
-            <p style={styles.empty}>No lots found.</p>
-          )}
-          {!lotsLoading && displayLots.length > 0 && (
-            <div style={styles.lotList}>
-              {displayLots.map((l) => {
-                const checked = selectedLots.includes(l.lot_id);
-                const disabled = !checked && selectedLots.length >= MAX_LOTS;
-                return (
-                  <label
-                    key={l.lot_id}
-                    style={{ ...styles.lotItem, ...(disabled ? styles.lotItemDisabled : {}) }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      disabled={disabled}
-                      onChange={() => toggleLot(l.lot_id)}
-                    />
-                    <span>{l.lot_id}</span>
-                  </label>
-                );
-              })}
-            </div>
-          )}
+          <div style={styles.scrollBox}>
+            {lotsLoading && <p style={styles.empty}>Loading lots…</p>}
+            {!lotsLoading && lotsData && lotsData.lots.length === 0 && (
+              <p style={styles.empty}>No lots found.</p>
+            )}
+            {!lotsLoading && displayLots.map((l) => {
+              const checked = selectedLots.includes(l.lot_id);
+              const disabled = !checked && selectedLots.length >= MAX_LOTS;
+              return (
+                <label
+                  key={l.lot_id}
+                  style={{ ...styles.lotItem, ...(disabled ? styles.lotItemDisabled : {}) }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    disabled={disabled}
+                    onChange={() => toggleLot(l.lot_id)}
+                  />
+                  <span>{l.lot_id}</span>
+                </label>
+              );
+            })}
+          </div>
           <button
             onClick={() => handleShowMaps()}
             disabled={selectedLots.length === 0 || mapLoading}
             style={{
               ...styles.primaryBtn,
+              alignSelf: "flex-start",
+              marginTop: 12,
               ...(selectedLots.length === 0 || mapLoading ? styles.btnDisabled : {}),
             }}
           >
@@ -255,16 +255,14 @@ export default function WaferMapPage() {
             <span style={styles.lotsTitle}>Bin filter</span>
             {mapData && <span style={styles.lotsCounter}>{mapData.legend.length}</span>}
           </div>
-          <div style={styles.binScroll}>
-            {mapData && mapData.legend.length > 0 ? (
+          <div style={styles.scrollBox}>
+            {mapData && mapData.legend.length > 0 && (
               <BinLegend
                 legend={mapData.legend}
                 colorFor={colorFor}
                 selectedBins={selectedBins}
                 onToggle={toggleBin}
               />
-            ) : (
-              <p style={styles.empty}>Show maps to list bins.</p>
             )}
           </div>
         </div>
@@ -360,11 +358,22 @@ const styles: Record<string, React.CSSProperties> = {
     marginBottom: 20,
   },
   row: { display: "flex", gap: 16, alignItems: "flex-start" },
-  halfCard: { flex: 1, minWidth: 0, width: "50%", marginBottom: 0 },
-  binScroll: {
-    height: 180,
+  halfCard: {
+    flex: 1,
+    minWidth: 0,
+    width: "50%",
+    marginBottom: 0,
+    height: 300,
+    display: "flex",
+    flexDirection: "column",
+  },
+  scrollBox: {
+    flex: 1,
+    minHeight: 0,
+    display: "flex",
+    flexDirection: "column",
+    gap: 4,
     overflowY: "auto",
-    marginTop: 12,
     border: "var(--border-whisper)",
     borderRadius: 8,
     padding: 6,
@@ -386,17 +395,6 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 12,
     fontWeight: 500,
     cursor: "pointer",
-  },
-  lotList: {
-    display: "flex",
-    flexDirection: "column",
-    gap: 4,
-    maxHeight: 180,
-    overflowY: "auto",
-    marginBottom: 16,
-    border: "var(--border-whisper)",
-    borderRadius: 8,
-    padding: 6,
   },
   lotItem: {
     display: "flex",
