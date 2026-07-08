@@ -33,6 +33,14 @@ def test_wafermap_post_rejects_over_12_lots():
     assert r.status_code == 422
 
 
+def test_wafermap_post_rejects_months_over_6():
+    r = client.post("/api/wafermap", json={
+        "product_id": "P12345-A", "process": "CP",
+        "lot_ids": ["LOT-A"], "months": 12,
+    })
+    assert r.status_code == 422
+
+
 def test_wafermap_post_dedupes_lot_ids():
     lots = client.get("/api/wafermap/lots", params={"product_id": "P12345-A", "process": "CP"}).json()["lots"]
     lot_id = lots[0]["lot_id"]

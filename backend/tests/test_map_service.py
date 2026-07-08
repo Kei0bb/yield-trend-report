@@ -46,3 +46,32 @@ def test_get_wafer_maps_caches_per_lot(monkeypatch):
     get_wafer_maps("Product-A", "CP", ["LOT-A", "LOT-B"])
     get_wafer_maps("Product-A", "CP", ["LOT-B"])   # fully cached — no new call
     assert calls.count("LOT-B") == 1
+
+
+def test_bin_labels_lot_df_lookup_uses_router_process_values_convention(monkeypatch):
+    """The lot-DF fallback in _bin_labels must key its _load_dataframe call the
+    same way the GET /wafermap/lots router does ([sub] if sub else None), not
+    with the fully-resolved process_values used for the die query — otherwise
+    the lookup misses the router's cache entry and fires a duplicate query."""
+    import app.services.map_service as ms
+
+    # Force the CSV bin-mapping to resolve nothing, so _bin_labels falls
+    # through to the lot-DF lookup for every code.
+    monkeypatch.setattr(ms, "load_bin_mapping", lambda bin_group: {})
+
+    calls = []
+    real_load_dataframe = ms._load_dataframe
+
+    def spy(nickname, process, months, process_values=None):
+        calls.append(process_values)
+        return real_load_dataframe(nickname, process, months, process_values=process_values)
+
+    monkeypatch.setattr(ms, "_load_dataframe", spy)
+
+    get_wafer_maps("Product-A", "CP", ["LOT-A", "LOT-B"])  # no sub
+
+    assert calls, "expected the lot-DF fallback to be exercised"
+    assert all(pv is None for pv in calls), (
+        f"expected process_values=None (router's no-sub convention) for every "
+        f"_load_dataframe call from _bin_labels, got {calls}"
+    )

@@ -63,8 +63,10 @@ def _bin_labels(nickname, process, months, process_values, codes):
 
     unresolved = [c for c in codes if c not in labels]
     if unresolved:
-        # Reuse the cached lot DF (raw_bin_code → bin_name); this is the same
-        # frame the lot list came from, so it is a cache hit, not a new query.
+        # Reuse the lot-DF cache with the same key the router builds for
+        # GET /wafermap/lots ([sub] if sub else None, not the fully-resolved
+        # process_values), so this hits that cache entry instead of firing a
+        # second, differently-keyed Oracle query.
         lot_df = _load_dataframe(nickname, process, months, process_values=process_values)
         if not lot_df.empty and "raw_bin_code" in lot_df.columns:
             names = (
@@ -110,7 +112,10 @@ def get_wafer_maps(
 
     fail_df = df.loc[~pass_mask] if not df.empty else df
     counts = fail_df.groupby("bin_code").size().sort_values(ascending=False) if not fail_df.empty else pd.Series(dtype=int)
-    labels = _bin_labels(nickname, process, months, process_values, [int(c) for c in counts.index])
+    # Lot-DF cache lookup uses the router's key convention, not the fully
+    # resolved process_values used for the die query/cache above.
+    lot_df_process_values = [sub] if sub else None
+    labels = _bin_labels(nickname, process, months, lot_df_process_values, [int(c) for c in counts.index])
     legend = [
         WaferMapLegendItem(bin_code=int(code), label=labels[int(code)], count=int(n))
         for code, n in counts.items()

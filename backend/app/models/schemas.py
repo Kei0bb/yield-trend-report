@@ -124,7 +124,7 @@ class WaferMapRequest(BaseModel):
     product_id: str
     process: str
     lot_ids: list[str] = Field(..., min_length=1, max_length=12)
-    months: int = 6
+    months: int = Field(6, ge=1, le=6)
     sub: str | None = None
 
 
