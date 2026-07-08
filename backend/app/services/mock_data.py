@@ -127,8 +127,7 @@ def mock_die_dataframe(lot_id: str, process: str) -> pd.DataFrame:
     `random.seed()` used elsewhere in this file) so this generator neither
     disturbs nor is disturbed by other mock functions' global RNG state.
     """
-    rng = random.Random(f"{lot_id}|{process}|die")
-    wafer_count = rng.randint(3, 6)
+    wafer_count = 25  # 1ロット=25枚固定（FOUP満載）
     rows: list[tuple] = []
     for w in range(1, wafer_count + 1):
         wafer_id = str(w)

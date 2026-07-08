@@ -333,9 +333,12 @@ const styles: Record<string, React.CSSProperties> = {
     display: "flex",
     flexDirection: "column",
     gap: 4,
-    maxHeight: 320,
+    maxHeight: 260,
     overflowY: "auto",
     marginBottom: 16,
+    border: "var(--border-whisper)",
+    borderRadius: 8,
+    padding: 6,
   },
   lotItem: {
     display: "flex",
