@@ -5,11 +5,15 @@ interface WaferMapGridProps {
   wafers: WaferMapWafer[];
   colorFor: (bin: number) => string;
   passBinCodes: number[];
-  selectedBin: number | null;
+  selectedBins: number[];
 }
 
 /** A lot always holds 25 wafer slots — columns are fixed W1..W25. */
 const LOT_WAFER_SLOTS = 25;
+
+/** Fixed pixel footprint for each wafer cell (canvas or empty placeholder),
+ *  so columns/rows never collapse when some slots are empty. */
+const WAFER_SIZE = 72;
 
 /** Normalize a wafer id for slot matching: "01"/"1"/1 all map to "1";
  *  non-numeric ids pass through unchanged. */
@@ -20,7 +24,7 @@ const slotKey = (wid: string): string => {
 
 /** Matrix layout: lots as rows, fixed wafer slots W1..W25 as columns, one
  *  canvas per cell. Untested slots render an em-dash placeholder. */
-export default function WaferMapGrid({ wafers, colorFor, passBinCodes, selectedBin }: WaferMapGridProps) {
+export default function WaferMapGrid({ wafers, colorFor, passBinCodes, selectedBins }: WaferMapGridProps) {
   if (wafers.length === 0) return null;
 
   // Preserve first-seen lot order for rows; index wafers by (lot, slot).
@@ -70,11 +74,22 @@ export default function WaferMapGrid({ wafers, colorFor, passBinCodes, selectedB
                         wafer={w}
                         colorFor={colorFor}
                         passBinCodes={passBinCodes}
-                        selectedBin={selectedBin}
-                        size={92}
+                        selectedBins={selectedBins}
+                        size={WAFER_SIZE}
                       />
                     ) : (
-                      <span style={styles.noWafer}>—</span>
+                      <span
+                        style={{
+                          ...styles.noWafer,
+                          width: WAFER_SIZE,
+                          height: WAFER_SIZE,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        —
+                      </span>
                     )}
                   </td>
                 );
@@ -115,6 +130,6 @@ const styles: Record<string, React.CSSProperties> = {
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
   },
-  cell: { padding: 6, textAlign: "center", verticalAlign: "middle" },
+  cell: { padding: 1, textAlign: "center", verticalAlign: "middle" },
   noWafer: { color: "var(--gray-300, #ccc)", fontSize: 12 },
 };

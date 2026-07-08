@@ -10,13 +10,10 @@ from app.models.schemas import (
     WaferMapResponse,
     WaferMapWafer,
 )
-from app.services.bin_mapping import load_bin_mapping
 from app.services.map_queries import BIN_META_COLUMNS, DIE_COLUMNS, query_bin_meta, query_die_map
 from app.services.mock_data import mock_bin_meta_dataframe, mock_die_dataframe
 from app.services.product_config import (
-    ANY_PROCESS,
     primary_product_id,
-    resolve_bin_group,
     resolve_display_name,
     resolve_process_filter,
 )
@@ -64,20 +61,12 @@ def _is_pass(quality) -> bool:
 
 
 def _bin_labels(nickname, process, meta_df, codes):
-    """Resolve display labels for bin codes: bin_mappings CSV → BIN_SUM meta
-    bin_name → str(code). Returns {code: label}."""
+    """Resolve display labels for bin codes: pure DB BIN_SUM bin_name →
+    str(code). Returns {code: label}."""
     labels: dict[int, str] = {}
-
-    mapping = load_bin_mapping(resolve_bin_group(nickname, process))
-    per_proc = {**mapping.get(ANY_PROCESS, {}), **mapping.get(process.upper(), {})}
-    for code in codes:
-        if code in per_proc:
-            labels[code] = f"{code}_{per_proc[code]}"
-
-    unresolved = [c for c in codes if c not in labels]
-    if unresolved and not meta_df.empty and "bin_name" in meta_df.columns:
+    if not meta_df.empty and "bin_name" in meta_df.columns:
         names = meta_df.dropna(subset=["bin_name"]).set_index("bin_code")["bin_name"]
-        for code in unresolved:
+        for code in codes:
             name = str(names.get(code, "") or "")
             if name:
                 labels[code] = f"{code}_{name}"

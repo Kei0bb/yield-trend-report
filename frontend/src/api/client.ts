@@ -71,10 +71,10 @@ export async function fetchProcessUnits(
 }
 
 export async function fetchWaferMapLots(
-  productId: string, process: string, months = 6, sub?: string
+  productId: string, process: string, start: string, end: string, sub?: string
 ): Promise<WaferMapLotsResponse> {
   const res = await api.get<WaferMapLotsResponse>("/wafermap/lots", {
-    params: { product_id: productId, process, months, ...(sub ? { sub } : {}) },
+    params: { product_id: productId, process, start, end, ...(sub ? { sub } : {}) },
   });
   return res.data;
 }
@@ -83,7 +83,7 @@ export async function fetchWaferMaps(req: {
   product_id: string;
   process: string;
   lot_ids: string[];
-  months: number;
+  months?: number;
   sub?: string;
 }): Promise<WaferMapResponse> {
   const res = await api.post<WaferMapResponse>("/wafermap", req);

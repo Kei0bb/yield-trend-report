@@ -5,7 +5,7 @@ interface WaferMapCanvasProps {
   wafer: WaferMapWafer;
   colorFor: (bin: number) => string;
   passBinCodes: number[];
-  selectedBin: number | null;
+  selectedBins: number[];
   size?: number;
 }
 
@@ -13,7 +13,7 @@ export default function WaferMapCanvas({
   wafer,
   colorFor,
   passBinCodes,
-  selectedBin,
+  selectedBins,
   size = 120,
 }: WaferMapCanvasProps) {
   const ref = useRef<HTMLCanvasElement>(null);
@@ -32,8 +32,10 @@ export default function WaferMapCanvas({
     const maxX = Math.max(...wafer.x);
     const minY = Math.min(...wafer.y);
     const maxY = Math.max(...wafer.y);
-    const n = Math.max(maxX - minX + 1, maxY - minY + 1);
-    const cell = size / (n + 2); // 1-cell margin
+    const spanX = maxX - minX + 1;
+    const spanY = maxY - minY + 1;
+    const cellX = size / (spanX + 2);
+    const cellY = size / (spanY + 2);
 
     ctx.clearRect(0, 0, size, size);
     ctx.fillStyle = "#f3f2f0"; // wafer disc
@@ -45,17 +47,17 @@ export default function WaferMapCanvas({
       const b = wafer.bin[i];
       const isPass = passBinCodes.includes(b);
       let color: string;
-      if (selectedBin != null) color = b === selectedBin ? colorFor(b) : "#eceae7";
+      if (selectedBins.length) color = selectedBins.includes(b) ? colorFor(b) : "#eceae7";
       else color = isPass ? "#e3e1de" : colorFor(b);
       ctx.fillStyle = color;
       ctx.fillRect(
-        (wafer.x[i] - minX + 1) * cell + size / 2 - ((n + 2) * cell) / 2,
-        (maxY - wafer.y[i] + 1) * cell + size / 2 - ((n + 2) * cell) / 2, // +Y up
-        Math.max(cell - 0.5, 0.5),
-        Math.max(cell - 0.5, 0.5),
+        (wafer.x[i] - minX + 1) * cellX,
+        (maxY - wafer.y[i] + 1) * cellY, // +Y up
+        Math.max(cellX - 0.5, 0.5),
+        Math.max(cellY - 0.5, 0.5),
       );
     }
-  }, [wafer, colorFor, passBinCodes, selectedBin, size]);
+  }, [wafer, colorFor, passBinCodes, selectedBins, size]);
 
   return (
     <canvas

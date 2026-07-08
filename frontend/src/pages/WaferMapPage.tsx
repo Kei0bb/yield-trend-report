@@ -6,10 +6,12 @@ import WaferMapGrid from "../components/wafermap/WaferMapGrid";
 import BinLegend from "../components/wafermap/BinLegend";
 
 const MAX_LOTS = 12;
-const MONTHS_OPTIONS = [1, 3, 6];
 
 // Okabe–Ito colorblind-safe categorical palette (fail bins, legend order).
 const PALETTE = ["#0072B2", "#E69F00", "#009E73", "#D55E00", "#CC79A7", "#56B4E9", "#F0E442", "#999999"];
+
+const todayStr = () => new Date().toISOString().slice(0, 10);
+const daysAgoStr = (days: number) => new Date(Date.now() - days * 864e5).toISOString().slice(0, 10);
 
 export default function WaferMapPage() {
   const [searchParams] = useSearchParams();
@@ -17,10 +19,8 @@ export default function WaferMapPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [productId, setProductId] = useState(searchParams.get("product_id") ?? "");
   const [process, setProcess] = useState(searchParams.get("process") ?? "CP");
-  const [months, setMonths] = useState(() => {
-    const m = parseInt(searchParams.get("months") ?? "", 10);
-    return MONTHS_OPTIONS.includes(m) ? m : 6;
-  });
+  const [startDate, setStartDate] = useState(searchParams.get("start") ?? daysAgoStr(90));
+  const [endDate, setEndDate] = useState(searchParams.get("end") ?? todayStr());
   const [sub, setSub] = useState(searchParams.get("sub") ?? "");
 
   const [lotsData, setLotsData] = useState<WaferMapLotsResponse | null>(null);
@@ -35,7 +35,7 @@ export default function WaferMapPage() {
   const [mapData, setMapData] = useState<WaferMapResponse | null>(null);
   const [mapLoading, setMapLoading] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
-  const [selectedBin, setSelectedBin] = useState<number | null>(null);
+  const [selectedBins, setSelectedBins] = useState<number[]>([]);
 
   // Load the product list once; default to the first product if none was
   // supplied via the URL (Explore deep-link).
@@ -61,7 +61,7 @@ export default function WaferMapPage() {
     setLotsLoading(true);
     setLotsError(null);
     try {
-      const res = await fetchWaferMapLots(productId, process, months, sub || undefined);
+      const res = await fetchWaferMapLots(productId, process, startDate, endDate, sub || undefined);
       if (id !== lotsReqIdRef.current) return; // stale response
       setLotsData(res);
     } catch (e) {
@@ -72,9 +72,7 @@ export default function WaferMapPage() {
     } finally {
       if (id === lotsReqIdRef.current) setLotsLoading(false);
     }
-  }, [productId, process, months, sub]);
-
-  useEffect(() => { loadLots(); }, [loadLots]);
+  }, [productId, process, startDate, endDate, sub]);
 
   const handleShowMaps = useCallback(async (lotIds?: string[]) => {
     const ids = lotIds ?? selectedLots;
@@ -83,10 +81,10 @@ export default function WaferMapPage() {
     setMapError(null);
     try {
       const res = await fetchWaferMaps({
-        product_id: productId, process, lot_ids: ids, months, sub: sub || undefined,
+        product_id: productId, process, lot_ids: ids, sub: sub || undefined,
       });
       setMapData(res);
-      setSelectedBin(null);
+      setSelectedBins([]);
     } catch (e) {
       console.error("Failed to load wafer maps:", e);
       setMapError("Failed to load wafer maps.");
@@ -94,7 +92,7 @@ export default function WaferMapPage() {
     } finally {
       setMapLoading(false);
     }
-  }, [selectedLots, productId, process, months, sub]);
+  }, [selectedLots, productId, process, sub]);
 
   const colorFor = useCallback(
     (bin: number) => {
@@ -127,6 +125,10 @@ export default function WaferMapPage() {
       if (prev.length >= MAX_LOTS) return prev;
       return [...prev, lotId];
     });
+  };
+
+  const toggleBin = (b: number) => {
+    setSelectedBins((prev) => (prev.includes(b) ? prev.filter((x) => x !== b) : [...prev, b]));
   };
 
   const displayLots = lotsData ? [...lotsData.lots].reverse() : []; // newest first
@@ -168,62 +170,100 @@ export default function WaferMapPage() {
         </label>
 
         <label style={styles.field}>
-          <span style={styles.fieldLabel}>Period</span>
-          <select value={months} onChange={(e) => setMonths(Number(e.target.value))} style={styles.select}>
-            <option value={1}>Last 1 month</option>
-            <option value={3}>Last 3 months</option>
-            <option value={6}>Last 6 months</option>
-          </select>
+          <span style={styles.fieldLabel}>From</span>
+          <input
+            type="date"
+            value={startDate}
+            max={endDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            style={styles.select}
+          />
+        </label>
+
+        <label style={styles.field}>
+          <span style={styles.fieldLabel}>To</span>
+          <input
+            type="date"
+            value={endDate}
+            min={startDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            style={styles.select}
+          />
         </label>
 
         <button onClick={() => loadLots()} disabled={lotsLoading} style={styles.refresh}>
-          {lotsLoading ? "Refreshing…" : "🔄 Refresh"}
+          {lotsLoading ? "Loading…" : "🔄 Load lots"}
         </button>
       </div>
 
       {lotsError && <div style={styles.error}>{lotsError}</div>}
 
-      <div style={styles.card}>
-        <div style={styles.lotsHeader}>
-          <span style={styles.lotsTitle}>Lots</span>
-          <span style={styles.lotsCounter}>{selectedLots.length}/{MAX_LOTS}</span>
+      <div style={styles.row}>
+        <div style={{ ...styles.card, flex: 1, marginBottom: 0 }}>
+          <div style={styles.lotsHeader}>
+            <span style={styles.lotsTitle}>Lots</span>
+            <div style={styles.lotsHeaderActions}>
+              <button type="button" style={styles.linkBtn} onClick={() => setSelectedLots(displayLots.slice(0, MAX_LOTS).map((l) => l.lot_id))}>
+                Select all
+              </button>
+              <button type="button" style={styles.linkBtn} onClick={() => setSelectedLots([])}>
+                Clear
+              </button>
+              <span style={styles.lotsCounter}>{selectedLots.length}/{MAX_LOTS}</span>
+            </div>
+          </div>
+          {lotsLoading && <p style={styles.empty}>Loading lots…</p>}
+          {!lotsLoading && lotsData && lotsData.lots.length === 0 && (
+            <p style={styles.empty}>No lots found.</p>
+          )}
+          {!lotsLoading && !lotsData && <p style={styles.empty}>Click "Load lots" to fetch lots.</p>}
+          {!lotsLoading && displayLots.length > 0 && (
+            <div style={styles.lotList}>
+              {displayLots.map((l) => {
+                const checked = selectedLots.includes(l.lot_id);
+                const disabled = !checked && selectedLots.length >= MAX_LOTS;
+                return (
+                  <label
+                    key={l.lot_id}
+                    style={{ ...styles.lotItem, ...(disabled ? styles.lotItemDisabled : {}) }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      disabled={disabled}
+                      onChange={() => toggleLot(l.lot_id)}
+                    />
+                    <span>{l.lot_id}</span>
+                  </label>
+                );
+              })}
+            </div>
+          )}
+          <button
+            onClick={() => handleShowMaps()}
+            disabled={selectedLots.length === 0 || mapLoading}
+            style={{
+              ...styles.primaryBtn,
+              ...(selectedLots.length === 0 || mapLoading ? styles.btnDisabled : {}),
+            }}
+          >
+            {mapLoading ? "Loading…" : "Show maps"}
+          </button>
         </div>
-        {lotsLoading && <p style={styles.empty}>Loading lots…</p>}
-        {!lotsLoading && lotsData && lotsData.lots.length === 0 && (
-          <p style={styles.empty}>No lots found.</p>
-        )}
-        {!lotsLoading && displayLots.length > 0 && (
-          <div style={styles.lotList}>
-            {displayLots.map((l) => {
-              const checked = selectedLots.includes(l.lot_id);
-              const disabled = !checked && selectedLots.length >= MAX_LOTS;
-              return (
-                <label
-                  key={l.lot_id}
-                  style={{ ...styles.lotItem, ...(disabled ? styles.lotItemDisabled : {}) }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    disabled={disabled}
-                    onChange={() => toggleLot(l.lot_id)}
-                  />
-                  <span>{l.lot_id} · {l.lot_date} · {l.wafer_count}w</span>
-                </label>
-              );
-            })}
+
+        {mapData && mapData.legend.length > 0 && (
+          <div style={{ ...styles.card, marginBottom: 0, minWidth: 180 }}>
+            <div style={styles.lotsTitle}>Bin filter</div>
+            <div style={styles.gridSpacer}>
+              <BinLegend
+                legend={mapData.legend}
+                colorFor={colorFor}
+                selectedBins={selectedBins}
+                onToggle={toggleBin}
+              />
+            </div>
           </div>
         )}
-        <button
-          onClick={() => handleShowMaps()}
-          disabled={selectedLots.length === 0 || mapLoading}
-          style={{
-            ...styles.primaryBtn,
-            ...(selectedLots.length === 0 || mapLoading ? styles.btnDisabled : {}),
-          }}
-        >
-          {mapLoading ? "Loading…" : "Show maps"}
-        </button>
       </div>
 
       {mapError && <div style={styles.error}>{mapError}</div>}
@@ -233,18 +273,12 @@ export default function WaferMapPage() {
           <div style={styles.mapMeta}>
             {mapData.wafers.length} wafers loaded for {mapData.display_name} / {mapData.process}
           </div>
-          <BinLegend
-            legend={mapData.legend}
-            colorFor={colorFor}
-            selectedBin={selectedBin}
-            onSelect={setSelectedBin}
-          />
           <div style={styles.gridSpacer}>
             <WaferMapGrid
               wafers={mapData.wafers}
               colorFor={colorFor}
               passBinCodes={mapData.pass_bin_codes}
-              selectedBin={selectedBin}
+              selectedBins={selectedBins}
             />
           </div>
         </div>
@@ -321,19 +355,30 @@ const styles: Record<string, React.CSSProperties> = {
     padding: 20,
     marginBottom: 20,
   },
+  row: { display: "flex", gap: 16, alignItems: "flex-start" },
   lotsHeader: {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
     marginBottom: 12,
   },
+  lotsHeaderActions: { display: "flex", alignItems: "center", gap: 10 },
   lotsTitle: { fontSize: 14, fontWeight: 600, color: "var(--gray-700)" },
   lotsCounter: { fontSize: 12, color: "var(--gray-400)", fontVariantNumeric: "tabular-nums" },
+  linkBtn: {
+    background: "none",
+    border: "none",
+    padding: 0,
+    color: "var(--notion-blue)",
+    fontSize: 12,
+    fontWeight: 500,
+    cursor: "pointer",
+  },
   lotList: {
     display: "flex",
     flexDirection: "column",
     gap: 4,
-    maxHeight: 260,
+    maxHeight: 180,
     overflowY: "auto",
     marginBottom: 16,
     border: "var(--border-whisper)",

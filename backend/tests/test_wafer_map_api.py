@@ -1,3 +1,5 @@
+from datetime import date, timedelta
+
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -12,6 +14,18 @@ def test_wafermap_lots_returns_lot_list():
     assert body["lots"], "mock mode should list lots"
     first = body["lots"][0]
     assert {"lot_id", "lot_date", "wafer_count", "test_program_rev"} <= set(first)
+
+
+def test_wafermap_lots_accepts_explicit_start_end():
+    start = (date.today() - timedelta(days=30)).isoformat()
+    end = date.today().isoformat()
+    r = client.get(
+        "/api/wafermap/lots",
+        params={"product_id": "P12345-A", "process": "CP", "start": start, "end": end},
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert "lots" in body
 
 
 def test_wafermap_post_returns_maps():

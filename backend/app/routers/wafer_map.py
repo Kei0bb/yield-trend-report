@@ -1,3 +1,6 @@
+import math
+from datetime import date, timedelta
+
 from fastapi import APIRouter, Query
 
 from app.models.schemas import (
@@ -17,12 +20,21 @@ router = APIRouter()
 def wafermap_lots(
     product_id: str = Query(...),
     process: str = Query(...),
-    months: int = Query(6, ge=1, le=6),
+    start: str | None = Query(None),
+    end: str | None = Query(None),
     sub: str | None = Query(None),
 ) -> WaferMapLotsResponse:
     nickname = nickname_for_product_id(product_id) or product_id
     process_values = [sub] if sub else None
+
+    today = date.today()
+    end_d = date.fromisoformat(end) if end else today
+    start_d = date.fromisoformat(start) if start else today - timedelta(days=90)
+    months = min(6, max(1, math.ceil((today - start_d).days / 30)))
+
     df = _load_dataframe(nickname, process, months, process_values=process_values)
+    if not df.empty:
+        df = df[(df["lot_date"] >= start_d.isoformat()) & (df["lot_date"] <= end_d.isoformat())]
 
     lots: list[WaferMapLotInfo] = []
     if not df.empty:
