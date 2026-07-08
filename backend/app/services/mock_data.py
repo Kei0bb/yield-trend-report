@@ -4,7 +4,7 @@ from datetime import date, timedelta
 
 import pandas as pd
 
-from app.services.map_queries import DIE_COLUMNS
+from app.services.map_queries import BIN_META_COLUMNS, DIE_COLUMNS
 from app.services.yield_aggregator import anchor_from_end_month, latest_iso_weeks
 from app.services.yield_queries import COMMON_COLUMNS
 
@@ -140,12 +140,24 @@ def mock_die_dataframe(lot_id: str, process: str) -> pd.DataFrame:
                 if r2 > 64:
                     continue
                 if r2 >= 49 and wrng.random() < 0.35:
-                    code, quality = 7, "FAIL"        # edge ring
+                    code = 7                         # edge ring
                 elif (x - cx) ** 2 + (y - cy) ** 2 <= 2 and wrng.random() < 0.8:
-                    code, quality = 13, "FAIL"       # cluster
+                    code = 13                        # cluster
                 elif wrng.random() < 0.03:
-                    code, quality = 2, "FAIL"        # random sprinkle
+                    code = 2                         # random sprinkle
                 else:
-                    code, quality = 1, "PASS"
-                rows.append((lot_id, wafer_id, x, y, code, quality))
+                    code = 1                         # pass
+                rows.append((lot_id, wafer_id, x, y, code))
     return pd.DataFrame(rows, columns=DIE_COLUMNS)
+
+
+def mock_bin_meta_dataframe(lot_id: str, process: str) -> pd.DataFrame:
+    """Bin metadata mock consistent with mock_die_dataframe's bin codes:
+    1=pass, 7/13/2=fail, matching the SEMI_CP_BIN_SUM lookup used in real mode."""
+    rows = [
+        (1, "Pass", "PASS"),
+        (7, "Leakage", "FAIL"),
+        (13, "VDD_Short", "FAIL"),
+        (2, "Open", "FAIL"),
+    ]
+    return pd.DataFrame(rows, columns=BIN_META_COLUMNS)

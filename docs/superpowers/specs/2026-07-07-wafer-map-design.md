@@ -2,7 +2,7 @@
 
 **日付**: 2026-07-07
 **ステータス**: 承認待ち
-**関連**: `SEMI_CP_BIN_DETAL`（新規利用テーブル）, Explore（遷移元）, `lot_service._load_dataframe`（lot一覧の再利用）
+**関連**: `SEMI_CP_BIN_DETAIL`（新規利用テーブル）, Explore（遷移元）, `lot_service._load_dataframe`（lot一覧の再利用）
 
 ## 目的
 
@@ -19,15 +19,17 @@ bin選択でそのbinの発生分布だけを追える。Exploreのロットか�
 
 ## データ源
 
-**`SEMI_CP_BIN_DETAL`** — die単位の結果テーブル。
-カラムは `SEMI_CP_BIN_SUM` と同様（**BIN_NAMEは無い**）＋ **X, Y**（die座標）。
+**`SEMI_CP_BIN_DETAIL`** — die単位の結果テーブル。
+カラムは `SEMI_CP_BIN_SUM` と同様（**BIN_QUALITY/BIN_NAME/BIN_COUNTは無い**）＋ **X, Y**（die座標）。
+bin情報は **`BIN_CODE`のみ**。
 
-- 1行 = 1 die（pass die も `BIN_QUALITY='PASS'` の行として存在する前提）
-- クエリは **headerとjoinしない単テーブル**:
+- 1行 = 1 die（pass die も bin_code の行として存在する前提。pass/fail 判定は
+  DETAIL単体では行えないため、別途 `SEMI_CP_BIN_SUM` を参照する）
+- die クエリは **headerとjoinしない単テーブル**:
 
 ```sql
-SELECT SUBSTRATE_ID, WAFER_ID, X, Y, BIN_CODE, BIN_QUALITY
-FROM SEMI_CP_BIN_DETAL
+SELECT SUBSTRATE_ID, WAFER_ID, X, Y, BIN_CODE
+FROM SEMI_CP_BIN_DETAIL
 WHERE SUBSTRATE_ID IN (:lot_ids...)
   AND PROCESS IN (:process_values...)
   AND REWORK_NEW = 0
@@ -35,14 +37,28 @@ WHERE SUBSTRATE_ID IN (:lot_ids...)
 
 - 製品・期間の絞り込みは lot 選択段階（既存ロットDFキャッシュ）で完了しているため不要
 - `REWORK_NEW = 0` は単テーブルなので片側のみで正しい（CLAUDE.mdの両側ルールはjoin時の話）
-- pass/fail 判定: `UPPER(TRIM(COALESCE(BIN_QUALITY,''))) = 'PASS'` → pass（既存 lot_queries と同じ正規化）
 
-### bin 表示名の解決（BIN_DETALにBIN_NAMEが無いため）
+### bin メタデータ（pass/fail・表示名）の解決
 
-優先順:
-1. **`bin_mappings/<bin_group>.csv`**（Reportと同じCSV）で bin_code → グループ名
-2. 既存ロットDFキャッシュの `raw_bin_code → bin_name`（DB由来の生名称）
-3. どちらにも無ければコード番号のみ表示
+DETAILにBIN_QUALITY/BIN_NAMEが無いため、選択lot群に対して **`SEMI_CP_BIN_SUM`** から
+DISTINCTで bin メタデータを別クエリで取得する（lot単位キャッシュ、dieクエリと同じ
+`_die_cache` を共用）:
+
+```sql
+SELECT DISTINCT BIN_CODE, BIN_NAME, BIN_QUALITY
+FROM SEMI_CP_BIN_SUM
+WHERE SUBSTRATE_ID IN (:lot_ids...)
+  AND PROCESS IN (:process_values...)
+  AND REWORK_NEW = 0
+```
+
+- pass/fail 判定: `UPPER(TRIM(COALESCE(BIN_QUALITY,''))) = 'PASS'` → pass（既存 lot_queries と同じ正規化）。
+  die側の fail 判定は `bin_code` が pass 判定された code 集合に含まれるか否かで行う
+  （`~df["bin_code"].isin(pass_codes)`）
+- bin 表示名の優先順:
+  1. **`bin_mappings/<bin_group>.csv`**（Reportと同じCSV）で bin_code → グループ名
+  2. `SEMI_CP_BIN_SUM` メタルックアップの `bin_name`（DB由来の生名称）
+  3. どちらにも無ければコード番号のみ表示
 
 表示形式は Explore と同様 `"<code>_<name>"`。
 
@@ -50,8 +66,11 @@ WHERE SUBSTRATE_ID IN (:lot_ids...)
 
 ### 新規 `app/services/map_queries.py`
 - `build_die_map_query(lot_ids, process_values) -> (sql, binds)` — 上記SQL生成
-- `query_die_map(lot_ids, process_values) -> DataFrame[lot_id, wafer_id, x, y, bin_code, bin_quality]`
-- 単体テストは build のSQL文字列検証 + fetchallモックの列整合検証（lot_queries と同型）
+- `query_die_map(lot_ids, process_values) -> DataFrame[lot_id, wafer_id, x, y, bin_code]`
+- `build_bin_meta_query(lot_ids, process_values) -> (sql, binds)` — BIN_SUM向けメタSQL生成
+- `query_bin_meta(lot_ids, process_values) -> DataFrame[bin_code, bin_name, bin_quality]`
+- 単体テストは build のSQL文字列検証 + fetchallモックの列整合検証（lot_queries と同型）、
+  die/meta 両方に対して用意する
 
 ### 新規 `app/services/map_service.py`
 - `build_wafer_maps(nickname, process, lot_ids, process_values) -> WaferMapResponse`
@@ -122,13 +141,17 @@ WHERE SUBSTRATE_ID IN (:lot_ids...)
   モック生成の決定論性）
 - frontend: `npm run build` + `npm run lint`
 - 実表示: mockモードで headless Chrome スクリーンショット確認（本セッション確立済みの手順）
-- 実DB: `SEMI_CP_BIN_DETAL` は本番でのみ検証可能 → ユーザー側で確認
+- 実DB: `SEMI_CP_BIN_DETAIL` は本番でのみ検証可能 → ユーザー側で確認
   （`/api/debug/probe` 相当のdebugエンドポイントは今回追加しない。
   問題があれば `POST /api/wafermap` のWARNINGログで追う）
+  → 実DB検証の結果、テーブル名が `SEMI_CP_BIN_DETAL`（誤り）ではなく
+  `SEMI_CP_BIN_DETAIL`（正）であること、および BIN_QUALITY/BIN_NAME/BIN_COUNT
+  カラムが存在しないことが判明し、上記の通り設計を修正済み
 
 ## リスク
-- **BIN_DETALの実カラム名が想定と違う**（X/Y以外の細部）: map_queries.py に
-  カラム名定数を集約し、差異はこの1ファイル修正で吸収
+- ~~**BIN_DETALの実カラム名が想定と違う**（X/Y以外の細部）: map_queries.py に
+  カラム名定数を集約し、差異はこの1ファイル修正で吸収~~ → 実DB検証で顕在化・対応済み
+  （テーブル名修正 + bin メタデータをSEMI_CP_BIN_SUM参照に変更）
 - **pass die が行として存在しない**運用だった場合: マップがfail dieのみの疎表示に
   なる。その場合は wafer外形（円）を背景描画しているため見た目は破綻しない。
   完全対応（gross座標の補完）は実データ確認後の後続対応
