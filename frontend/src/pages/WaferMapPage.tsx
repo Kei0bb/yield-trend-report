@@ -199,7 +199,7 @@ export default function WaferMapPage() {
       {lotsError && <div style={styles.error}>{lotsError}</div>}
 
       <div style={styles.row}>
-        <div style={{ ...styles.card, flex: 1, marginBottom: 0 }}>
+        <div style={{ ...styles.card, ...styles.halfCard }}>
           <div style={styles.lotsHeader}>
             <span style={styles.lotsTitle}>Lots</span>
             <div style={styles.lotsHeaderActions}>
@@ -252,9 +252,12 @@ export default function WaferMapPage() {
         </div>
 
         {mapData && mapData.legend.length > 0 && (
-          <div style={{ ...styles.card, marginBottom: 0, minWidth: 180 }}>
-            <div style={styles.lotsTitle}>Bin filter</div>
-            <div style={styles.gridSpacer}>
+          <div style={{ ...styles.card, ...styles.halfCard }}>
+            <div style={styles.lotsHeader}>
+              <span style={styles.lotsTitle}>Bin filter</span>
+              <span style={styles.lotsCounter}>{mapData.legend.length}</span>
+            </div>
+            <div style={styles.binScroll}>
               <BinLegend
                 legend={mapData.legend}
                 colorFor={colorFor}
@@ -355,7 +358,24 @@ const styles: Record<string, React.CSSProperties> = {
     padding: 20,
     marginBottom: 20,
   },
-  row: { display: "flex", gap: 16, alignItems: "flex-start" },
+  row: { display: "flex", gap: 16, alignItems: "stretch" },
+  halfCard: {
+    flex: 1,
+    minWidth: 0,
+    width: "50%",
+    marginBottom: 0,
+    display: "flex",
+    flexDirection: "column",
+  },
+  binScroll: {
+    flex: 1,
+    minHeight: 0,
+    overflowY: "auto",
+    marginTop: 12,
+    border: "var(--border-whisper)",
+    borderRadius: 8,
+    padding: 6,
+  },
   lotsHeader: {
     display: "flex",
     alignItems: "center",

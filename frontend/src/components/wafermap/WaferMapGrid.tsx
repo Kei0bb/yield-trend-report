@@ -13,7 +13,7 @@ const LOT_WAFER_SLOTS = 25;
 
 /** Fixed pixel footprint for each wafer cell (canvas or empty placeholder),
  *  so columns/rows never collapse when some slots are empty. */
-const WAFER_SIZE = 72;
+const WAFER_SIZE = 40;
 
 /** Normalize a wafer id for slot matching: "01"/"1"/1 all map to "1";
  *  non-numeric ids pass through unchanged. */
@@ -105,24 +105,24 @@ export default function WaferMapGrid({ wafers, colorFor, passBinCodes, selectedB
 const styles: Record<string, React.CSSProperties> = {
   scroll: { overflowX: "auto", maxWidth: "100%" },
   table: { borderCollapse: "collapse" },
-  corner: { padding: "4px 8px" },
+  corner: { padding: "2px 4px" },
   colHead: {
-    padding: "4px 8px",
+    padding: "2px 2px",
     textAlign: "center",
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: 600,
     color: "var(--gray-500)",
     fontVariantNumeric: "tabular-nums",
     whiteSpace: "nowrap",
   },
   rowHead: {
-    padding: "4px 10px",
+    padding: "2px 6px",
     textAlign: "right",
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: 600,
     color: "var(--gray-500)",
     whiteSpace: "nowrap",
-    maxWidth: 180,
+    maxWidth: 140,
   },
   rowHeadText: {
     display: "block",
