@@ -216,7 +216,6 @@ export default function WaferMapPage() {
           {!lotsLoading && lotsData && lotsData.lots.length === 0 && (
             <p style={styles.empty}>No lots found.</p>
           )}
-          {!lotsLoading && !lotsData && <p style={styles.empty}>Click "Load lots" to fetch lots.</p>}
           {!lotsLoading && displayLots.length > 0 && (
             <div style={styles.lotList}>
               {displayLots.map((l) => {
@@ -251,22 +250,24 @@ export default function WaferMapPage() {
           </button>
         </div>
 
-        {mapData && mapData.legend.length > 0 && (
-          <div style={{ ...styles.card, ...styles.halfCard }}>
-            <div style={styles.lotsHeader}>
-              <span style={styles.lotsTitle}>Bin filter</span>
-              <span style={styles.lotsCounter}>{mapData.legend.length}</span>
-            </div>
-            <div style={styles.binScroll}>
+        <div style={{ ...styles.card, ...styles.halfCard }}>
+          <div style={styles.lotsHeader}>
+            <span style={styles.lotsTitle}>Bin filter</span>
+            {mapData && <span style={styles.lotsCounter}>{mapData.legend.length}</span>}
+          </div>
+          <div style={styles.binScroll}>
+            {mapData && mapData.legend.length > 0 ? (
               <BinLegend
                 legend={mapData.legend}
                 colorFor={colorFor}
                 selectedBins={selectedBins}
                 onToggle={toggleBin}
               />
-            </div>
+            ) : (
+              <p style={styles.empty}>Show maps to list bins.</p>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
       {mapError && <div style={styles.error}>{mapError}</div>}
@@ -358,18 +359,10 @@ const styles: Record<string, React.CSSProperties> = {
     padding: 20,
     marginBottom: 20,
   },
-  row: { display: "flex", gap: 16, alignItems: "stretch" },
-  halfCard: {
-    flex: 1,
-    minWidth: 0,
-    width: "50%",
-    marginBottom: 0,
-    display: "flex",
-    flexDirection: "column",
-  },
+  row: { display: "flex", gap: 16, alignItems: "flex-start" },
+  halfCard: { flex: 1, minWidth: 0, width: "50%", marginBottom: 0 },
   binScroll: {
-    flex: 1,
-    minHeight: 0,
+    height: 180,
     overflowY: "auto",
     marginTop: 12,
     border: "var(--border-whisper)",
