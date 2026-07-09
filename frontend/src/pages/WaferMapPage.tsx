@@ -357,7 +357,7 @@ const styles: Record<string, React.CSSProperties> = {
     padding: 20,
     marginBottom: 20,
   },
-  row: { display: "flex", gap: 16, alignItems: "flex-start" },
+  row: { display: "flex", gap: 16, alignItems: "flex-start", marginBottom: 20 },
   halfCard: {
     flex: 1,
     minWidth: 0,
@@ -399,10 +399,11 @@ const styles: Record<string, React.CSSProperties> = {
   lotItem: {
     display: "flex",
     alignItems: "center",
-    gap: 8,
-    fontSize: 13,
+    gap: 6,
+    fontSize: 12,
+    fontWeight: 500,
     color: "var(--gray-700)",
-    padding: "6px 8px",
+    padding: "4px 8px",
     borderRadius: 6,
     cursor: "pointer",
   },
