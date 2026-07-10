@@ -11,7 +11,7 @@ from app.models.schemas import (
 )
 from app.services.lot_service import _load_dataframe
 from app.services.map_service import get_wafer_maps
-from app.services.product_config import nickname_for_product_id
+from app.services.product_config import nickname_for_product_id, resolve_sub_processes
 
 router = APIRouter()
 
@@ -53,6 +53,13 @@ def wafermap_lots(
             for r in g.itertuples()
         ]
     return WaferMapLotsResponse(product_id=product_id, process=sub or process, lots=lots)
+
+
+@router.get("/wafermap/process-subs")
+def wafermap_process_subs(product_id: str = Query(...)) -> dict[str, list[str]]:
+    """Sub-process DB PROCESS values per major process for a product."""
+    nickname = nickname_for_product_id(product_id) or product_id
+    return {p: resolve_sub_processes(nickname, p) for p in ("CP", "FT", "SLT")}
 
 
 @router.post("/wafermap", response_model=WaferMapResponse)

@@ -6,6 +6,7 @@ interface WaferMapGridProps {
   colorFor: (bin: number) => string;
   passBinCodes: number[];
   selectedBins: number[];
+  containerRef?: React.Ref<HTMLDivElement>;
 }
 
 /** A lot always holds 25 wafer slots — columns are fixed W1..W25. */
@@ -24,7 +25,7 @@ const slotKey = (wid: string): string => {
 
 /** Matrix layout: lots as rows, fixed wafer slots W1..W25 as columns, one
  *  canvas per cell. Untested slots render an em-dash placeholder. */
-export default function WaferMapGrid({ wafers, colorFor, passBinCodes, selectedBins }: WaferMapGridProps) {
+export default function WaferMapGrid({ wafers, colorFor, passBinCodes, selectedBins, containerRef }: WaferMapGridProps) {
   if (wafers.length === 0) return null;
 
   // Preserve first-seen lot order for rows; index wafers by (lot, slot).
@@ -49,7 +50,7 @@ export default function WaferMapGrid({ wafers, colorFor, passBinCodes, selectedB
   ];
 
   return (
-    <div style={styles.scroll}>
+    <div style={styles.scroll} ref={containerRef}>
       <table style={styles.table}>
         <thead>
           <tr>

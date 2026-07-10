@@ -52,7 +52,7 @@ export default function WaferMapCanvas({
       ctx.fillStyle = color;
       ctx.fillRect(
         (wafer.x[i] - minX + 1) * cellX,
-        (maxY - wafer.y[i] + 1) * cellY, // +Y up
+        (wafer.y[i] - minY + 1) * cellY, // +Y down (correct wafer orientation)
         Math.max(cellX - 0.5, 0.5),
         Math.max(cellY - 0.5, 0.5),
       );

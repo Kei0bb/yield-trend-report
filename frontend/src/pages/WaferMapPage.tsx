@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { fetchProducts, fetchWaferMapLots, fetchWaferMaps } from "../api/client";
+import { fetchProcessSubs, fetchProducts, fetchWaferMapLots, fetchWaferMaps } from "../api/client";
 import type { Product, WaferMapLotsResponse, WaferMapResponse } from "../types";
 import WaferMapGrid from "../components/wafermap/WaferMapGrid";
 import BinLegend from "../components/wafermap/BinLegend";
+import FilterCard from "../components/wafermap/FilterCard";
+import { copyGridToClipboard } from "../components/wafermap/copyGrid";
 
 const MAX_LOTS = 12;
 
@@ -11,7 +13,7 @@ const MAX_LOTS = 12;
 const PALETTE = ["#0072B2", "#E69F00", "#009E73", "#D55E00", "#CC79A7", "#56B4E9", "#F0E442", "#999999"];
 
 const todayStr = () => new Date().toISOString().slice(0, 10);
-const daysAgoStr = (days: number) => new Date(Date.now() - days * 864e5).toISOString().slice(0, 10);
+const monthsAgoStr = (m: number) => { const d = new Date(); d.setMonth(d.getMonth() - m); return d.toISOString().slice(0, 10); };
 
 export default function WaferMapPage() {
   const [searchParams] = useSearchParams();
@@ -19,8 +21,10 @@ export default function WaferMapPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [productId, setProductId] = useState(searchParams.get("product_id") ?? "");
   const [process, setProcess] = useState(searchParams.get("process") ?? "CP");
-  const [startDate, setStartDate] = useState(searchParams.get("start") ?? daysAgoStr(90));
-  const [endDate, setEndDate] = useState(searchParams.get("end") ?? todayStr());
+  const [months, setMonths] = useState(() => {
+    const m = parseInt(searchParams.get("months") ?? "", 10);
+    return [1, 3, 6].includes(m) ? m : 3;
+  });
   const [sub, setSub] = useState(searchParams.get("sub") ?? "");
 
   const [lotsData, setLotsData] = useState<WaferMapLotsResponse | null>(null);
@@ -37,6 +41,10 @@ export default function WaferMapPage() {
   const [mapError, setMapError] = useState<string | null>(null);
   const [selectedBins, setSelectedBins] = useState<number[]>([]);
 
+  const [subsByProcess, setSubsByProcess] = useState<Record<string, string[]>>({});
+  const [copyMsg, setCopyMsg] = useState<string>("");
+  const gridRef = useRef<HTMLDivElement>(null);
+
   // Load the product list once; default to the first product if none was
   // supplied via the URL (Explore deep-link).
   useEffect(() => {
@@ -51,6 +59,17 @@ export default function WaferMapPage() {
       });
   }, []);
 
+  // Fetch sub-process options whenever the selected product changes.
+  useEffect(() => {
+    if (!productId) {
+      setSubsByProcess({});
+      return;
+    }
+    fetchProcessSubs(productId)
+      .then(setSubsByProcess)
+      .catch(() => setSubsByProcess({}));
+  }, [productId]);
+
   // Guards loadLots against out-of-order responses: only the latest request
   // may write state when product/process changes mid-fetch.
   const lotsReqIdRef = useRef(0);
@@ -61,7 +80,7 @@ export default function WaferMapPage() {
     setLotsLoading(true);
     setLotsError(null);
     try {
-      const res = await fetchWaferMapLots(productId, process, startDate, endDate, sub || undefined);
+      const res = await fetchWaferMapLots(productId, process, monthsAgoStr(months), todayStr(), sub || undefined);
       if (id !== lotsReqIdRef.current) return; // stale response
       setLotsData(res);
     } catch (e) {
@@ -72,7 +91,7 @@ export default function WaferMapPage() {
     } finally {
       if (id === lotsReqIdRef.current) setLotsLoading(false);
     }
-  }, [productId, process, startDate, endDate, sub]);
+  }, [productId, process, months, sub]);
 
   const handleShowMaps = useCallback(async (lotIds?: string[]) => {
     const ids = lotIds ?? selectedLots;
@@ -131,6 +150,18 @@ export default function WaferMapPage() {
     setSelectedBins((prev) => (prev.includes(b) ? prev.filter((x) => x !== b) : [...prev, b]));
   };
 
+  const handleCopy = async () => {
+    if (!gridRef.current) return;
+    try {
+      await copyGridToClipboard(gridRef.current);
+      setCopyMsg("Copied!");
+    } catch (e) {
+      console.error(e);
+      setCopyMsg("Copy failed");
+    }
+    setTimeout(() => setCopyMsg(""), 2000); // note: acceptable here (not a workflow script)
+  };
+
   const displayLots = lotsData ? [...lotsData.lots].reverse() : []; // newest first
 
   return (
@@ -140,66 +171,36 @@ export default function WaferMapPage() {
         <h1 style={styles.title}>Wafer Map</h1>
       </header>
 
-      <div style={styles.controls}>
-        <label style={styles.field}>
-          <span style={styles.fieldLabel}>Product</span>
-          <select
-            value={productId}
-            onChange={(e) => { setProductId(e.target.value); setSub(""); }}
-            style={styles.select}
-          >
-            {products.map((p) => (
-              <option key={p.product_id} value={p.product_id}>
-                {p.product_id}{p.display_name && p.display_name !== p.product_id ? ` — ${p.display_name}` : ""}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label style={styles.field}>
-          <span style={styles.fieldLabel}>Process</span>
-          <select
-            value={process}
-            onChange={(e) => { setProcess(e.target.value); setSub(""); }}
-            style={styles.select}
-          >
-            <option value="CP">CP</option>
-            <option value="FT">FT</option>
-            <option value="SLT">SLT</option>
-          </select>
-        </label>
-
-        <label style={styles.field}>
-          <span style={styles.fieldLabel}>From</span>
-          <input
-            type="date"
-            value={startDate}
-            max={endDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            style={styles.select}
-          />
-        </label>
-
-        <label style={styles.field}>
-          <span style={styles.fieldLabel}>To</span>
-          <input
-            type="date"
-            value={endDate}
-            min={startDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            style={styles.select}
-          />
-        </label>
-
-        <button onClick={() => loadLots()} disabled={lotsLoading} style={styles.refresh}>
-          {lotsLoading ? "Loading…" : "🔄 Load lots"}
-        </button>
-      </div>
-
       {lotsError && <div style={styles.error}>{lotsError}</div>}
 
       <div style={styles.row}>
-        <div style={{ ...styles.card, ...styles.halfCard }}>
+        <FilterCard
+          title="Product" grow={2} minWidth={170} value={productId}
+          onChange={(v) => { setProductId(v); setSub(""); }}
+          options={products.map((p) => ({ value: p.product_id, label: p.product_id + (p.display_name && p.display_name !== p.product_id ? ` — ${p.display_name}` : "") }))}
+        />
+        <FilterCard
+          title="Process" grow={1} minWidth={90} value={process}
+          onChange={(v) => { setProcess(v); setSub(""); }}
+          options={[{ value: "CP", label: "CP" }, { value: "FT", label: "FT" }, { value: "SLT", label: "SLT" }]}
+        />
+        <FilterCard
+          title="Sub" grow={1} minWidth={100} value={sub}
+          onChange={setSub}
+          options={[{ value: "", label: "All" }, ...(subsByProcess[process] || []).map((s) => ({ value: s, label: s }))]}
+        />
+        <FilterCard
+          title="Period" grow={1.5} minWidth={130} value={String(months)}
+          onChange={(v) => setMonths(Number(v))}
+          options={[{ value: "1", label: "Last 1 month" }, { value: "3", label: "Last 3 months" }, { value: "6", label: "Last 6 months" }]}
+          footer={
+            <button onClick={() => loadLots()} disabled={lotsLoading} style={{ ...styles.refresh, width: "100%", marginTop: 12 }}>
+              {lotsLoading ? "Loading…" : "🔄 Load lots"}
+            </button>
+          }
+        />
+
+        <div style={{ ...styles.card, ...styles.filterCard, flex: "2 1 0", minWidth: 200 }}>
           <div style={styles.lotsHeader}>
             <span style={styles.lotsTitle}>Lots</span>
             <div style={styles.lotsHeaderActions}>
@@ -250,7 +251,7 @@ export default function WaferMapPage() {
           </button>
         </div>
 
-        <div style={{ ...styles.card, ...styles.halfCard }}>
+        <div style={{ ...styles.card, ...styles.filterCard, flex: "1.5 1 0", minWidth: 160 }}>
           <div style={styles.lotsHeader}>
             <span style={styles.lotsTitle}>Bin filter</span>
             {mapData && <span style={styles.lotsCounter}>{mapData.legend.length}</span>}
@@ -272,13 +273,22 @@ export default function WaferMapPage() {
 
       {mapData && (
         <div style={styles.card}>
-          <div style={styles.mapMeta}>
-            {mapData.wafers.length} wafers loaded for {mapData.display_name} / {mapData.process}
+          <div style={styles.mapHeaderRow}>
+            <div style={styles.mapMeta}>
+              {mapData.wafers.length} wafers loaded for {mapData.display_name} / {mapData.process}
+            </div>
+            <div style={styles.copyRow}>
+              {copyMsg && <span style={styles.copyMsg}>{copyMsg}</span>}
+              <button onClick={handleCopy} style={styles.refresh}>
+                📋 Copy image
+              </button>
+            </div>
           </div>
           <div style={styles.gridSpacer}>
             <WaferMapGrid
               wafers={mapData.wafers}
               colorFor={colorFor}
+              containerRef={gridRef}
               passBinCodes={mapData.pass_bin_codes}
               selectedBins={selectedBins}
             />
@@ -312,24 +322,9 @@ const styles: Record<string, React.CSSProperties> = {
     letterSpacing: "-0.025em",
     lineHeight: 1.15,
   },
-  controls: { display: "flex", alignItems: "center", gap: 18, marginBottom: 20, flexWrap: "wrap" },
-  field: { display: "inline-flex", alignItems: "center", gap: 8 },
-  fieldLabel: {
-    fontSize: 11,
-    fontWeight: 600,
-    textTransform: "uppercase",
-    letterSpacing: "0.06em",
-    color: "var(--gray-400)",
-  },
-  select: {
-    padding: "6px 10px",
-    borderRadius: 8,
-    border: "var(--border-whisper)",
-    background: "var(--white)",
-    color: "var(--gray-700)",
-    fontSize: 13,
-    fontFamily: "var(--font-sans)",
-  },
+  mapHeaderRow: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
+  copyRow: { display: "flex", alignItems: "center", gap: 10 },
+  copyMsg: { fontSize: 12, color: "var(--gray-400)" },
   refresh: {
     padding: "7px 16px",
     cursor: "pointer",
@@ -357,13 +352,11 @@ const styles: Record<string, React.CSSProperties> = {
     padding: 20,
     marginBottom: 20,
   },
-  row: { display: "flex", gap: 16, alignItems: "flex-start", marginBottom: 20 },
-  halfCard: {
-    flex: 1,
-    minWidth: 0,
-    width: "50%",
+  row: { display: "flex", gap: 16, alignItems: "flex-start", marginBottom: 20, flexWrap: "wrap" },
+  filterCard: {
+    flex: "0 0 auto",
     marginBottom: 0,
-    height: 300,
+    height: 340,
     display: "flex",
     flexDirection: "column",
   },

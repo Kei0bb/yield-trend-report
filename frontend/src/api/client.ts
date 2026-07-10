@@ -79,6 +79,11 @@ export async function fetchWaferMapLots(
   return res.data;
 }
 
+export async function fetchProcessSubs(productId: string): Promise<Record<string, string[]>> {
+  const res = await api.get<Record<string, string[]>>("/wafermap/process-subs", { params: { product_id: productId } });
+  return res.data;
+}
+
 export async function fetchWaferMaps(req: {
   product_id: string;
   process: string;
