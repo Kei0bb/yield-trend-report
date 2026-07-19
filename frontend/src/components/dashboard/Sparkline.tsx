@@ -7,7 +7,7 @@ interface SparklineProps {
 }
 
 export default function Sparkline({
-  values, width = 90, height = 22, color = "#0075de", target,
+  values, width = 90, height = 22, color = "#141413", target,
 }: SparklineProps) {
   if (values.length < 2) {
     return <svg width={width} height={height} />;
@@ -35,7 +35,7 @@ export default function Sparkline({
           y1={targetY}
           x2={width}
           y2={targetY}
-          stroke="rgba(0,0,0,0.25)"
+          stroke="rgba(20,20,19,0.3)"
           strokeWidth={1}
           strokeDasharray="3 3"
         />

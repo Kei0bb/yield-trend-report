@@ -1,6 +1,6 @@
 import Plot from "./PlotlyChart";
 import type { ProcessData } from "../types";
-import { BIN_COLORS, FONT_FAMILY, YIELD_LINE_COLOR } from "../theme";
+import { BIN_COLORS, YIELD_LINE_COLOR, MUTED, MUTED_SOFT, GRID, AXIS_LINE, plotlyBaseLayout } from "../theme";
 
 interface YieldChartProps {
   processName: string;
@@ -56,23 +56,20 @@ export default function YieldChart({ processName, data, target, colorMap }: Yiel
           yref: "y2",
           y0: target,
           y1: target,
-          line: { color: "rgba(224,62,62,0.6)", width: 1.5, dash: "dash" },
+          line: { color: "rgba(198,69,69,0.6)", width: 1.5, dash: "dash" },
         },
       ]
     : [];
 
   const layout: Partial<Plotly.Layout> = {
+    ...plotlyBaseLayout(),
     barmode: "stack",
-    font: { family: FONT_FAMILY, size: 11, color: "#37352f" },
-    xaxis: { tickangle: -30, tickfont: { size: 10, color: "#615d59" }, gridcolor: "rgba(0,0,0,0.04)", linecolor: "rgba(0,0,0,0.1)" },
-    yaxis: { title: { text: "Fail Bin (%)", font: { size: 10, color: "#787672" } }, side: "left", range: [0, 102], tickfont: { size: 10, color: "#615d59" }, gridcolor: "rgba(0,0,0,0.04)", zerolinecolor: "rgba(0,0,0,0.08)" },
-    yaxis2: { title: { text: "Yield (%)", font: { size: 10, color: "#787672" } }, side: "right", overlaying: "y", range: yieldRange, tickfont: { size: 10, color: "#615d59" }, showgrid: false },
-    legend: { orientation: "h", yanchor: "bottom", y: -0.4, xanchor: "center", x: 0.5, font: { size: 11, color: "#615d59" }, bgcolor: "rgba(0,0,0,0)" },
+    xaxis: { tickangle: -30, tickfont: { size: 10, color: MUTED }, gridcolor: GRID, linecolor: AXIS_LINE },
+    yaxis: { title: { text: "Fail Bin (%)", font: { size: 10, color: MUTED_SOFT } }, side: "left", range: [0, 102], tickfont: { size: 10, color: MUTED }, gridcolor: GRID, zerolinecolor: AXIS_LINE },
+    yaxis2: { title: { text: "Yield (%)", font: { size: 10, color: MUTED_SOFT } }, side: "right", overlaying: "y", range: yieldRange, tickfont: { size: 10, color: MUTED }, showgrid: false },
+    legend: { orientation: "h", yanchor: "bottom", y: -0.4, xanchor: "center", x: 0.5, font: { size: 11, color: MUTED }, bgcolor: "rgba(0,0,0,0)" },
     margin: { l: 56, r: 56, t: 16, b: 110 },
-    plot_bgcolor: "#ffffff",
-    paper_bgcolor: "#ffffff",
     height: 420,
-    hoverlabel: { bgcolor: "#ffffff", bordercolor: "rgba(0,0,0,0.1)", font: { family: FONT_FAMILY, size: 11, color: "#37352f" } },
     shapes: targetShapes,
   };
 
@@ -109,11 +106,10 @@ export default function YieldChart({ processName, data, target, colorMap }: Yiel
 
 const styles: Record<string, React.CSSProperties> = {
   card: {
-    background: "var(--white)",
-    border: "var(--border-whisper)",
-    borderRadius: 12,
+    background: "var(--surface-card)",
+    border: "var(--hairline)",
+    borderRadius: "var(--radius-card)",
     padding: "22px 24px 12px",
-    boxShadow: "var(--shadow-card)",
   },
   cardHeader: {
     display: "flex",
@@ -126,9 +122,9 @@ const styles: Record<string, React.CSSProperties> = {
   processBadge: {
     display: "inline-block",
     padding: "2px 10px",
-    borderRadius: 999,
-    background: "var(--badge-bg)",
-    color: "var(--badge-text)",
+    borderRadius: "var(--radius-pill)",
+    background: "var(--surface-soft)",
+    color: "var(--body)",
     fontSize: 11,
     fontWeight: 600,
     letterSpacing: "0.04em",
@@ -137,30 +133,23 @@ const styles: Record<string, React.CSSProperties> = {
   title: {
     fontSize: 17,
     fontWeight: 600,
-    color: "var(--gray-700)",
+    color: "var(--ink)",
     letterSpacing: "-0.015em",
   },
-  stats: {
-    display: "flex",
-    gap: 28,
-    flexWrap: "wrap",
-    justifyContent: "flex-end",
-  },
-  statItem: {
-    textAlign: "right",
-  },
+  stats: { display: "flex", gap: 28, flexWrap: "wrap", justifyContent: "flex-end" },
+  statItem: { textAlign: "right" },
   statLabel: {
     fontSize: 10,
     fontWeight: 600,
     textTransform: "uppercase",
     letterSpacing: "0.06em",
-    color: "var(--gray-400)",
+    color: "var(--muted-soft)",
     marginBottom: 2,
   },
   statValue: {
     fontSize: 18,
     fontWeight: 600,
-    color: "var(--gray-700)",
+    color: "var(--ink)",
     letterSpacing: "-0.01em",
     fontVariantNumeric: "tabular-nums",
   },
