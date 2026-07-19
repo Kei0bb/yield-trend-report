@@ -2,6 +2,8 @@ import { Fragment, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { SummaryRow } from "../../types";
 import Sparkline from "./Sparkline";
+import { tableStyles } from "../../ui/tableStyles";
+import Badge from "../../ui/Badge";
 
 type SortKey = "product_id" | "process" | "latest_yield" | "avg_yield_6m" | "delta";
 
@@ -141,7 +143,7 @@ export default function SummaryTable({ rows, months }: Props) {
       <tbody>
         {sorted.map((r, i) => {
           const warn = r.warnings.length > 0;
-          const deltaColor = r.delta == null ? "var(--gray-400)" : r.delta < 0 ? "var(--red)" : "var(--green)";
+          const deltaColor = r.delta == null ? "var(--muted-soft)" : r.delta < 0 ? "var(--error)" : "var(--success)";
           const belowTarget = r.latest_yield != null && r.target != null && r.latest_yield < r.target;
           const isSub = r.level === 1;
           const orphanKey = `${r.product_id}|${r.process}|${r.process_label}`;
@@ -150,6 +152,7 @@ export default function SummaryTable({ rows, months }: Props) {
           // Last row of a product group: drop its bottom rule so the gap below
           // reads as open whitespace, not a band bounded by a floating line.
           const isProductEnd = i === sorted.length - 1 || sorted[i + 1].product_id !== r.product_id;
+          const cellEnd: React.CSSProperties = isProductEnd ? { borderBottom: "none" } : {};
           return (
             <Fragment key={`${r.nickname}-${r.process}-${r.level}-${r.process_label}`}>
               {/* Whitespace gap between products (no rule line) — lighter than a
@@ -184,7 +187,7 @@ export default function SummaryTable({ rows, months }: Props) {
                 (isSub ? `?sub=${encodeURIComponent(r.process_label)}` : "")
               )}
             >
-              <td style={{ ...styles.tdLeft, ...(isSub ? styles.tdLeftSub : {}) }}>
+              <td style={{ ...styles.tdLeft, ...(isSub ? styles.tdLeftSub : {}), ...cellEnd }}>
                 {isSub ? (
                   <>
                     <span style={styles.subGlyph}>└</span>
@@ -199,24 +202,24 @@ export default function SummaryTable({ rows, months }: Props) {
                   </>
                 )}
               </td>
-              <td style={{ ...styles.td, ...(belowTarget ? { color: "var(--red)" } : {}) }}>
+              <td style={{ ...styles.td, ...(belowTarget ? { color: "var(--error)" } : {}), ...cellEnd }}>
                 {fmt(r.latest_yield, "%")}
               </td>
-              <td style={styles.td}>{fmt(r.avg_yield_6m, "%")}</td>
-              <td style={styles.td}>{fmt(r.target ?? null, "%")}</td>
-              <td style={{ ...styles.td, color: deltaColor }}>
+              <td style={{ ...styles.td, ...cellEnd }}>{fmt(r.avg_yield_6m, "%")}</td>
+              <td style={{ ...styles.td, ...cellEnd }}>{fmt(r.target ?? null, "%")}</td>
+              <td style={{ ...styles.td, color: deltaColor, ...cellEnd }}>
                 {r.delta == null ? "—" : `${r.delta < 0 ? "▼" : "▲"} ${Math.abs(r.delta).toFixed(1)}`}
               </td>
-              <td style={styles.td}>
+              <td style={{ ...styles.td, ...cellEnd }}>
                 <Sparkline
                   values={r.sparkline.map((p) => p.yield_pct)}
-                  color={warn ? "#e03e3e" : "#0075de"}
+                  color={warn ? "#c64545" : "#141413"}
                   target={r.target}
                 />
               </td>
-              <td style={styles.tdLeft}>
+              <td style={{ ...styles.tdLeft, ...cellEnd }}>
                 {r.warnings.map((w, i) => (
-                  <span key={i} style={styles.badge}>⚠ {w.message}</span>
+                  <span key={i} style={{ marginRight: 4 }}><Badge variant="error">⚠ {w.message}</Badge></span>
                 ))}
               </td>
             </tr>
@@ -229,20 +232,19 @@ export default function SummaryTable({ rows, months }: Props) {
 }
 
 const styles: Record<string, React.CSSProperties> = {
-  table: { width: "100%", borderCollapse: "collapse", fontSize: 13, color: "var(--gray-700)" },
-  th: { textAlign: "right", padding: "10px 14px", background: "var(--warm-white)", cursor: "pointer", color: "var(--gray-500)", fontWeight: 600, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.04em", borderBottom: "var(--border-whisper)" },
-  thLeft: { textAlign: "left", padding: "10px 14px", background: "var(--warm-white)", cursor: "pointer", color: "var(--gray-500)", fontWeight: 600, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.04em", borderBottom: "var(--border-whisper)" },
-  tr: { cursor: "pointer", borderBottom: "var(--border-soft)" },
-  trWarn: { background: "rgba(224, 62, 62, 0.05)" },
+  table: { ...tableStyles.table },
+  th: { ...tableStyles.th, cursor: "pointer" },
+  thLeft: { ...tableStyles.thLeft, cursor: "pointer" },
+  tr: { cursor: "pointer" },
+  trWarn: { ...tableStyles.rowWarn },
   trSub: { opacity: 0.85 },
-  trDisabled: { cursor: "default", background: "var(--warm-white)", color: "var(--gray-500)" },
-  td: { textAlign: "right", padding: "10px 14px", fontVariantNumeric: "tabular-nums" },
-  tdLeft: { textAlign: "left", padding: "10px 14px" },
-  tdLeftSub: { paddingLeft: 28 },
-  proc: { color: "var(--gray-400)" },
-  subGlyph: { color: "var(--gray-400)", marginRight: 6, userSelect: "none" },
-  subName: { color: "var(--gray-400)", fontSize: 11, marginTop: 2 },
-  badge: { display: "inline-block", background: "rgba(224, 62, 62, 0.1)", color: "var(--red)", fontSize: 11, fontWeight: 500, padding: "2px 8px", borderRadius: 999, marginRight: 4 },
+  trDisabled: { cursor: "default", background: "var(--canvas)", color: "var(--muted)" },
+  td: { ...tableStyles.td },
+  tdLeft: { ...tableStyles.tdLeft },
+  tdLeftSub: { ...tableStyles.tdLeft, paddingLeft: 28 },
+  proc: { color: "var(--muted-soft)" },
+  subGlyph: { color: "var(--muted-soft)", marginRight: 6, userSelect: "none" },
+  subName: { color: "var(--muted-soft)", fontSize: 11, marginTop: 2 },
   trProductEnd: { borderBottom: "none" },
-  spacer: { height: 6, background: "var(--warm-white)" },
+  spacer: { height: 6, background: "var(--canvas)" },
 };
