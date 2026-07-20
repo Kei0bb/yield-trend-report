@@ -29,9 +29,9 @@ const styles: Record<string, React.CSSProperties> = {
     display: "flex",
     flexDirection: "column",
     minHeight: "100vh",
-    background: "var(--warm-white)",
+    background: "var(--canvas)",
     fontFamily: "var(--font-sans)",
-    color: "var(--gray-700)",
+    color: "var(--body)",
   },
   body: { display: "flex", flex: 1, minWidth: 0 },
 };

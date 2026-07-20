@@ -39,35 +39,6 @@
   /* Typography */
   --font-sans: "Inter Variable", "Inter", -apple-system, BlinkMacSystemFont,
     "Segoe UI", Helvetica, Arial, sans-serif;
-
-  /* ── Legacy aliases — every pre-refresh var name, re-pointed at the new
-     palette. Removed in the final migration task once no file uses them. ── */
-  --black: var(--ink);
-  --white: var(--surface-card);
-  --warm-white: var(--canvas);
-  --warm-dark: var(--ink);
-  --gray-700: var(--body);
-  --gray-500: var(--muted);
-  --gray-400: var(--muted-soft);
-  --gray-300: #c8c3ba;
-  --gray-200: #d9d2c7;
-  --gray-100: #efe9de;
-  --notion-blue: var(--primary);
-  --active-blue: var(--primary-active);
-  --focus-blue: var(--primary);
-  --badge-bg: var(--surface-soft);
-  --badge-text: var(--body);
-  --teal: #2a9d99;
-  --green: var(--success);
-  --orange: #dd5b00;
-  --pink: #ff64c8;
-  --purple: #391c57;
-  --red: var(--error);
-  --yellow: var(--warning);
-  --border-whisper: var(--hairline);
-  --border-soft: var(--hairline-soft);
-  --shadow-card: none;
-  --shadow-button: none;
 }
 
 * {
@@ -117,7 +88,7 @@ input[type="checkbox"] {
   height: 10px;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--gray-200);
+  background: #d9d2c7;
   border-radius: 999px;
 }
 ::-webkit-scrollbar-thumb:hover {
