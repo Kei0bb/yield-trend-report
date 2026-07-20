@@ -173,7 +173,7 @@ export default function WaferMapPage() {
 
       <div style={styles.row}>
         <CheckListCard
-          title="Product" grow={2} minWidth={170}
+          title="Product" grow={1.65} minWidth={140}
           selected={[productId]}
           onToggle={(v) => { setProductId(v); setSub(""); }}
           options={products.map((p) => ({ value: p.product_id, label: p.product_id + (p.display_name && p.display_name !== p.product_id ? ` — ${p.display_name}` : "") }))}
@@ -202,7 +202,7 @@ export default function WaferMapPage() {
           }
         />
         <CheckListCard
-          title="Lots" grow={2} minWidth={200}
+          title="Lots" grow={1.85} minWidth={200}
           selected={selectedLots}
           onToggle={toggleLot}
           options={lotsLoading ? [] : displayLots.map((l) => ({
@@ -230,7 +230,7 @@ export default function WaferMapPage() {
           }
         />
         <CheckListCard
-          title="Bin filter" grow={1.5} minWidth={160}
+          title="Bin filter" grow={1.65} minWidth={190}
           selected={selectedBins.map(String)}
           onToggle={(v) => toggleBin(Number(v))}
           options={(mapData?.legend ?? []).map((item) => ({
