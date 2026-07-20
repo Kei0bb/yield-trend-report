@@ -1,6 +1,8 @@
 import { Link } from "react-router-dom";
 import type { LotData } from "../../types";
 import { last8 } from "../../utils/tpRev";
+import { tableStyles } from "../../ui/tableStyles";
+import Badge from "../../ui/Badge";
 
 interface Props {
   lots: LotData[];
@@ -69,7 +71,9 @@ export default function LotTable({ lots, availableBins, productId, process, sub 
               <td style={styles.td}>{lot.yield_pct.toFixed(1)}%</td>
               {availableBins.map((b) => <td key={b} style={styles.td}>{pctFor(lot, b).toFixed(2)}%</td>)}
               <td style={styles.tdLeft}>
-                {lot.warnings.map((w, i) => <span key={i} style={styles.badge}>⚠ {w.message}</span>)}
+                {lot.warnings.map((w, i) => (
+                  <span key={i} style={{ marginRight: 4 }}><Badge variant="error">⚠ {w.message}</Badge></span>
+                ))}
               </td>
             </tr>
           ))}
@@ -80,15 +84,14 @@ export default function LotTable({ lots, availableBins, productId, process, sub 
 }
 
 const styles: Record<string, React.CSSProperties> = {
-  scroll: { overflowX: "auto", maxWidth: "100%" },
-  table: { width: "100%", tableLayout: "fixed", borderCollapse: "collapse", fontSize: 12, color: "var(--gray-700)" },
-  th: { textAlign: "right", padding: "8px 10px", background: "var(--warm-white)", borderBottom: "var(--border-whisper)", whiteSpace: "nowrap", color: "var(--gray-500)", fontWeight: 600, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.03em" },
-  thLeft: { textAlign: "left", padding: "8px 10px", background: "var(--warm-white)", borderBottom: "var(--border-whisper)", color: "var(--gray-500)", fontWeight: 600, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.03em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
-  td: { textAlign: "right", padding: "6px 10px", borderBottom: "var(--border-soft)", fontVariantNumeric: "tabular-nums" },
-  tdLeft: { textAlign: "left", padding: "6px 10px", borderBottom: "var(--border-soft)" },
-  warn: { background: "rgba(224, 62, 62, 0.05)" },
-  badge: { display: "inline-block", background: "rgba(224, 62, 62, 0.1)", color: "var(--red)", fontSize: 10, fontWeight: 500, padding: "2px 7px", borderRadius: 999, marginRight: 4 },
+  scroll: { ...tableStyles.scroll },
+  table: { ...tableStyles.table, tableLayout: "fixed", fontSize: 12 },
+  th: { ...tableStyles.th, padding: "8px 10px", letterSpacing: "0.03em" },
+  thLeft: { ...tableStyles.thLeft, padding: "8px 10px", letterSpacing: "0.03em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
+  td: { ...tableStyles.td, padding: "6px 10px" },
+  tdLeft: { ...tableStyles.tdLeft, padding: "6px 10px" },
+  warn: { ...tableStyles.rowWarn },
   binHead: { display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
   cellTrunc: { display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
-  lotLink: { display: "block", color: "var(--badge-text)", textDecoration: "none" },
+  lotLink: { display: "block", color: "var(--primary)", textDecoration: "none", fontWeight: 500 },
 };

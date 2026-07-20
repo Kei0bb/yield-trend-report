@@ -5,6 +5,7 @@ import type { ExploreLotsResponse, ProcessData } from "../types";
 import YieldChart from "../components/YieldChart";
 import LotTable from "../components/explore/LotTable";
 import { last8 } from "../utils/tpRev";
+import Button from "../ui/Button";
 
 /** Map the lot-granular Explore response into the Report-style ProcessData
  *  (lots = x-axis labels, yield_avg = yield line, fail_bins = stacked bars),
@@ -60,7 +61,7 @@ export default function ExplorePage() {
     <main style={styles.container}>
       <header style={styles.header}>
         <div style={styles.headerLeft}>
-          <button onClick={() => navigate("/dashboard")} style={styles.back}>← Back</button>
+          <Button onClick={() => navigate("/dashboard")}>← Back</Button>
           <div>
             <div style={styles.breadcrumb}>
               Explore · Lot Drill-down{data?.display_name ? ` · ${data.display_name}` : ""}
@@ -95,7 +96,7 @@ const styles: Record<string, React.CSSProperties> = {
     flex: 1,
     padding: "40px 56px 56px",
     overflowY: "auto",
-    background: "var(--warm-white)",
+    background: "var(--canvas)",
     minWidth: 0,
   },
   header: {
@@ -107,47 +108,36 @@ const styles: Record<string, React.CSSProperties> = {
     flexWrap: "wrap",
   },
   headerLeft: { display: "flex", alignItems: "center", gap: 16 },
-  back: {
-    padding: "7px 14px",
-    cursor: "pointer",
-    borderRadius: 8,
-    border: "var(--border-whisper)",
-    background: "var(--white)",
-    color: "var(--gray-700)",
-    fontSize: 13,
-    fontWeight: 500,
-    boxShadow: "var(--shadow-button)",
-  },
   breadcrumb: {
     fontSize: 12,
-    color: "var(--gray-400)",
+    color: "var(--muted-soft)",
     fontWeight: 500,
     letterSpacing: "0.02em",
     marginBottom: 6,
   },
   title: {
-    fontSize: 28,
-    fontWeight: 700,
-    color: "var(--gray-700)",
-    letterSpacing: "-0.02em",
-    lineHeight: 1.15,
+    fontFamily: "var(--font-serif)",
+    fontSize: 26,
+    fontWeight: 500,
+    color: "var(--ink)",
+    letterSpacing: "-0.01em",
+    lineHeight: 1.2,
   },
-  proc: { color: "var(--gray-400)", fontWeight: 600 },
+  proc: { color: "var(--muted-soft)", fontWeight: 500 },
   stack: { display: "flex", flexDirection: "column", gap: 24 },
   card: {
-    background: "var(--white)",
-    border: "var(--border-whisper)",
-    borderRadius: 12,
-    boxShadow: "var(--shadow-card)",
+    background: "var(--surface-card)",
+    border: "var(--hairline)",
+    borderRadius: "var(--radius-card)",
     overflow: "hidden",
   },
   error: {
-    background: "rgba(224, 62, 62, 0.08)",
-    color: "var(--red)",
+    background: "rgba(198, 69, 69, 0.08)",
+    color: "var(--error)",
     padding: "10px 14px",
-    borderRadius: 8,
+    borderRadius: "var(--radius-control)",
     marginBottom: 16,
     fontSize: 13,
   },
-  empty: { color: "var(--gray-400)", fontSize: 14 },
+  empty: { color: "var(--muted-soft)", fontSize: 14 },
 };
