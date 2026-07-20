@@ -116,11 +116,10 @@ const styles: Record<string, React.CSSProperties> = {
     marginBottom: 6,
   },
   title: {
-    fontFamily: "var(--font-serif)",
     fontSize: 26,
-    fontWeight: 500,
+    fontWeight: 700,
     color: "var(--ink)",
-    letterSpacing: "-0.01em",
+    letterSpacing: "-0.02em",
     lineHeight: 1.2,
   },
   proc: { color: "var(--muted-soft)", fontWeight: 500 },

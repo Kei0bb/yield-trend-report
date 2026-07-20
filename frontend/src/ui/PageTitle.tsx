@@ -6,8 +6,8 @@ interface PageTitleProps {
   subtext?: ReactNode;
 }
 
-/** The one serif element per page (design spec): Lora 28/500 ink title with
- *  an optional muted breadcrumb above and subtext line below. */
+/** Page heading: 26/700 ink title with an optional muted breadcrumb above
+ *  and subtext line below. */
 export default function PageTitle({ breadcrumb, title, subtext }: PageTitleProps) {
   return (
     <header style={styles.header}>
@@ -28,11 +28,10 @@ const styles: Record<string, CSSProperties> = {
     marginBottom: 8,
   },
   title: {
-    fontFamily: "var(--font-serif)",
-    fontSize: 28,
-    fontWeight: 500,
+    fontSize: 26,
+    fontWeight: 700,
     color: "var(--ink)",
-    letterSpacing: "-0.01em",
+    letterSpacing: "-0.02em",
     lineHeight: 1.2,
   },
   subtext: { marginTop: 10, fontSize: 13, color: "var(--muted)" },
