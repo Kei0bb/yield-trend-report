@@ -140,7 +140,7 @@ export default function ReportPage() {
           </Button>
 
           <span style={styles.mock}>
-            <span style={{ ...styles.mockDot, background: isMock === false ? "var(--primary)" : "var(--success)" }} />
+            <span style={{ ...styles.mockDot, background: isMock === false ? "var(--success)" : "var(--muted-soft)" }} />
             {isMock === null ? "Connecting…" : isMock ? "Mock data" : "Live DB"}
           </span>
         </div>

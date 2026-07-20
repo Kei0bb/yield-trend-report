@@ -181,7 +181,7 @@ export default function SummaryTable({ rows, months }: Props) {
                 </tr>
               )}
             <tr
-              style={{ ...styles.tr, ...(warn ? styles.trWarn : {}), ...(isSub ? styles.trSub : {}), ...(isProductEnd ? styles.trProductEnd : {}) }}
+              style={{ ...styles.tr, ...(warn ? styles.trWarn : {}), ...(isSub ? styles.trSub : {}) }}
               onClick={() => navigate(
                 `/explore/${encodeURIComponent(r.product_id)}/${r.process}` +
                 (isSub ? `?sub=${encodeURIComponent(r.process_label)}` : "")
@@ -245,6 +245,5 @@ const styles: Record<string, React.CSSProperties> = {
   proc: { color: "var(--muted-soft)" },
   subGlyph: { color: "var(--muted-soft)", marginRight: 6, userSelect: "none" },
   subName: { color: "var(--muted-soft)", fontSize: 11, marginTop: 2 },
-  trProductEnd: { borderBottom: "none" },
   spacer: { height: 6, background: "var(--canvas)" },
 };
