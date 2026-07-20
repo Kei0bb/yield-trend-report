@@ -205,7 +205,7 @@ export default function WaferMapPage() {
           title="Lots" grow={2} minWidth={200}
           selected={selectedLots}
           onToggle={toggleLot}
-          options={displayLots.map((l) => ({
+          options={lotsLoading ? [] : displayLots.map((l) => ({
             value: l.lot_id,
             label: l.lot_id,
             disabled: !selectedLots.includes(l.lot_id) && selectedLots.length >= MAX_LOTS,
