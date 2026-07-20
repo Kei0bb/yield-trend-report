@@ -3,6 +3,9 @@ import ReportView from "../components/ReportView";
 import ErrorBanner from "../components/ErrorBanner";
 import { fetchReportProducts, fetchHealth, fetchYieldData, exportPdf, fetchProcessUnits } from "../api/client";
 import type { Product, YieldRequest, YieldResponse } from "../types";
+import PageTitle from "../ui/PageTitle";
+import Select from "../ui/Select";
+import Button from "../ui/Button";
 
 function formatYM(d: Date): string {
   const y = d.getFullYear();
@@ -96,21 +99,18 @@ export default function ReportPage() {
     <div style={styles.page}>
       {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
       <main style={styles.container}>
-        <header style={styles.header}>
-          <div style={styles.breadcrumb}>Reports · Yield Trend</div>
-          <h1 style={styles.title}>Report</h1>
-        </header>
+        <PageTitle breadcrumb="Reports · Yield Trend" title="Report" />
 
         <div style={styles.toolbar}>
           <label style={styles.field}>
             <span style={styles.fieldLabel}>Product</span>
-            <select value={productId} onChange={(e) => setProductId(e.target.value)} style={styles.select}>
+            <Select value={productId} onChange={(e) => setProductId(e.target.value)}>
               {products.map((p) => (
                 <option key={p.product_id} value={p.product_id}>
                   {p.product_id}{p.display_name && p.display_name !== p.product_id ? ` — ${p.display_name}` : ""}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
 
           <div style={styles.field}>
@@ -132,19 +132,15 @@ export default function ReportPage() {
             </div>
           </div>
 
-          <button onClick={handleGenerate} disabled={disabled} style={{ ...styles.primaryBtn, ...(disabled ? styles.btnDisabled : {}) }}>
+          <Button variant="primary" onClick={handleGenerate} disabled={disabled}>
             {loading ? "Loading…" : "Generate Report"}
-          </button>
-          <button
-            onClick={() => exportPdf(buildRequest())}
-            disabled={data === null || disabled}
-            style={{ ...styles.secondaryBtn, ...(data === null || disabled ? styles.btnDisabled : {}) }}
-          >
+          </Button>
+          <Button onClick={() => exportPdf(buildRequest())} disabled={data === null || disabled}>
             Export PDF
-          </button>
+          </Button>
 
           <span style={styles.mock}>
-            <span style={{ ...styles.mockDot, background: isMock === false ? "var(--notion-blue)" : "var(--green)" }} />
+            <span style={{ ...styles.mockDot, background: isMock === false ? "var(--primary)" : "var(--success)" }} />
             {isMock === null ? "Connecting…" : isMock ? "Mock data" : "Live DB"}
           </span>
         </div>
@@ -161,23 +157,8 @@ const styles: Record<string, React.CSSProperties> = {
     flex: 1,
     padding: "40px 56px 56px",
     overflowY: "auto",
-    background: "var(--warm-white)",
+    background: "var(--canvas)",
     minWidth: 0,
-  },
-  header: { marginBottom: 24 },
-  breadcrumb: {
-    fontSize: 12,
-    color: "var(--gray-400)",
-    fontWeight: 500,
-    letterSpacing: "0.02em",
-    marginBottom: 8,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: 700,
-    color: "var(--gray-700)",
-    letterSpacing: "-0.025em",
-    lineHeight: 1.15,
   },
   toolbar: { display: "flex", alignItems: "center", gap: 18, marginBottom: 24, flexWrap: "wrap" },
   field: { display: "inline-flex", alignItems: "center", gap: 8 },
@@ -186,62 +167,30 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 600,
     textTransform: "uppercase",
     letterSpacing: "0.06em",
-    color: "var(--gray-400)",
-  },
-  select: {
-    padding: "6px 10px",
-    borderRadius: 8,
-    border: "var(--border-whisper)",
-    background: "var(--white)",
-    color: "var(--gray-700)",
-    fontSize: 13,
-    fontFamily: "var(--font-sans)",
+    color: "var(--muted-soft)",
   },
   chipGroup: { display: "flex", gap: 6, flexWrap: "wrap" },
   chip: {
     padding: "6px 14px",
-    borderRadius: 999,
-    border: "var(--border-whisper)",
-    background: "var(--white)",
-    color: "var(--gray-500)",
+    borderRadius: "var(--radius-pill)",
+    border: "var(--hairline)",
+    background: "var(--surface-card)",
+    color: "var(--muted)",
     fontSize: 13,
     fontWeight: 500,
     cursor: "pointer",
   },
   chipActive: {
-    background: "var(--badge-bg)",
-    color: "var(--badge-text)",
-    border: "1px solid rgba(9, 127, 232, 0.3)",
+    background: "var(--surface-soft)",
+    color: "var(--ink)",
+    border: "1px solid rgba(204, 120, 92, 0.45)",
   },
-  primaryBtn: {
-    background: "var(--notion-blue)",
-    color: "var(--white)",
-    border: "none",
-    borderRadius: 8,
-    padding: "8px 18px",
-    fontSize: 13,
-    fontWeight: 500,
-    cursor: "pointer",
-    boxShadow: "var(--shadow-button)",
-  },
-  secondaryBtn: {
-    background: "var(--white)",
-    color: "var(--gray-700)",
-    border: "var(--border-whisper)",
-    borderRadius: 8,
-    padding: "8px 18px",
-    fontSize: 13,
-    fontWeight: 500,
-    cursor: "pointer",
-    boxShadow: "var(--shadow-button)",
-  },
-  btnDisabled: { opacity: 0.5, cursor: "not-allowed" },
   mock: {
     display: "inline-flex",
     alignItems: "center",
     gap: 6,
     fontSize: 12,
-    color: "var(--gray-400)",
+    color: "var(--muted-soft)",
     marginLeft: "auto",
   },
   mockDot: { width: 6, height: 6, borderRadius: "50%", display: "inline-block" },
