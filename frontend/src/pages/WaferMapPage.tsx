@@ -176,7 +176,7 @@ export default function WaferMapPage() {
           title="Product" grow={1.65} minWidth={140}
           selected={[productId]}
           onToggle={(v) => { setProductId(v); setSub(""); }}
-          options={products.map((p) => ({ value: p.product_id, label: p.product_id + (p.display_name && p.display_name !== p.product_id ? ` — ${p.display_name}` : "") }))}
+          options={products.map((p) => ({ value: p.product_id, label: p.product_id + (p.display_name && p.display_name !== p.product_id ? ` (${p.display_name})` : "") }))}
         />
         <CheckListCard
           title="Process" grow={1} minWidth={90}
