@@ -45,6 +45,18 @@ def test_get_wafer_maps_mock_shape_and_legend():
     assert resp.pass_bin_codes == [1], "mock must mark bin 1 as the pass bin"
 
 
+def test_get_wafer_maps_rows_follow_requested_lot_order():
+    """Grid rows must follow the caller's lot order (UI sends lot_date desc),
+    not alphabetical SUBSTRATE_ID order."""
+    requested = ["LOT-B", "LOT-A"]
+    resp = get_wafer_maps("Product-A", "CP", requested)
+    seen: list[str] = []
+    for wf in resp.wafers:
+        if wf.lot_id not in seen:
+            seen.append(wf.lot_id)
+    assert seen == requested
+
+
 def test_get_wafer_maps_caches_per_lot(monkeypatch):
     calls = []
     import app.services.map_service as ms

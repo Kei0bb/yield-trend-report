@@ -112,6 +112,14 @@ def get_wafer_maps(
             bin=[int(v) for v in g["bin_code"]],
         ))
 
+    # The grid renders one row per lot in the order wafers arrive, so lot order
+    # must follow the caller's lot_ids (the UI sends them newest-first by
+    # lot_date). groupby's own ordering is alphabetical by SUBSTRATE_ID, which
+    # is lot *name* order — unrelated to date. Sorting is stable, so wafer_id
+    # order within each lot is preserved.
+    lot_rank = {lot: i for i, lot in enumerate(lot_ids)}
+    wafers.sort(key=lambda w: lot_rank.get(w.lot_id, len(lot_rank)))
+
     pass_codes = (
         sorted({int(c) for c in meta_df.loc[meta_df["bin_quality"].map(_is_pass), "bin_code"]})
         if not meta_df.empty else []

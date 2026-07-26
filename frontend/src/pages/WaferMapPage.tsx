@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { fetchProcessSubs, fetchProducts, fetchWaferMapLots, fetchWaferMaps } from "../api/client";
 import type { Product, WaferMapLotsResponse, WaferMapResponse } from "../types";
@@ -94,8 +94,18 @@ export default function WaferMapPage() {
     }
   }, [productId, process, months, sub]);
 
+  const displayLots = useMemo(
+    () => (lotsData ? [...lotsData.lots].reverse() : []), // API returns oldest-first → newest first
+    [lotsData],
+  );
+
   const handleShowMaps = useCallback(async (lotIds?: string[]) => {
-    const ids = lotIds ?? selectedLots;
+    // Grid rows follow the request order, so send lots newest-first by
+    // lot_date (the displayed list order) rather than the click order.
+    const chosen = new Set(lotIds ?? selectedLots);
+    const ordered = displayLots.filter((l) => chosen.has(l.lot_id)).map((l) => l.lot_id);
+    // Deep-link entry runs before the lots list loads — fall back to as-given.
+    const ids = ordered.length > 0 ? ordered : [...chosen];
     if (ids.length === 0 || !productId || !process) return;
     setMapLoading(true);
     setMapError(null);
@@ -112,7 +122,7 @@ export default function WaferMapPage() {
     } finally {
       setMapLoading(false);
     }
-  }, [selectedLots, productId, process, sub]);
+  }, [selectedLots, displayLots, productId, process, sub]);
 
   const colorFor = useCallback(
     (bin: number) => {
@@ -162,8 +172,6 @@ export default function WaferMapPage() {
     }
     setTimeout(() => setCopyMsg(""), 2000); // note: acceptable here (not a workflow script)
   };
-
-  const displayLots = lotsData ? [...lotsData.lots].reverse() : []; // newest first
 
   return (
     <main style={styles.container}>
