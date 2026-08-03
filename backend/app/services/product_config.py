@@ -110,6 +110,54 @@ def _parse_target(raw, nickname: str) -> dict[str, float]:
     return {}
 
 
+def _parse_wat_pairs(raw, nickname: str) -> list[dict]:
+    """Parse the `wat:` block into a flat list of device-flavor pairs.
+
+    Shape:
+        wat:
+          pairs:
+            - label: Core RVT
+              vth:   {n: VTHN_RVT, p: VTHP_RVT}
+              idsat: {n: IDSATN_RVT, p: IDSATP_RVT}
+
+    Returns [] when the block is absent or unusable — the scatter section is
+    simply omitted for that product rather than erroring.
+    """
+    if not isinstance(raw, dict):
+        return []
+    pairs = raw.get("pairs")
+    if not isinstance(pairs, list):
+        return []
+
+    out: list[dict] = []
+    for i, entry in enumerate(pairs):
+        label = f"pair{i + 1}"
+        if not isinstance(entry, dict):
+            logger.warning(
+                "product_config[%s].wat.pairs[%d] is not a mapping; skipped", nickname, i
+            )
+            continue
+        label = str(entry.get("label") or label).strip() or label
+        vth = entry.get("vth") if isinstance(entry.get("vth"), dict) else {}
+        idsat = entry.get("idsat") if isinstance(entry.get("idsat"), dict) else {}
+        pair = {
+            "label": label,
+            "vth_n": str(vth.get("n") or "").strip(),
+            "vth_p": str(vth.get("p") or "").strip(),
+            "idsat_n": str(idsat.get("n") or "").strip(),
+            "idsat_p": str(idsat.get("p") or "").strip(),
+        }
+        missing = [k for k in ("vth_n", "vth_p", "idsat_n", "idsat_p") if not pair[k]]
+        if missing:
+            logger.warning(
+                "product_config[%s].wat.pairs[%s] missing %s; skipped",
+                nickname, label, ", ".join(missing),
+            )
+            continue
+        out.append(pair)
+    return out
+
+
 def _config_from_yaml() -> dict[str, dict[str, str]] | None:
     """Parse product_config.yaml into the flat internal shape.
 
@@ -180,6 +228,7 @@ def _config_from_yaml() -> dict[str, dict[str, str]] | None:
 
         report_units = _parse_report_units(entry.get("report"), name)
         row["report"] = json.dumps(report_units)
+        row["wat"] = json.dumps(_parse_wat_pairs(entry.get("wat"), name))
 
         config[name] = row
     return config or None
@@ -311,6 +360,18 @@ def resolve_report_unit(nickname: str, label: str) -> dict | None:
         if u.get("label") == label:
             return u
     return None
+
+
+def resolve_wat_pairs(nickname: str) -> list[dict]:
+    """Device-flavor pairs for the PCM/WAT scatter plots, in declaration order."""
+    config = load_product_config() or {}
+    raw = (config.get(nickname) or {}).get("wat") or "[]"
+    try:
+        pairs = json.loads(raw)
+    except (TypeError, ValueError):
+        logger.warning("product_config[%s].wat is not valid JSON; ignored", nickname)
+        return []
+    return pairs if isinstance(pairs, list) else []
 
 
 def resolve_bin_group(nickname: str, process: str = "") -> str:

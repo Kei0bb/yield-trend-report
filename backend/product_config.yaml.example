@@ -204,3 +204,22 @@ products:
 
   # Subs-only example: DB has no clean roll-up for CP; show only individual steps.
   # cp: {subs: [CP1, CP2]}   # no major row, only CP1/CP2 sub rows
+
+#
+# wat (optional — PCM/WAT tab の散布図に必要)
+# ─────────────────────────────────────────────────────────────────
+#   WAT_MEASURE_DETAIL.ITEM_NAME の命名は製品ごとに違うため、散布図で
+#   使う Vth / Idsat の N・P 項目名をここで対応付ける。
+#   pairs は宣言順に表示され、1 組につき 4 図（Vth n/p, Idsat n/p,
+#   Ion-Vt N, Ion-Vt P）を描く。
+#   このブロックを省くと散布図セクションごと非表示になる
+#   （サマリーテーブルは通常どおり表示される）。
+#
+#   wat:
+#     pairs:
+#       - label: Core RVT
+#         vth:   {n: VTHN_RVT,   p: VTHP_RVT}
+#         idsat: {n: IDSATN_RVT, p: IDSATP_RVT}
+#       - label: Core LVT
+#         vth:   {n: VTHN_LVT,   p: VTHP_LVT}
+#         idsat: {n: IDSATN_LVT, p: IDSATP_LVT}
