@@ -4,6 +4,7 @@ import type { WatLotInfo, WatSummaryResponse } from "../../types";
 import Button from "../../ui/Button";
 import Select from "../../ui/Select";
 import { STATUS_MARK } from "../../theme";
+import WatSummaryTable from "./WatSummaryTable";
 
 interface Props {
   productId: string;
@@ -135,7 +136,7 @@ export default function WatSummaryTab({ productId }: Props) {
               <span style={styles.yellow}>{STATUS_MARK.yellow} {yellows}</span>
             </span>
           </div>
-          {/* Task 11 adds WatSummaryTable, Task 12 adds WatScatterGrid */}
+          <WatSummaryTable items={summary.items} />
         </>
       )}
     </div>
