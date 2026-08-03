@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { exportWatPdf, fetchWatLots, fetchWatSummary } from "../../api/client";
 import type { WatLotInfo, WatSummaryResponse } from "../../types";
 import Button from "../../ui/Button";
@@ -27,6 +27,7 @@ export default function WatSummaryTab({ productId }: Props) {
       return;
     }
     let cancelled = false;
+    setError(null);
     fetchWatLots(productId, months)
       .then((res) => {
         if (cancelled) return;
@@ -42,18 +43,27 @@ export default function WatSummaryTab({ productId }: Props) {
     return () => { cancelled = true; };
   }, [productId, months]);
 
+  // Guards loadSummary against out-of-order responses: only the latest
+  // request may write state when lotId changes mid-fetch (see WaferMapPage's
+  // loadLots for the same idiom).
+  const summaryReqIdRef = useRef(0);
+
   const loadSummary = useCallback(async () => {
     if (!productId || !lotId) return;
+    const id = ++summaryReqIdRef.current;
     setLoading(true);
     setError(null);
     try {
-      setSummary(await fetchWatSummary(productId, lotId));
+      const res = await fetchWatSummary(productId, lotId);
+      if (id !== summaryReqIdRef.current) return; // stale response
+      setSummary(res);
     } catch (e) {
+      if (id !== summaryReqIdRef.current) return; // stale response
       console.error("Failed to load WAT summary:", e);
       setError("Failed to load WAT summary.");
       setSummary(null);
     } finally {
-      setLoading(false);
+      if (id === summaryReqIdRef.current) setLoading(false);
     }
   }, [productId, lotId]);
 
