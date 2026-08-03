@@ -3,6 +3,7 @@ import type {
   Product, YieldRequest, YieldResponse,
   DashboardSummaryResponse, ExploreLotsResponse,
   WaferMapLotsResponse, WaferMapResponse,
+  WatLotsResponse, WatSummaryResponse,
 } from "../types";
 
 const api = axios.create({
@@ -93,5 +94,38 @@ export async function fetchWaferMaps(req: {
 }): Promise<WaferMapResponse> {
   const res = await api.post<WaferMapResponse>("/wafermap", req);
   return res.data;
+}
+
+export async function fetchWatLots(
+  productId: string, months: number
+): Promise<WatLotsResponse> {
+  const res = await api.get<WatLotsResponse>("/wat/lots", {
+    params: { product_id: productId, months },
+  });
+  return res.data;
+}
+
+export async function fetchWatSummary(
+  productId: string, lotId: string
+): Promise<WatSummaryResponse> {
+  const res = await api.get<WatSummaryResponse>("/wat/summary", {
+    params: { product_id: productId, lot_id: lotId },
+  });
+  return res.data;
+}
+
+export async function exportWatPdf(productId: string, lotId: string): Promise<void> {
+  const res = await api.post(
+    "/wat/export-pdf",
+    { product_id: productId, lot_id: lotId },
+    { responseType: "blob" },
+  );
+  const blob = new Blob([res.data], { type: "application/pdf" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `WAT_${productId}_${lotId}.pdf`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 

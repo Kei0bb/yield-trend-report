@@ -43,3 +43,30 @@ export function plotlyBaseLayout(): Partial<Plotly.Layout> {
     },
   };
 }
+
+/** Wafer number is an ordered quantity, so it gets a single-hue light→dark
+ *  ramp with a colorbar — not 25 categorical swatches, and never a rainbow. */
+export const WAFER_COLORSCALE: [number, string][] = [
+  [0.0, "#f0d9cf"],
+  [0.5, "#cc785c"],
+  [1.0, "#5c2f1e"],
+];
+
+/** PCM/WAT judgement. Reserved status colors — never reused as series colors. */
+export const STATUS_COLOR: Record<string, string> = {
+  red: "var(--error)",
+  yellow: "var(--warning)",
+  gray: "var(--muted-soft)",
+  ok: "var(--ink)",
+};
+
+/** Printed alongside the color so a black-and-white PDF still carries the
+ *  judgement. */
+export const STATUS_MARK: Record<string, string> = {
+  red: "●",
+  yellow: "▲",
+  gray: "–",
+  ok: "",
+};
+
+export const SPEC_LINE_COLOR = "#c64545";
