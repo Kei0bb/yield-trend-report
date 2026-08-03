@@ -305,7 +305,11 @@ def get_wat_summary(nickname: str, product_id: str, lot_id: str) -> WatSummaryRe
         stats.append(compute_item_stats(group, str(item_name)))
 
     stats_by_item = {s["item_name"]: s for s in stats}
-    scatter_pairs = build_scatter_pairs(df, resolve_wat_pairs(nickname), stats_by_item)
+    scatter_pairs = (
+        []
+        if df.empty
+        else build_scatter_pairs(df, resolve_wat_pairs(nickname), stats_by_item)
+    )
 
     measured_date = ""
     wafer_count = 0

@@ -54,3 +54,39 @@ def test_product_without_wat_config_has_no_scatter_pairs(monkeypatch):
     res = get_wat_summary("product_a", "P12345-A", _first_lot())
     assert res.scatter_pairs == []
     assert res.items, "the table must still render without a wat: block"
+
+
+_REALISTIC_WAT_PAIR = [{
+    "label": "Core RVT",
+    "vth_n": "VTHN_RVT",
+    "vth_p": "VTHP_RVT",
+    "idsat_n": "IDSATN_RVT",
+    "idsat_p": "IDSATP_RVT",
+}]
+
+
+def test_unknown_lot_with_wat_config_still_returns_empty_scatter_pairs(monkeypatch):
+    """An unknown/empty lot must yield an empty summary even when the product
+    HAS a configured wat: block — build_scatter_pairs alone doesn't know the
+    lot has no data, so get_wat_summary must guard on the empty frame."""
+    import app.services.wat_service as ws
+    monkeypatch.setattr(ws, "resolve_wat_pairs", lambda nickname: _REALISTIC_WAT_PAIR)
+    res = get_wat_summary("product_a", "P12345-A", "__no_such_lot__")
+    assert res.items == []
+    assert res.scatter_pairs == []
+    assert res.wafer_count == 0
+
+
+def test_scatter_pairs_populate_for_a_real_lot_with_wat_config(monkeypatch):
+    """With a configured wat: block and a lot that has data, scatter_pairs
+    must actually be populated and the nested pydantic models must coerce
+    the service's plain-dict output without a ValidationError."""
+    import app.services.wat_service as ws
+    monkeypatch.setattr(ws, "resolve_wat_pairs", lambda nickname: _REALISTIC_WAT_PAIR)
+    res = get_wat_summary("product_a", "P12345-A", _first_lot())
+    assert len(res.scatter_pairs) == 1
+    pair = res.scatter_pairs[0]
+    assert pair.label == "Core RVT"
+    assert [p.kind for p in pair.plots] == ["vth_np", "idsat_np", "ion_vt_n", "ion_vt_p"]
+    for plot in pair.plots:
+        assert plot.points, f"{plot.kind} should have points for a real lot"
