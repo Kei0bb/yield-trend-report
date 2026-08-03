@@ -2991,11 +2991,17 @@ import { STATUS_COLOR, STATUS_MARK } from "../../theme";
 import WatItemTrendChart from "./WatItemTrendChart";
 import { tableStyles } from "../../ui/tableStyles";
 
-/** Four significant digits, so 0.4021 and 1042.6 read at the same width. */
+/** Four significant digits, so 0.4021 and 1042.6 read at the same width.
+ *
+ *  Mirrors Python's "%.4g" — the PDF formats the same numbers server-side, and
+ *  a screen/PDF mismatch on the same lot is a bug report waiting to happen.
+ *  %g switches to exponential when the decimal exponent is < -4 or >= the
+ *  precision (4), so the thresholds below are 1e-4 and 1e4, not 1e-3/1e6. */
 export function fmtValue(v: number | null): string {
   if (v === null || v === undefined || Number.isNaN(v)) return "—";
-  const abs = Math.abs(v);
-  if (abs !== 0 && (abs < 1e-3 || abs >= 1e6)) return v.toExponential(3);
+  if (v === 0) return "0";
+  const exp = Math.floor(Math.log10(Math.abs(v)));
+  if (exp < -4 || exp >= 4) return v.toExponential(3);
   return String(Number(v.toPrecision(4)));
 }
 
