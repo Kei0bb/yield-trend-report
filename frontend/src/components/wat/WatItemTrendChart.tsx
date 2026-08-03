@@ -1,4 +1,4 @@
-import Plot from "react-plotly.js";
+import Plot from "../PlotlyChart";
 import type { WatItemStats } from "../../types";
 import { INK, MUTED_SOFT, SPEC_LINE_COLOR, plotlyBaseLayout } from "../../theme";
 

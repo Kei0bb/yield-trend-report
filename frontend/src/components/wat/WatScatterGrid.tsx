@@ -1,5 +1,5 @@
 import { useState } from "react";
-import Plot from "react-plotly.js";
+import Plot from "../PlotlyChart";
 import type { WatScatterPair, WatScatterPlot } from "../../types";
 import { MUTED_SOFT, WAFER_COLORSCALE, plotlyBaseLayout } from "../../theme";
 
