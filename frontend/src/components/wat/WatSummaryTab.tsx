@@ -5,6 +5,7 @@ import Button from "../../ui/Button";
 import Select from "../../ui/Select";
 import { STATUS_MARK } from "../../theme";
 import WatSummaryTable from "./WatSummaryTable";
+import WatScatterGrid from "./WatScatterGrid";
 
 interface Props {
   productId: string;
@@ -137,6 +138,7 @@ export default function WatSummaryTab({ productId }: Props) {
             </span>
           </div>
           <WatSummaryTable items={summary.items} />
+          <WatScatterGrid pairs={summary.scatter_pairs} />
         </>
       )}
     </div>
