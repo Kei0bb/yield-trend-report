@@ -56,6 +56,11 @@ COL_HEADERS = ["", "Item", "Unit", "Low", "High", "N",
 ROW_H = 4.4 * mm
 TABLE_FONT = 6.6
 
+# Bottom margin reserved for the footer + breathing room, below which no new
+# table row is drawn. Shared by _rows_per_page (page-count prediction) and
+# the drawing loop's page-break check so the two cannot drift apart again.
+PAGE_BREAK_MARGIN = FOOTER_H + 12 * mm
+
 
 def fmt_value(v) -> str:
     """Four significant digits, so 0.4021 and 1043 read at the same width."""
@@ -106,7 +111,7 @@ def _axis(title: str) -> dict:
     )
 
 
-def _scatter_figure(plot: WatScatterPlot, width: int = 620, height: int = 460) -> go.Figure:
+def _scatter_figure(plot: WatScatterPlot, width: int = 620, height: int = 820) -> go.Figure:
     title = PLOT_TITLES.get(plot.kind, plot.kind)
     fig = go.Figure()
 
@@ -142,7 +147,7 @@ def _scatter_figure(plot: WatScatterPlot, width: int = 620, height: int = 460) -
     return fig
 
 
-def _trend_figure(item: WatItemStats, width: int = 1000, height: int = 380) -> go.Figure:
+def _trend_figure(item: WatItemStats, width: int = 1000, height: int = 647) -> go.Figure:
     series = item.wafer_series
     fig = go.Figure()
     fig.add_trace(go.Scatter(
@@ -287,8 +292,14 @@ def _draw_item_row(c: canvas.Canvas, y: float, item: WatItemStats) -> float:
 # ---------------------------------------------------------------------------
 
 def _rows_per_page(content_top: float) -> int:
-    """How many item rows fit between the header rule and the footer."""
-    usable = content_top - (FOOTER_H + 12 * mm) - ROW_H   # minus the column header
+    """How many item rows fit between the header rule and the footer.
+
+    The column header itself is drawn at `content_top` (row 0); item k is
+    drawn at content_top - k * ROW_H. The last item that still fits satisfies
+    content_top - k * ROW_H >= PAGE_BREAK_MARGIN, i.e. its own slot already
+    accounts for the header's row — no extra ROW_H subtraction needed here.
+    """
+    usable = content_top - PAGE_BREAK_MARGIN
     return max(1, int(usable // ROW_H))
 
 
@@ -353,7 +364,7 @@ def generate_wat_pdf(summary: WatSummaryResponse) -> bytes:
         c.setFillColorRGB(*STATUS_RGB["gray"])
         c.drawString(MARGIN, y, "No WAT data for this lot.")
     for item in summary.items:
-        if y < FOOTER_H + 12 * mm:
+        if y < PAGE_BREAK_MARGIN:
             y = _draw_table_header(c, end_page())
         y = _draw_item_row(c, y, item)
 

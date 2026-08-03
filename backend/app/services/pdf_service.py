@@ -1,10 +1,8 @@
 """
 PDF generation service for Yield Trend Reports.
 
-Branding configuration — swap these out for production:
-  COMPANY_NAME  : displayed in the header logo area
-  LOGO_PATH     : absolute path to a PNG/JPG logo file, or None to use mock
-  CONFIDENTIAL  : set False to suppress the diagonal watermark
+Branding configuration (COMPANY_NAME / LOGO_PATH / CONFIDENTIAL) lives in
+pdf_common.py — shared with the PCM/WAT report — not here.
 """
 
 import io

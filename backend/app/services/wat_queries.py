@@ -28,6 +28,14 @@ WAT_DETAIL_COLUMNS = [
 ]
 
 
+def _product_id_clause(product_id: str) -> str:
+    """`LIKE` when product_id carries a '%' wildcard (see product_config.yaml's
+    product_id field), else a plain equality — mirrors resolve_product_ids()
+    in product_config.py so a wildcard-configured product doesn't silently
+    return zero rows here."""
+    return "PRODUCT_ID LIKE :pid" if "%" in product_id else "PRODUCT_ID = :pid"
+
+
 def build_wat_lots_query(product_id: str, start: date, end: date) -> tuple[str, dict]:
     """Lots measured in [start, end). The upper bound is exclusive so the
     caller can pass tomorrow's date and still include everything measured
@@ -39,7 +47,7 @@ def build_wat_lots_query(product_id: str, start: date, end: date) -> tuple[str, 
                MAX(START_TIME)          AS last_measured,
                COUNT(DISTINCT WAFER_ID) AS wafer_count
         FROM {WAT_TABLE}
-        WHERE PRODUCT_ID = :pid
+        WHERE {_product_id_clause(product_id)}
           AND START_TIME >= :start
           AND START_TIME <  :end
         GROUP BY LOT_ID
@@ -62,7 +70,7 @@ def build_wat_detail_query(product_id: str, lot_id: str) -> tuple[str, dict]:
                MEAS_DATA  AS meas_data,
                START_TIME AS start_time
         FROM {WAT_TABLE}
-        WHERE PRODUCT_ID = :pid
+        WHERE {_product_id_clause(product_id)}
           AND LOT_ID = :lot
         ORDER BY item_name, wafer_id, site_no
     """
@@ -89,5 +97,21 @@ def query_wat_lots(product_id: str, start: date, end: date) -> pd.DataFrame:
 
 
 def query_wat_detail(product_id: str, lot_id: str) -> pd.DataFrame:
+    """Detail rows, normalised at the boundary so mock and real-DB data end up
+    the same shape:
+
+    - ITEM_NAME / ITEM_UNIT come back space-padded from an Oracle CHAR
+      column; unstripped, the configured `wat:` item names never match.
+    - MEAS_DATA / SPEC_LOW / SPEC_HIGH can arrive as decimal.Decimal (e.g. if
+      oracledb.defaults.fetch_decimals is set), which makes the column
+      object-dtype and breaks Series.std(ddof=1) downstream with a TypeError.
+    """
     sql, binds = build_wat_detail_query(product_id, lot_id)
-    return _run(sql, binds, WAT_DETAIL_COLUMNS, "detail")
+    df = _run(sql, binds, WAT_DETAIL_COLUMNS, "detail")
+    if df.empty:
+        return df
+    for col in ("item_name", "item_unit"):
+        df[col] = df[col].str.strip()
+    for col in ("meas_data", "spec_low", "spec_high"):
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+    return df

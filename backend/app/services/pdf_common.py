@@ -10,8 +10,10 @@ Swap these out for production:
   CONFIDENTIAL  : set False to suppress the confidential mark
 """
 
+import re
 from datetime import date
 from pathlib import Path
+from urllib.parse import quote
 
 from reportlab.lib.units import mm
 from reportlab.lib.utils import ImageReader
@@ -38,6 +40,30 @@ MARGIN = 15 * mm
 HEADER_H = 48 * mm              # header band (title + rule + padding)
 HEADER_DIVIDER_OFFSET = 4 * mm  # header base → divider distance
 FOOTER_H = 10 * mm
+
+
+# ---------------------------------------------------------------------------
+# Download filename
+# ---------------------------------------------------------------------------
+
+def content_disposition(raw_name: str) -> str:
+    """Build a safe `Content-Disposition` header value for a PDF download.
+
+    `raw_name` is built from free-form, ultimately DB-sourced strings (a
+    lot_id or display_name) and may contain non-ASCII characters (garden
+    variety in a Japanese-language fab tool) or quote characters. Putting it
+    straight into the header either raises UnicodeEncodeError (HTTP headers
+    are latin-1) or, if it contains a `"`, lets it inject a second
+    `filename=` parameter that some clients prefer over the real one.
+
+    This returns an ASCII-only `filename=` fallback (non-ASCII/unsafe chars
+    replaced with `_`) plus an RFC 5987 `filename*=UTF-8''...` parameter
+    carrying the real, percent-encoded name — the same pattern browsers
+    already expect for non-ASCII downloads.
+    """
+    safe = re.sub(r"[^A-Za-z0-9._-]", "_", raw_name)[:120] or "download"
+    encoded = quote(raw_name + ".pdf", safe="")
+    return f"attachment; filename=\"{safe}.pdf\"; filename*=UTF-8''{encoded}"
 
 
 def draw_logo(c: canvas.Canvas, x: float, y: float, h: float) -> None:

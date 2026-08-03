@@ -1,5 +1,8 @@
 import time
 
+import pytest
+
+from app.models.schemas import WatItemStats, WatSummaryResponse
 from app.services.mock_data import mock_wat_lots
 from app.services.wat_pdf_service import (
     STATUS_MARK, fmt_cpk, fmt_value, generate_wat_pdf,
@@ -109,4 +112,62 @@ def test_page_count_matches_the_precomputed_total():
     predicted = count_pages(summary, top)
 
     actual = len(PdfReader(_io.BytesIO(generate_wat_pdf(summary))).pages)
+    assert actual == predicted
+
+
+def _make_table_only_summary(n_items: int) -> WatSummaryResponse:
+    """A summary with only the item table (no scatter, nothing flagged), so
+    `count_pages`'s table_pages term is isolated from the scatter/trend terms."""
+    items = [
+        WatItemStats(
+            item_name=f"ITEM_{i:03d}", unit="V", spec_low=0.0, spec_high=1.0,
+            n=5, mean=0.5, sigma=0.05, min=0.4, max=0.6, cpk=2.0,
+            cpk_state="value", oos_count=0, oos_pct=0.0, status="ok",
+            wafer_series=[],
+        )
+        for i in range(n_items)
+    ]
+    return WatSummaryResponse(
+        product_id="P12345-A", display_name="P12345-A", lot_id="LOT-1",
+        measured_date="2026-01-01", wafer_count=1, items=items, scatter_pairs=[],
+    )
+
+
+@pytest.mark.parametrize("n_items", [30, 51, 52, 53, 103])
+def test_page_count_matches_actual_across_item_counts(n_items):
+    """Regression for the _rows_per_page off-by-one: the drawing loop fits
+    one more row per page than the old formula predicted, so a real ~60-item
+    lot printed 'Page 1 of 4' on a 3-page report."""
+    import io
+    from pypdf import PdfReader
+    from reportlab.lib.pagesizes import A4
+    from reportlab.pdfgen import canvas as _canvas
+    from app.services.wat_pdf_service import _draw_header, count_pages
+
+    summary = _make_table_only_summary(n_items)
+    probe = _canvas.Canvas(io.BytesIO(), pagesize=A4)
+    top = _draw_header(probe, A4[0], A4[1], summary)
+    predicted = count_pages(summary, top)
+
+    actual = len(PdfReader(io.BytesIO(generate_wat_pdf(summary))).pages)
+    assert actual == predicted, f"items={n_items} predicted={predicted} actual={actual}"
+
+
+def test_page_count_matches_at_52_items():
+    """The specific count called out in review: 52 items filled exactly one
+    page in the drawing loop while the old formula predicted 2."""
+    import io
+    from pypdf import PdfReader
+    from reportlab.lib.pagesizes import A4
+    from reportlab.pdfgen import canvas as _canvas
+    from app.services.wat_pdf_service import _draw_header, count_pages
+
+    summary = _make_table_only_summary(52)
+    probe = _canvas.Canvas(io.BytesIO(), pagesize=A4)
+    top = _draw_header(probe, A4[0], A4[1], summary)
+    predicted = count_pages(summary, top)
+
+    actual = len(PdfReader(io.BytesIO(generate_wat_pdf(summary))).pages)
+    assert predicted == 1
+    assert actual == 1
     assert actual == predicted
