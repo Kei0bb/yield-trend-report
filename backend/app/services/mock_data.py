@@ -161,3 +161,124 @@ def mock_bin_meta_dataframe(lot_id: str, process: str) -> pd.DataFrame:
         (2, "Open", "FAIL"),
     ]
     return pd.DataFrame(rows, columns=BIN_META_COLUMNS)
+
+
+# ---------------------------------------------------------------------------
+# PCM / WAT mock
+# ---------------------------------------------------------------------------
+
+MOCK_WAT_FLAVORS: list[str] = ["RVT", "LVT", "HVT", "ULVT", "IO25", "IO18"]
+
+WAT_DETAIL_COLUMNS = [
+    "wafer_id", "site_no", "item_name", "item_unit",
+    "spec_low", "spec_high", "meas_data", "start_time",
+]
+
+WAT_LOT_COLUMNS = ["lot_id", "last_measured", "wafer_count"]
+
+# (item suffix, unit, center, spread, spec half-width) per flavor family.
+# Vth centers differ per flavor so the Ion-Vt clusters separate visibly.
+_WAT_VTH_CENTER = {"RVT": 0.45, "LVT": 0.32, "HVT": 0.58,
+                   "ULVT": 0.24, "IO25": 0.70, "IO18": 0.62}
+_WAT_IDSAT_CENTER = {"RVT": 620.0, "LVT": 780.0, "HVT": 480.0,
+                     "ULVT": 880.0, "IO25": 340.0, "IO18": 400.0}
+
+# Extra non-paired items so the summary table is not only Vth/Idsat.
+_WAT_MISC_ITEMS = [
+    ("RS_POLY", "Ohm/sq", 1040.0, 20.0, None, None),
+    ("RS_NDIFF", "Ohm/sq", 78.0, 2.5, 68.0, 88.0),
+    ("RS_PDIFF", "Ohm/sq", 132.0, 4.0, 118.0, 146.0),
+    ("CAP_MIM", "fF/um2", 2.05, 0.04, 1.90, 2.20),
+    ("VIA_CHAIN_R", "Ohm", 1.85, 0.09, 1.50, 2.20),
+    ("GATE_OX_TOX", "nm", 2.20, 0.05, 2.05, 2.35),
+]
+
+
+def _wat_seed(*parts: str) -> int:
+    return int(hashlib.md5("|".join(parts).encode()).hexdigest(), 16) % 2**32
+
+
+# Generous canonical lookback for the lot timeline. Lot generation is seeded
+# on product_id alone (not `months`) and always walks this full horizon, then
+# `months` merely filters which lots are returned. This keeps a given lot's
+# id/date reproducible regardless of which `months` value was used to reach
+# it — e.g. mock_wat_dataframe re-derives lot metadata with a different
+# `months` than whatever the caller used to originally list the lot.
+_WAT_LOT_HORIZON_MONTHS = 36
+
+
+def mock_wat_lots(product_id: str, months: int) -> pd.DataFrame:
+    """Deterministic WAT lot list for a product, oldest first.
+
+    Callers order for display; the API returns newest first.
+    """
+    rng = random.Random(_wat_seed("wat-lots", product_id))
+    today = date.today()
+    anchor = today - timedelta(days=_WAT_LOT_HORIZON_MONTHS * 30)
+    cutoff = today - timedelta(days=months * 30)
+
+    rows: list[dict] = []
+    cur = anchor
+    seq = 0
+    while cur <= today:
+        seq += 1
+        if cur >= cutoff:
+            rows.append({
+                "lot_id": f"WAT{product_id[:4].upper()}-{cur.strftime('%y%m%d')}-{seq:03d}",
+                "last_measured": cur.isoformat(),
+                "wafer_count": 25,
+            })
+        cur += timedelta(days=rng.randint(5, 12))
+
+    return pd.DataFrame(rows, columns=WAT_LOT_COLUMNS)
+
+
+def mock_wat_dataframe(product_id: str, lot_id: str) -> pd.DataFrame:
+    """Deterministic per-site WAT measurements for one lot.
+
+    25 wafers x 9 sites x (6 flavors x 4 items + 6 misc items) = 30 items.
+    Two items are deliberately degraded so the red/yellow paths render in
+    mock mode: VTHN_ULVT drifts out of spec (red) and RS_NDIFF is given a
+    wide spread that lands its Cpk between 1.00 and 1.33 (yellow).
+    """
+    lots = mock_wat_lots(product_id, _WAT_LOT_HORIZON_MONTHS)
+    match = lots[lots["lot_id"] == lot_id]
+    if match.empty:
+        return pd.DataFrame(columns=WAT_DETAIL_COLUMNS)
+    start_time = str(match["last_measured"].iloc[0])
+
+    rng = random.Random(_wat_seed("wat-detail", product_id, lot_id))
+
+    specs: list[tuple] = []
+    for flavor in MOCK_WAT_FLAVORS:
+        vc = _WAT_VTH_CENTER[flavor]
+        ic = _WAT_IDSAT_CENTER[flavor]
+        specs.append((f"VTHN_{flavor}", "V", vc, 0.018, vc - 0.07, vc + 0.07))
+        specs.append((f"VTHP_{flavor}", "V", -vc, 0.018, -vc - 0.07, -vc + 0.07))
+        specs.append((f"IDSATN_{flavor}", "uA/um", ic, ic * 0.03, ic * 0.88, ic * 1.12))
+        specs.append((f"IDSATP_{flavor}", "uA/um", ic * 0.45, ic * 0.014,
+                      ic * 0.45 * 0.88, ic * 0.45 * 1.12))
+    specs.extend(_WAT_MISC_ITEMS)
+
+    rows: list[dict] = []
+    for item_name, unit, center, spread, spec_low, spec_high in specs:
+        # Deliberate defects so mock exercises red / yellow rendering.
+        if item_name == "VTHN_ULVT":
+            center += spread * 3.2       # pushes tail past the upper spec → red
+        if item_name == "RS_NDIFF":
+            spread *= 1.1                # widens sigma → Cpk lands in [1.00, 1.33)
+        for wafer_id in range(1, 26):
+            wafer_bias = rng.gauss(0, spread * 0.35)
+            for site_no in range(1, 10):
+                rows.append({
+                    "wafer_id": wafer_id,
+                    "site_no": site_no,
+                    "item_name": item_name,
+                    "item_unit": unit,
+                    "spec_low": spec_low,
+                    "spec_high": spec_high,
+                    "meas_data": center + wafer_bias + rng.gauss(0, spread),
+                    "start_time": start_time,
+                })
+
+    return pd.DataFrame(rows, columns=WAT_DETAIL_COLUMNS)
