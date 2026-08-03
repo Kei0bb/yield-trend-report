@@ -10,9 +10,10 @@ interface Props {
   productId: string;
   process: string;
   sub?: string;
+  months?: number;
 }
 
-export default function LotTable({ lots, availableBins, productId, process, sub }: Props) {
+export default function LotTable({ lots, availableBins, productId, process, sub, months }: Props) {
   const pctFor = (lot: LotData, bin: string) => {
     const b = lot.bin_breakdown.find((x) => x.bin_name === bin);
     return b ? b.percent : 0;
@@ -56,7 +57,7 @@ export default function LotTable({ lots, availableBins, productId, process, sub 
             <tr key={`${lot.lot_id}|${lot.test_program_rev}`} style={lot.warnings.length ? styles.warn : undefined}>
               <td style={styles.tdLeft}>
                 <Link
-                  to={`/wafermap?product_id=${encodeURIComponent(productId)}&process=${process}&lots=${encodeURIComponent(lot.lot_id)}${sub ? `&sub=${encodeURIComponent(sub)}` : ""}`}
+                  to={`/wafermap?product_id=${encodeURIComponent(productId)}&process=${process}&lots=${encodeURIComponent(lot.lot_id)}${sub ? `&sub=${encodeURIComponent(sub)}` : ""}${months ? `&months=${months}` : ""}`}
                   style={styles.lotLink}
                   title={`${lot.lot_id} のwafer mapを見る`}
                 >

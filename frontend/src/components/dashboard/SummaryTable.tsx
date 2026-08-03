@@ -167,10 +167,13 @@ export default function SummaryTable({ rows, months }: Props) {
               {isOrphanLead && (
                 <tr style={{ ...styles.tr, ...styles.trDisabled }}>
                   <td style={styles.tdLeft}>
-                    <b>{r.product_id}</b> <span style={styles.proc}>/ {r.process}</span>
-                    {r.display_name && r.display_name !== r.product_id && (
-                      <div style={styles.subName}>{r.display_name}</div>
-                    )}
+                    <div style={styles.idLine}>
+                      <b>{r.product_id}</b>
+                      {r.display_name && r.display_name !== r.product_id && (
+                        <span style={styles.subName}>{r.display_name}</span>
+                      )}
+                    </div>
+                    <div style={styles.procLine}>{r.process}</div>
                   </td>
                   <td style={styles.td}>—</td>
                   <td style={styles.td}>—</td>
@@ -184,7 +187,8 @@ export default function SummaryTable({ rows, months }: Props) {
               style={{ ...styles.tr, ...(warn ? styles.trWarn : {}), ...(isSub ? styles.trSub : {}) }}
               onClick={() => navigate(
                 `/explore/${encodeURIComponent(r.product_id)}/${r.process}` +
-                (isSub ? `?sub=${encodeURIComponent(r.process_label)}` : "")
+                `?months=${months}` +
+                (isSub ? `&sub=${encodeURIComponent(r.process_label)}` : "")
               )}
             >
               <td style={{ ...styles.tdLeft, ...(isSub ? styles.tdLeftSub : {}), ...cellEnd }}>
@@ -195,10 +199,13 @@ export default function SummaryTable({ rows, months }: Props) {
                   </>
                 ) : (
                   <>
-                    <b>{r.product_id}</b> <span style={styles.proc}>/ {r.process_label}</span>
-                    {r.display_name && r.display_name !== r.product_id && (
-                      <div style={styles.subName}>{r.display_name}</div>
-                    )}
+                    <div style={styles.idLine}>
+                      <b>{r.product_id}</b>
+                      {r.display_name && r.display_name !== r.product_id && (
+                        <span style={styles.subName}>{r.display_name}</span>
+                      )}
+                    </div>
+                    <div style={styles.procLine}>{r.process_label}</div>
                   </>
                 )}
               </td>
@@ -244,6 +251,10 @@ const styles: Record<string, React.CSSProperties> = {
   tdLeftSub: { ...tableStyles.tdLeft, paddingLeft: 28 },
   proc: { color: "var(--muted-soft)" },
   subGlyph: { color: "var(--muted-soft)", marginRight: 6, userSelect: "none" },
-  subName: { color: "var(--muted-soft)", fontSize: 11, marginTop: 2 },
+  // Major row identity: product_id + display_name share the first line, the
+  // process/test name gets its own line below.
+  idLine: { display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" },
+  subName: { color: "var(--muted-soft)", fontSize: 11 },
+  procLine: { color: "var(--muted-soft)", marginTop: 2 },
   spacer: { height: 6, background: "var(--canvas)" },
 };

@@ -6,6 +6,7 @@ import YieldChart from "../components/YieldChart";
 import LotTable from "../components/explore/LotTable";
 import { last8 } from "../utils/tpRev";
 import Button from "../ui/Button";
+import Select from "../ui/Select";
 
 /** Map the lot-granular Explore response into the Report-style ProcessData
  *  (lots = x-axis labels, yield_avg = yield line, fail_bins = stacked bars),
@@ -34,8 +35,12 @@ function toProcessData(data: ExploreLotsResponse): ProcessData {
 
 export default function ExplorePage() {
   const { productId = "", process = "" } = useParams();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const sub = searchParams.get("sub") ?? "";
+  // Period is carried over from the Dashboard's selector via ?months=;
+  // fall back to 6 for direct links / legacy URLs.
+  const monthsParam = parseInt(searchParams.get("months") ?? "", 10);
+  const months = [1, 3, 6].includes(monthsParam) ? monthsParam : 6;
   const navigate = useNavigate();
   const [data, setData] = useState<ExploreLotsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -46,11 +51,11 @@ export default function ExplorePage() {
 
   useEffect(() => {
     let active = true;
-    fetchExploreLots(productId, process, 6, sub || undefined)
-      .then((d) => { if (active) setData(d); })
+    fetchExploreLots(productId, process, months, sub || undefined)
+      .then((d) => { if (active) { setData(d); setError(null); } })
       .catch((e) => { console.error(e); if (active) setError("Failed to load lot data."); });
     return () => { active = false; };
-  }, [productId, process, sub]);
+  }, [productId, process, sub, months]);
 
   const processData = useMemo(
     () => (data ? toProcessData(data) : null),
@@ -69,6 +74,21 @@ export default function ExplorePage() {
             <h1 style={styles.title}>{productId} <span style={styles.proc}>/ {label}</span></h1>
           </div>
         </div>
+        <label style={styles.field}>
+          <span style={styles.fieldLabel}>Period</span>
+          <Select
+            value={String(months)}
+            onChange={(e) => {
+              const next = new URLSearchParams(searchParams);
+              next.set("months", e.target.value);
+              setSearchParams(next, { replace: true });
+            }}
+          >
+            <option value="1">Last 1 month</option>
+            <option value="3">Last 3 months</option>
+            <option value="6">Last 6 months</option>
+          </Select>
+        </label>
       </header>
 
       {error && <div style={styles.error}>{error}</div>}
@@ -83,6 +103,7 @@ export default function ExplorePage() {
               productId={productId}
               process={process}
               sub={sub || undefined}
+              months={months}
             />
           </div>
         </div>
@@ -108,6 +129,14 @@ const styles: Record<string, React.CSSProperties> = {
     flexWrap: "wrap",
   },
   headerLeft: { display: "flex", alignItems: "center", gap: 16 },
+  field: { display: "inline-flex", alignItems: "center", gap: 8 },
+  fieldLabel: {
+    fontSize: 11,
+    fontWeight: 600,
+    textTransform: "uppercase",
+    letterSpacing: "0.06em",
+    color: "var(--muted-soft)",
+  },
   breadcrumb: {
     fontSize: 12,
     color: "var(--muted-soft)",
