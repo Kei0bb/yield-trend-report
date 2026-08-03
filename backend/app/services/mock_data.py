@@ -184,13 +184,16 @@ _WAT_IDSAT_CENTER = {"RVT": 620.0, "LVT": 780.0, "HVT": 480.0,
                      "ULVT": 880.0, "IO25": 340.0, "IO18": 400.0}
 
 # Extra non-paired items so the summary table is not only Vth/Idsat.
+# Spec margins are sized so Cpk = half_width / (3 * spread * sqrt(1 + 0.35**2))
+# lands around 1.5-1.8 for these non-degraded items (the 0.35 factor accounts
+# for the per-wafer bias term added on top of `spread` below).
 _WAT_MISC_ITEMS = [
     ("RS_POLY", "Ohm/sq", 1040.0, 20.0, None, None),
-    ("RS_NDIFF", "Ohm/sq", 78.0, 2.5, 68.0, 88.0),
-    ("RS_PDIFF", "Ohm/sq", 132.0, 4.0, 118.0, 146.0),
-    ("CAP_MIM", "fF/um2", 2.05, 0.04, 1.90, 2.20),
-    ("VIA_CHAIN_R", "Ohm", 1.85, 0.09, 1.50, 2.20),
-    ("GATE_OX_TOX", "nm", 2.20, 0.05, 2.05, 2.35),
+    ("RS_NDIFF", "Ohm/sq", 78.0, 2.5, 64.0, 92.0),
+    ("RS_PDIFF", "Ohm/sq", 132.0, 4.0, 111.0, 153.0),
+    ("CAP_MIM", "fF/um2", 2.05, 0.04, 1.84, 2.26),
+    ("VIA_CHAIN_R", "Ohm", 1.85, 0.09, 1.37, 2.33),
+    ("GATE_OX_TOX", "nm", 2.20, 0.05, 1.94, 2.46),
 ]
 
 
@@ -253,11 +256,14 @@ def mock_wat_dataframe(product_id: str, lot_id: str) -> pd.DataFrame:
     for flavor in MOCK_WAT_FLAVORS:
         vc = _WAT_VTH_CENTER[flavor]
         ic = _WAT_IDSAT_CENTER[flavor]
-        specs.append((f"VTHN_{flavor}", "V", vc, 0.018, vc - 0.07, vc + 0.07))
-        specs.append((f"VTHP_{flavor}", "V", -vc, 0.018, -vc - 0.07, -vc + 0.07))
-        specs.append((f"IDSATN_{flavor}", "uA/um", ic, ic * 0.03, ic * 0.88, ic * 1.12))
+        # Margins below give Cpk ~1.5-1.8 for non-degraded items (see the
+        # sizing note above _WAT_MISC_ITEMS); VTHN_ULVT's center-shift
+        # defect (below) still clears this wider Vth margin.
+        specs.append((f"VTHN_{flavor}", "V", vc, 0.018, vc - 0.086, vc + 0.086))
+        specs.append((f"VTHP_{flavor}", "V", -vc, 0.018, -vc - 0.086, -vc + 0.086))
+        specs.append((f"IDSATN_{flavor}", "uA/um", ic, ic * 0.03, ic * 0.84, ic * 1.16))
         specs.append((f"IDSATP_{flavor}", "uA/um", ic * 0.45, ic * 0.014,
-                      ic * 0.45 * 0.88, ic * 0.45 * 1.12))
+                      ic * 0.45 * 0.84, ic * 0.45 * 1.16))
     specs.extend(_WAT_MISC_ITEMS)
 
     rows: list[dict] = []
@@ -266,7 +272,7 @@ def mock_wat_dataframe(product_id: str, lot_id: str) -> pd.DataFrame:
         if item_name == "VTHN_ULVT":
             center += spread * 3.2       # pushes tail past the upper spec → red
         if item_name == "RS_NDIFF":
-            spread *= 1.1                # widens sigma → Cpk lands in [1.00, 1.33)
+            spread *= 1.5                # widens sigma → Cpk lands in [1.00, 1.33)
         for wafer_id in range(1, 26):
             wafer_bias = rng.gauss(0, spread * 0.35)
             for site_no in range(1, 10):
