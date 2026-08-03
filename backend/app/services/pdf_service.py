@@ -1,15 +1,12 @@
 """
 PDF generation service for Yield Trend Reports.
 
-Branding configuration — swap these out for production:
-  COMPANY_NAME  : displayed in the header logo area
-  LOGO_PATH     : absolute path to a PNG/JPG logo file, or None to use mock
-  CONFIDENTIAL  : set False to suppress the diagonal watermark
+Branding configuration (COMPANY_NAME / LOGO_PATH / CONFIDENTIAL) lives in
+pdf_common.py — shared with the PCM/WAT report — not here.
 """
 
 import io
 from datetime import date, timedelta
-from pathlib import Path
 
 import plotly.graph_objects as go
 from reportlab.lib.pagesizes import A4, landscape
@@ -18,13 +15,11 @@ from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas
 
 from app.models.schemas import ProcessData
-
-# ---------------------------------------------------------------------------
-# Branding
-# ---------------------------------------------------------------------------
-COMPANY_NAME: str = "Socionext"     
-LOGO_PATH: str | None = str(Path(__file__).resolve().parents[3] / "assets" / "logo.png")  # ← project-root/assets/logo.png (backend/frontend 共通) | None = mock
-CONFIDENTIAL: bool = True                     # ← False にすると透かし非表示
+from app.services.pdf_common import (
+    COMPANY_NAME, CONFIDENTIAL, FONT_FAMILY, FOOTER_H, HEADER_DIVIDER_OFFSET,
+    HEADER_H, LOGO_PATH, MARGIN, SUBTEXT_COLOR, TEXT_COLOR,
+    draw_footer, draw_logo,
+)
 
 # ---------------------------------------------------------------------------
 # Design tokens (Notion-inspired)
@@ -45,15 +40,6 @@ BIN_COLORS = [
 ]
 
 YIELD_LINE_COLOR = "#292929"
-TEXT_COLOR = "#37352f"
-SUBTEXT_COLOR = "#615d59"
-FONT_FAMILY = "Inter, -apple-system, Segoe UI, Helvetica, Arial, sans-serif"
-
-# PDF layout constants
-MARGIN = 15 * mm
-HEADER_H = 48 * mm           # header band 全体 (タイトル + 下線 + 余白)
-HEADER_DIVIDER_OFFSET = 4 * mm  # ヘッダー底から下線までの距離 (タイトル + meta row の下に配置)
-FOOTER_H = 10 * mm           # footer band
 
 
 # ---------------------------------------------------------------------------
@@ -142,39 +128,6 @@ def _create_chart_image(
 # Page components
 # ---------------------------------------------------------------------------
 
-def _draw_logo(c: canvas.Canvas, x: float, y: float, h: float) -> None:
-    """Draw company logo. Replace with c.drawImage(LOGO_PATH, ...) in production."""
-    if LOGO_PATH and Path(LOGO_PATH).exists():
-        # --- Production: real logo image ---
-        w = h * 3  # assume ~3:1 aspect ratio; adjust as needed
-        c.drawImage(
-            ImageReader(LOGO_PATH),
-            x, y,
-            width=w, height=h,
-            preserveAspectRatio=True,
-            anchor="sw",
-            mask="auto",
-        )
-    else:
-        # --- Mock: styled placeholder box ---
-        box_w = 44 * mm
-        box_h = h
-        # Box outline
-        c.saveState()
-        c.setStrokeColorRGB(0.0, 0.46, 0.87, alpha=0.4)
-        c.setFillColorRGB(0.95, 0.97, 1.0)
-        c.setLineWidth(0.8)
-        c.roundRect(x, y, box_w, box_h, 3, stroke=1, fill=1)
-        # Company name inside
-        c.setFillColorRGB(0.0, 0.46, 0.87)
-        c.setFont("Helvetica-Bold", 8)
-        c.drawCentredString(x + box_w / 2, y + box_h / 2 + 1.5, COMPANY_NAME.upper())
-        c.setFont("Helvetica", 6)
-        c.setFillColorRGB(0.38, 0.36, 0.35)
-        c.drawCentredString(x + box_w / 2, y + box_h / 2 - 5, "LOGO PLACEHOLDER")
-        c.restoreState()
-
-
 def _draw_header(
     c: canvas.Canvas,
     page_width: float,
@@ -190,7 +143,7 @@ def _draw_header(
     # ── Logo (left) ──────────────────────────────────────────────────────
     logo_h = 12 * mm
     logo_y = top - logo_h + 3 * mm  # nudge upward into the top margin
-    _draw_logo(c, MARGIN, logo_y, logo_h)
+    draw_logo(c, MARGIN, logo_y, logo_h)
 
     # ── Divider (header base) ────────────────────────────────────────────
     div_y = page_height - HEADER_H + HEADER_DIVIDER_OFFSET
@@ -240,42 +193,6 @@ def _draw_header(
     c.setStrokeColorRGB(0, 0, 0, alpha=0.18)  # より濃く視認性アップ
     c.setLineWidth(0.8)
     c.line(MARGIN, div_y, page_width - MARGIN, div_y)
-    c.restoreState()
-
-
-def _draw_footer(
-    c: canvas.Canvas,
-    page_width: float,
-    current_page: int,
-    total_pages: int,
-) -> None:
-    """Draw footer with generated date, page number, and confidential mark."""
-    y = FOOTER_H - 3 * mm
-
-    # Left: generated date (moved from header right)
-    c.saveState()
-    c.setFont("Helvetica", 7.5)
-    c.setFillColorRGB(0.63, 0.61, 0.60)
-    c.drawString(MARGIN, y, f"Generated  {date.today().isoformat()}")
-
-    # Center: page number
-    c.drawCentredString(
-        page_width / 2, y,
-        f"Page {current_page} of {total_pages}",
-    )
-
-    # Right: CONFIDENTIAL — red text only (no fill background)
-    if CONFIDENTIAL:
-        c.setFillColorRGB(0.78, 0.0, 0.0)
-        c.setFont("Helvetica-Bold", 8)
-        c.drawRightString(page_width - MARGIN, y, "SOCIONEXT CONFIDENTIAL")
-    c.restoreState()
-
-    # Thin top rule for footer
-    c.saveState()
-    c.setStrokeColorRGB(0, 0, 0, alpha=0.07)
-    c.setLineWidth(0.4)
-    c.line(MARGIN, FOOTER_H, page_width - MARGIN, FOOTER_H)
     c.restoreState()
 
 
@@ -376,7 +293,7 @@ def generate_pdf(
             c.restoreState()
 
         # 3. Footer
-        _draw_footer(c, page_width, page_num, total_pages)
+        draw_footer(c, page_width, page_num, total_pages)
 
         c.showPage()
 

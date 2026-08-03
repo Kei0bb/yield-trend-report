@@ -124,3 +124,77 @@ export interface WaferMapResponse {
   legend: WaferMapLegendItem[];
   pass_bin_codes: number[];
 }
+
+// ---- PCM / WAT types ----
+
+export interface WatLotInfo {
+  lot_id: string;
+  last_measured: string;
+  wafer_count: number;
+}
+
+export interface WatLotsResponse {
+  product_id: string;
+  lots: WatLotInfo[];
+}
+
+export interface WatWaferPoint {
+  wafer_id: number;
+  n: number;
+  mean: number | null;
+  sigma: number | null;
+}
+
+export type WatStatus = "red" | "yellow" | "gray" | "ok";
+export type WatCpkState = "value" | "infinite" | "undefined";
+
+export interface WatItemStats {
+  item_name: string;
+  unit: string;
+  spec_low: number | null;
+  spec_high: number | null;
+  n: number;
+  mean: number | null;
+  sigma: number | null;
+  min: number | null;
+  max: number | null;
+  cpk: number | null;
+  cpk_state: WatCpkState;
+  oos_count: number;
+  oos_pct: number;
+  status: WatStatus;
+  wafer_series: WatWaferPoint[];
+}
+
+export interface WatScatterPoint {
+  wafer_id: number;
+  site_no: number;
+  x: number;
+  y: number;
+}
+
+export interface WatScatterPlot {
+  kind: "vth_np" | "idsat_np" | "ion_vt_n" | "ion_vt_p";
+  x_item: string;
+  y_item: string;
+  x_unit: string;
+  y_unit: string;
+  x_spec: (number | null)[];
+  y_spec: (number | null)[];
+  points: WatScatterPoint[];
+}
+
+export interface WatScatterPair {
+  label: string;
+  plots: WatScatterPlot[];
+}
+
+export interface WatSummaryResponse {
+  product_id: string;
+  display_name: string;
+  lot_id: string;
+  measured_date: string;
+  wafer_count: number;
+  items: WatItemStats[];
+  scatter_pairs: WatScatterPair[];
+}

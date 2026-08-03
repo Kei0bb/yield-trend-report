@@ -108,6 +108,26 @@ products:
       - {family: cp, label: "CP", values: [CP]}
       - {family: ft, label: "FT", values: [cFT1]}
       - {family: slt, label: "SLT", values: [cSLT1]}
+    wat:
+      pairs:
+        - label: Core RVT
+          vth:   {n: VTHN_RVT,   p: VTHP_RVT}
+          idsat: {n: IDSATN_RVT, p: IDSATP_RVT}
+        - label: Core LVT
+          vth:   {n: VTHN_LVT,   p: VTHP_LVT}
+          idsat: {n: IDSATN_LVT, p: IDSATP_LVT}
+        - label: Core HVT
+          vth:   {n: VTHN_HVT,   p: VTHP_HVT}
+          idsat: {n: IDSATN_HVT, p: IDSATP_HVT}
+        - label: Core ULVT
+          vth:   {n: VTHN_ULVT,   p: VTHP_ULVT}
+          idsat: {n: IDSATN_ULVT, p: IDSATP_ULVT}
+        - label: IO 2.5V
+          vth:   {n: VTHN_IO25,   p: VTHP_IO25}
+          idsat: {n: IDSATN_IO25, p: IDSATP_IO25}
+        - label: IO 1.8V
+          vth:   {n: VTHN_IO18,   p: VTHP_IO18}
+          idsat: {n: IDSATN_IO18, p: IDSATP_IO18}
 
   # Revision sharing the same display_name → merged with Product-A
   Product-A-rev2:
@@ -204,3 +224,22 @@ products:
 
   # Subs-only example: DB has no clean roll-up for CP; show only individual steps.
   # cp: {subs: [CP1, CP2]}   # no major row, only CP1/CP2 sub rows
+
+#
+# wat (optional — PCM/WAT tab の散布図に必要)
+# ─────────────────────────────────────────────────────────────────
+#   WAT_MEASURE_DETAIL.ITEM_NAME の命名は製品ごとに違うため、散布図で
+#   使う Vth / Idsat の N・P 項目名をここで対応付ける。
+#   pairs は宣言順に表示され、1 組につき 4 図（Vth n/p, Idsat n/p,
+#   Ion-Vt N, Ion-Vt P）を描く。
+#   このブロックを省くと散布図セクションごと非表示になる
+#   （サマリーテーブルは通常どおり表示される）。
+#
+#   wat:
+#     pairs:
+#       - label: Core RVT
+#         vth:   {n: VTHN_RVT,   p: VTHP_RVT}
+#         idsat: {n: IDSATN_RVT, p: IDSATP_RVT}
+#       - label: Core LVT
+#         vth:   {n: VTHN_LVT,   p: VTHP_LVT}
+#         idsat: {n: IDSATN_LVT, p: IDSATP_LVT}

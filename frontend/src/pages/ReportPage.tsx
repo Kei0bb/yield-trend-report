@@ -6,6 +6,7 @@ import type { Product, YieldRequest, YieldResponse } from "../types";
 import PageTitle from "../ui/PageTitle";
 import Select from "../ui/Select";
 import Button from "../ui/Button";
+import WatSummaryTab from "../components/wat/WatSummaryTab";
 
 function formatYM(d: Date): string {
   const y = d.getFullYear();
@@ -22,6 +23,7 @@ function addMonths(d: Date, n: number): Date {
 export default function ReportPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [productId, setProductId] = useState("");
+  const [tab, setTab] = useState<"yield" | "wat">("yield");
   const [units, setUnits] = useState<{ family: string; label: string }[]>([]);
   const [processes, setProcesses] = useState<string[]>([]);
   const [isMock, setIsMock] = useState<boolean | null>(null);
@@ -99,7 +101,23 @@ export default function ReportPage() {
     <div style={styles.page}>
       {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
       <main style={styles.container}>
-        <PageTitle breadcrumb="Reports · Yield Trend" title="Report" />
+        <PageTitle
+          breadcrumb={tab === "wat" ? "Reports · PCM / WAT" : "Reports · Yield Trend"}
+          title="Report"
+        />
+
+        <div style={styles.tabs}>
+          {([["yield", "Yield Trend"], ["wat", "PCM / WAT"]] as const).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setTab(key)}
+              style={{ ...styles.tab, ...(tab === key ? styles.tabActive : {}) }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
 
         <div style={styles.toolbar}>
           <label style={styles.field}>
@@ -113,31 +131,35 @@ export default function ReportPage() {
             </Select>
           </label>
 
-          <div style={styles.field}>
-            <span style={styles.fieldLabel}>Process</span>
-            <div style={styles.chipGroup}>
-              {units.map((u) => {
-                const active = processes.includes(u.label);
-                return (
-                  <button
-                    key={u.label}
-                    type="button"
-                    onClick={() => toggleProcess(u.label)}
-                    style={{ ...styles.chip, ...(active ? styles.chipActive : {}) }}
-                  >
-                    {u.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          {tab === "yield" && (
+            <>
+              <div style={styles.field}>
+                <span style={styles.fieldLabel}>Process</span>
+                <div style={styles.chipGroup}>
+                  {units.map((u) => {
+                    const active = processes.includes(u.label);
+                    return (
+                      <button
+                        key={u.label}
+                        type="button"
+                        onClick={() => toggleProcess(u.label)}
+                        style={{ ...styles.chip, ...(active ? styles.chipActive : {}) }}
+                      >
+                        {u.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
 
-          <Button variant="primary" onClick={handleGenerate} disabled={disabled}>
-            {loading ? "Loading…" : "Generate Report"}
-          </Button>
-          <Button onClick={() => exportPdf(buildRequest())} disabled={data === null || disabled}>
-            Export PDF
-          </Button>
+              <Button variant="primary" onClick={handleGenerate} disabled={disabled}>
+                {loading ? "Loading…" : "Generate Report"}
+              </Button>
+              <Button onClick={() => exportPdf(buildRequest())} disabled={data === null || disabled}>
+                Export PDF
+              </Button>
+            </>
+          )}
 
           <span style={styles.mock}>
             <span style={{ ...styles.mockDot, background: isMock === false ? "var(--success)" : "var(--muted-soft)" }} />
@@ -145,7 +167,9 @@ export default function ReportPage() {
           </span>
         </div>
 
-        <ReportView data={data} request={request} />
+        {tab === "yield"
+          ? <ReportView data={data} request={request} />
+          : <WatSummaryTab productId={productId} />}
       </main>
     </div>
   );
@@ -160,6 +184,18 @@ const styles: Record<string, React.CSSProperties> = {
     background: "var(--canvas)",
     minWidth: 0,
   },
+  tabs: { display: "flex", gap: 4, marginBottom: 20 },
+  tab: {
+    padding: "8px 16px",
+    borderRadius: "var(--radius-control)",
+    border: "none",
+    background: "transparent",
+    color: "var(--muted)",
+    fontSize: 14,
+    fontWeight: 500,
+    cursor: "pointer",
+  },
+  tabActive: { background: "var(--surface-soft)", color: "var(--ink)" },
   toolbar: { display: "flex", alignItems: "center", gap: 18, marginBottom: 24, flexWrap: "wrap" },
   field: { display: "inline-flex", alignItems: "center", gap: 8 },
   fieldLabel: {

@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
 
 from app.models.schemas import ProcessData, YieldRequest
+from app.services.pdf_common import content_disposition
 from app.services.product_config import group_by_display_name, resolve_report_unit, to_nicknames
 from app.services.yield_service import get_yield_data_merged
 from app.services.pdf_service import generate_pdf
@@ -60,9 +61,6 @@ def export_pdf(req: YieldRequest) -> Response:
         logger.error("generate_pdf failed:\n%s", traceback.format_exc())
         raise HTTPException(status_code=500, detail=f"PDF generation failed: {e}")
 
-    filename = f"YieldTrend_{products_label}_{req.start_month}_to_{req.end_month}.pdf"
-    return Response(
-        content=pdf_bytes,
-        media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
-    )
+    raw_name = f"YieldTrend_{products_label}_{req.start_month}_to_{req.end_month}"
+    headers = {"Content-Disposition": content_disposition(raw_name)}
+    return Response(content=pdf_bytes, media_type="application/pdf", headers=headers)
