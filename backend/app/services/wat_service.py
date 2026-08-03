@@ -7,8 +7,21 @@ usual definition of Cpk in a fab.
 
 import logging
 import math
+from datetime import date, timedelta
 
 import pandas as pd
+
+from app.config import settings
+from app.models.schemas import (
+    WatItemStats, WatLotInfo, WatLotsResponse, WatSummaryResponse,
+)
+from app.services.mock_data import mock_wat_dataframe, mock_wat_lots
+from app.services.product_config import (
+    primary_product_id, resolve_display_name, resolve_wat_pairs,
+)
+from app.services.wat_queries import (
+    WAT_DETAIL_COLUMNS, query_wat_detail, query_wat_lots,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -239,3 +252,75 @@ def build_scatter_pairs(df: pd.DataFrame, pairs: list[dict],
             })
         out.append({"label": pair.get("label", ""), "plots": plots})
     return out
+
+
+# ---------------------------------------------------------------------------
+# Data loading (mock / real DB)
+# ---------------------------------------------------------------------------
+
+def _load_lots(product_id: str, months: int) -> pd.DataFrame:
+    if settings.USE_MOCK_DATA:
+        return mock_wat_lots(product_id, months)
+    today = date.today()
+    start = today - timedelta(days=months * 30)
+    end = today + timedelta(days=1)   # exclusive upper bound keeps today's data
+    return query_wat_lots(product_id, start, end)
+
+
+def _load_detail(product_id: str, lot_id: str) -> pd.DataFrame:
+    if settings.USE_MOCK_DATA:
+        return mock_wat_dataframe(product_id, lot_id)
+    return query_wat_detail(product_id, lot_id)
+
+
+# ---------------------------------------------------------------------------
+# Public API
+# ---------------------------------------------------------------------------
+
+def get_wat_lots(nickname: str, product_id: str, months: int) -> WatLotsResponse:
+    """WAT lots for a product, newest first."""
+    df = _load_lots(product_id, months)
+    lots: list[WatLotInfo] = []
+    if not df.empty:
+        ordered = df.sort_values("last_measured", ascending=False)
+        lots = [
+            WatLotInfo(
+                lot_id=str(r.lot_id),
+                last_measured=str(r.last_measured)[:10],
+                wafer_count=int(r.wafer_count),
+            )
+            for r in ordered.itertuples()
+        ]
+    return WatLotsResponse(product_id=product_id, lots=lots)
+
+
+def get_wat_summary(nickname: str, product_id: str, lot_id: str) -> WatSummaryResponse:
+    """Item statistics and scatter series for one lot."""
+    df = _load_detail(product_id, lot_id)
+    if df.empty:
+        df = pd.DataFrame(columns=WAT_DETAIL_COLUMNS)
+
+    stats: list[dict] = []
+    for item_name, group in df.groupby("item_name", sort=True):
+        stats.append(compute_item_stats(group, str(item_name)))
+
+    stats_by_item = {s["item_name"]: s for s in stats}
+    scatter_pairs = build_scatter_pairs(df, resolve_wat_pairs(nickname), stats_by_item)
+
+    measured_date = ""
+    wafer_count = 0
+    if not df.empty:
+        wafer_count = int(df["wafer_id"].nunique())
+        stamps = df["start_time"].dropna()
+        if not stamps.empty:
+            measured_date = str(stamps.max())[:10]
+
+    return WatSummaryResponse(
+        product_id=primary_product_id(nickname) or product_id,
+        display_name=resolve_display_name(nickname),
+        lot_id=lot_id,
+        measured_date=measured_date,
+        wafer_count=wafer_count,
+        items=[WatItemStats(**s) for s in stats],
+        scatter_pairs=scatter_pairs,
+    )

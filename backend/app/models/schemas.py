@@ -135,3 +135,82 @@ class WaferMapResponse(BaseModel):
     wafers: list[WaferMapWafer]
     legend: list[WaferMapLegendItem]
     pass_bin_codes: list[int]
+
+
+# ---------------------------------------------------------------------------
+# PCM/WAT models (additive — existing models above are unchanged)
+# ---------------------------------------------------------------------------
+
+
+class WatLotInfo(BaseModel):
+    lot_id: str
+    last_measured: str
+    wafer_count: int
+
+
+class WatLotsResponse(BaseModel):
+    product_id: str
+    lots: list[WatLotInfo]
+
+
+class WatWaferPoint(BaseModel):
+    wafer_id: int
+    n: int
+    mean: float | None = None
+    sigma: float | None = None
+
+
+class WatItemStats(BaseModel):
+    item_name: str
+    unit: str = ""
+    spec_low: float | None = None
+    spec_high: float | None = None
+    n: int
+    mean: float | None = None
+    sigma: float | None = None
+    min: float | None = None
+    max: float | None = None
+    cpk: float | None = None
+    cpk_state: str          # "value" | "infinite" | "undefined"
+    oos_count: int
+    oos_pct: float
+    status: str             # "red" | "yellow" | "gray" | "ok"
+    wafer_series: list[WatWaferPoint]
+
+
+class WatScatterPoint(BaseModel):
+    wafer_id: int
+    site_no: int
+    x: float
+    y: float
+
+
+class WatScatterPlot(BaseModel):
+    kind: str               # vth_np | idsat_np | ion_vt_n | ion_vt_p
+    x_item: str
+    y_item: str
+    x_unit: str = ""
+    y_unit: str = ""
+    x_spec: list[float | None]
+    y_spec: list[float | None]
+    points: list[WatScatterPoint]
+
+
+class WatScatterPair(BaseModel):
+    label: str
+    plots: list[WatScatterPlot]
+
+
+class WatSummaryResponse(BaseModel):
+    product_id: str
+    display_name: str
+    lot_id: str
+    measured_date: str = ""
+    wafer_count: int
+    items: list[WatItemStats]
+    scatter_pairs: list[WatScatterPair]
+
+
+class WatExportRequest(BaseModel):
+    product_id: str
+    lot_id: str
