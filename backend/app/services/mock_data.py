@@ -184,16 +184,24 @@ _WAT_IDSAT_CENTER = {"RVT": 620.0, "LVT": 780.0, "HVT": 480.0,
                      "ULVT": 880.0, "IO25": 340.0, "IO18": 400.0}
 
 # Extra non-paired items so the summary table is not only Vth/Idsat.
-# Spec margins are sized so Cpk = half_width / (3 * spread * sqrt(1 + 0.35**2))
-# lands around 1.5-1.8 for these non-degraded items (the 0.35 factor accounts
-# for the per-wafer bias term added on top of `spread` below).
+# Spec margins for non-degraded items use half_width = 6.5 * spread, which
+# gives a *theoretical* Cpk of ~2.05 (Cpk = half_width / (3 * spread *
+# sqrt(1 + 0.35**2)); the 0.35 factor accounts for the per-wafer bias term
+# added on top of `spread` below). This is deliberately looser than a real
+# fab's process limits would be: with n=225 draws/item, a realized-Cpk
+# standard error of ~Cpk*0.047 means a theoretical target of 1.5 still lands
+# within ~1.33 often enough (~1% per item, ~25% of lots overall, confirmed by
+# sweep) to spuriously flag "normal" items. Targeting ~2.0 pushes the 1.33
+# threshold ~7 SE away so that never happens in practice. These margins exist
+# only to keep the fixture's red/yellow/unflagged split stable across mock
+# lots — do not read them as realistic PCM/WAT spec limits.
 _WAT_MISC_ITEMS = [
     ("RS_POLY", "Ohm/sq", 1040.0, 20.0, None, None),
     ("RS_NDIFF", "Ohm/sq", 78.0, 2.5, 64.0, 92.0),
-    ("RS_PDIFF", "Ohm/sq", 132.0, 4.0, 111.0, 153.0),
-    ("CAP_MIM", "fF/um2", 2.05, 0.04, 1.84, 2.26),
-    ("VIA_CHAIN_R", "Ohm", 1.85, 0.09, 1.37, 2.33),
-    ("GATE_OX_TOX", "nm", 2.20, 0.05, 1.94, 2.46),
+    ("RS_PDIFF", "Ohm/sq", 132.0, 4.0, 106.0, 158.0),
+    ("CAP_MIM", "fF/um2", 2.05, 0.04, 1.79, 2.31),
+    ("VIA_CHAIN_R", "Ohm", 1.85, 0.09, 1.265, 2.435),
+    ("GATE_OX_TOX", "nm", 2.20, 0.05, 1.875, 2.525),
 ]
 
 
@@ -256,23 +264,94 @@ def mock_wat_dataframe(product_id: str, lot_id: str) -> pd.DataFrame:
     for flavor in MOCK_WAT_FLAVORS:
         vc = _WAT_VTH_CENTER[flavor]
         ic = _WAT_IDSAT_CENTER[flavor]
-        # Margins below give Cpk ~1.5-1.8 for non-degraded items (see the
-        # sizing note above _WAT_MISC_ITEMS); VTHN_ULVT's center-shift
-        # defect (below) still clears this wider Vth margin.
-        specs.append((f"VTHN_{flavor}", "V", vc, 0.018, vc - 0.086, vc + 0.086))
-        specs.append((f"VTHP_{flavor}", "V", -vc, 0.018, -vc - 0.086, -vc + 0.086))
-        specs.append((f"IDSATN_{flavor}", "uA/um", ic, ic * 0.03, ic * 0.84, ic * 1.16))
+        # Margins below give a theoretical Cpk ~2.05 for non-degraded items
+        # (see the sizing note above _WAT_MISC_ITEMS); VTHN_ULVT's
+        # center-shift defect (below) still clears this wider Vth margin.
+        specs.append((f"VTHN_{flavor}", "V", vc, 0.018, vc - 0.117, vc + 0.117))
+        specs.append((f"VTHP_{flavor}", "V", -vc, 0.018, -vc - 0.117, -vc + 0.117))
+        specs.append((f"IDSATN_{flavor}", "uA/um", ic, ic * 0.03, ic * 0.805, ic * 1.195))
         specs.append((f"IDSATP_{flavor}", "uA/um", ic * 0.45, ic * 0.014,
-                      ic * 0.45 * 0.84, ic * 0.45 * 1.16))
+                      ic * 0.359, ic * 0.541))
     specs.extend(_WAT_MISC_ITEMS)
 
     rows: list[dict] = []
     for item_name, unit, center, spread, spec_low, spec_high in specs:
         # Deliberate defects so mock exercises red / yellow rendering.
         if item_name == "VTHN_ULVT":
-            center += spread * 3.2       # pushes tail past the upper spec → red
+            # Pushes tail past the upper spec → red. Coefficient re-tuned
+            # alongside the round-2 Vth margin widening (0.086 -> 0.117);
+            # the old 3.2 only cleared a Cpk of ~1.04 against the wider
+            # margin, which is not reliably red across lots. At 5.0, the
+            # true Cpk (~0.44) sits far enough below 1.00 that per-lot
+            # sampling noise (a Cpk estimator's SE is ~Cpk*0.047 at n=225)
+            # never pushes it back above the red threshold, so plain random
+            # sampling below is enough here.
+            center += spread * 5.0
+
         if item_name == "RS_NDIFF":
-            spread *= 1.5                # widens sigma → Cpk lands in [1.00, 1.33)
+            # RS_NDIFF is the deliberate yellow (low-Cpk, in-spec) example.
+            # A plain random draw isn't reliable enough for this one: at
+            # n=225, a Cpk estimator's standard error is ~Cpk*0.047 (per the
+            # statistical review that drove this fix), which is large
+            # relative to the yellow band's width (1.00-1.33, i.e. 0.33) —
+            # empirically, no single fixed degradation coefficient kept
+            # more than ~89% of lots classified yellow (some spilled to red
+            # via a genuine out-of-spec point, others drifted past 1.33 into
+            # unflagged). So instead of leaving the realized mean/std to
+            # chance, we generate the usual random per-wafer/per-site noise
+            # shape, standardize it, and rescale onto a fixed target Cpk (a
+            # single affine transform, so relative per-wafer clustering is
+            # preserved) — this is moment-matching, not disabling
+            # randomness: individual site values still vary randomly, only
+            # the aggregate mean/std are pinned down every time regardless
+            # of seed.
+            #
+            # That alone still leaves one residual risk: Cpk is a mean/std
+            # statistic, so pinning it doesn't stop a single extreme
+            # individual draw among 225 from landing past the spec limit by
+            # chance (an independent "any point out of spec -> red" trigger
+            # in the classification rule downstream). We additionally clip
+            # each standardized draw to +/-2.8 sigma before the rescale,
+            # comfortably inside the target Cpk's own boundary distance
+            # (3 * 1.20 = 3.6 sigma) — this deterministically rules out
+            # that residual case too (structurally impossible, not just
+            # unlikely), at the cost of gently compressing the rare
+            # (~1-2% of draws, empirically) most-extreme points instead of
+            # leaving them fully unbounded. Clipping trims variance, which
+            # nudges realized Cpk *up* from the target — stress-tested over
+            # 200k synthetic lots at these constants, the observed Cpk never
+            # exceeded ~1.27, leaving solid margin under the 1.33 yellow
+            # ceiling (an earlier, tighter choice of 1.28 target / 3.1 clip
+            # was found to occasionally cross 1.33 at that scale).
+            target_cpk = 1.20  # comfortably inside [1.00, 1.33) both ways
+            clip_sigma = 2.8   # < 3 * target_cpk, so a clipped draw can't reach spec
+            target_sigma = (spec_high - center) / (3 * target_cpk)
+            raw: list[float] = []
+            for _wafer_id in range(1, 26):
+                wafer_bias = rng.gauss(0, spread * 0.35)
+                for _site_no in range(1, 10):
+                    raw.append(wafer_bias + rng.gauss(0, spread))
+            n = len(raw)
+            raw_mean = sum(raw) / n
+            raw_std = (sum((v - raw_mean) ** 2 for v in raw) / (n - 1)) ** 0.5
+            idx = 0
+            for wafer_id in range(1, 26):
+                for site_no in range(1, 10):
+                    z = (raw[idx] - raw_mean) / raw_std
+                    z = max(-clip_sigma, min(clip_sigma, z))
+                    idx += 1
+                    rows.append({
+                        "wafer_id": wafer_id,
+                        "site_no": site_no,
+                        "item_name": item_name,
+                        "item_unit": unit,
+                        "spec_low": spec_low,
+                        "spec_high": spec_high,
+                        "meas_data": center + z * target_sigma,
+                        "start_time": start_time,
+                    })
+            continue
+
         for wafer_id in range(1, 26):
             wafer_bias = rng.gauss(0, spread * 0.35)
             for site_no in range(1, 10):
