@@ -159,3 +159,83 @@ def compute_item_stats(group: pd.DataFrame, item_name: str) -> dict:
         "status": classify_status(cpk, cpk_state, oos_count),
         "wafer_series": _wafer_series(group),
     }
+
+
+# (kind, pair key for x, pair key for y) — the response always carries these
+# four plots in this order so the UI can lay them out without sorting.
+SCATTER_KINDS: list[tuple[str, str, str]] = [
+    ("vth_np", "vth_n", "vth_p"),
+    ("idsat_np", "idsat_n", "idsat_p"),
+    ("ion_vt_n", "vth_n", "idsat_n"),
+    ("ion_vt_p", "vth_p", "idsat_p"),
+]
+
+
+def _site_matrix(df: pd.DataFrame) -> pd.DataFrame:
+    """Wide view indexed by (wafer_id, site_no) with one column per item.
+
+    Pairing happens on this index: a point exists only where both items were
+    measured at the same wafer and the same site.
+    """
+    if df.empty:
+        return pd.DataFrame()
+    return df.pivot_table(
+        index=["wafer_id", "site_no"],
+        columns="item_name",
+        values="meas_data",
+        aggfunc="mean",
+    )
+
+
+def _plot_points(matrix: pd.DataFrame, x_item: str, y_item: str) -> list[dict]:
+    if matrix.empty or x_item not in matrix.columns or y_item not in matrix.columns:
+        return []
+    sub = matrix[[x_item, y_item]].dropna()
+    return [
+        {
+            "wafer_id": int(wafer_id),
+            "site_no": int(site_no),
+            "x": float(row[x_item]),
+            "y": float(row[y_item]),
+        }
+        for (wafer_id, site_no), row in sub.iterrows()
+    ]
+
+
+def build_scatter_pairs(df: pd.DataFrame, pairs: list[dict],
+                        stats_by_item: dict[str, dict]) -> list[dict]:
+    """Scatter data for every configured device flavor.
+
+    A configured item that is absent from the data yields an empty plot rather
+    than an error — the other three plots of that flavor still render.
+    """
+    if not pairs:
+        return []
+
+    matrix = _site_matrix(df)
+
+    def spec_of(item: str) -> list:
+        st = stats_by_item.get(item) or {}
+        return [st.get("spec_low"), st.get("spec_high")]
+
+    def unit_of(item: str) -> str:
+        return (stats_by_item.get(item) or {}).get("unit", "")
+
+    out: list[dict] = []
+    for pair in pairs:
+        plots = []
+        for kind, x_key, y_key in SCATTER_KINDS:
+            x_item = pair.get(x_key, "")
+            y_item = pair.get(y_key, "")
+            plots.append({
+                "kind": kind,
+                "x_item": x_item,
+                "y_item": y_item,
+                "x_unit": unit_of(x_item),
+                "y_unit": unit_of(y_item),
+                "x_spec": spec_of(x_item),
+                "y_spec": spec_of(y_item),
+                "points": _plot_points(matrix, x_item, y_item),
+            })
+        out.append({"label": pair.get("label", ""), "plots": plots})
+    return out
