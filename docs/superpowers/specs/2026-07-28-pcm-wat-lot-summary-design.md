@@ -98,6 +98,8 @@ WHERE PRODUCT_ID = :pid
 | `cpk` | 下表参照 |
 | `oos_count` / `oos_pct` | 規格外の件数と率 |
 
+規格外の判定は `value < SPEC_LOW` または `value > SPEC_HIGH`。**規格値ちょうどは規格内**として扱う。片側規格しかない項目は、存在する側だけで判定する。
+
 ### 4.2 Cpk と境界条件
 
 JSON は `Infinity` を表現できないため、Cpk は**数値**と**状態**の 2 フィールドで返す。
