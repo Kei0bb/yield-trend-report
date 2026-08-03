@@ -51,6 +51,48 @@ def test_generate_wat_pdf_handles_empty_summary():
     assert out[:4] == b"%PDF"
 
 
+_TWO_FLAVOR_WAT_PAIRS = [
+    {"label": "Core RVT", "vth_n": "VTHN_RVT", "vth_p": "VTHP_RVT",
+     "idsat_n": "IDSATN_RVT", "idsat_p": "IDSATP_RVT"},
+    {"label": "Core LVT", "vth_n": "VTHN_LVT", "vth_p": "VTHP_LVT",
+     "idsat_n": "IDSATN_LVT", "idsat_p": "IDSATP_LVT"},
+]
+
+
+def test_page_count_matches_with_scatter_plots_present(monkeypatch):
+    """This environment's product_config.yaml has no wat: block for
+    product_a, so the un-monkeypatched tests above never exercise the 2x2
+    scatter grid (build_scatter_pairs / _scatter_figure / the col-row
+    drawImage placement). Force a small (2-flavor, 8-plot) wat: config here
+    so that path actually runs, following the pattern already used in
+    test_wat_service_integration.py."""
+    import io
+    from pypdf import PdfReader
+    import app.services.wat_service as ws
+    from app.services.wat_pdf_service import count_pages
+
+    monkeypatch.setattr(ws, "resolve_wat_pairs", lambda nickname: _TWO_FLAVOR_WAT_PAIRS)
+
+    lot = mock_wat_lots("P12345-A", 3)["lot_id"].iloc[-1]
+    summary = ws.get_wat_summary("product_a", "P12345-A", lot)
+
+    scatter_count = sum(len(pair.plots) for pair in summary.scatter_pairs)
+    assert scatter_count == 8, "2 flavors x 4 plot kinds"
+
+    out = generate_wat_pdf(summary)
+    reader = PdfReader(io.BytesIO(out))
+
+    from reportlab.lib.pagesizes import A4
+    from reportlab.pdfgen import canvas as _canvas
+    from app.services.wat_pdf_service import _draw_header
+
+    probe = _canvas.Canvas(io.BytesIO(), pagesize=A4)
+    top = _draw_header(probe, A4[0], A4[1], summary)
+    predicted = count_pages(summary, top)
+
+    assert len(reader.pages) == predicted
+
+
 def test_page_count_matches_the_precomputed_total():
     """Page n of N is written before drawing, so the prediction must hold."""
     from pypdf import PdfReader
