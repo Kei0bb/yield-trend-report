@@ -30,7 +30,7 @@ export default function DashboardPage() {
 
   return (
     <main style={styles.container}>
-      <PageTitle breadcrumb="Monitoring · Yield Overview" title="Dashboard" />
+      <PageTitle title="Dashboard" />
 
       <div style={styles.toolbar}>
         <label style={styles.field}>
