@@ -24,20 +24,25 @@ from app.services.pdf_common import (
 # ---------------------------------------------------------------------------
 # Design tokens (Notion-inspired)
 # ---------------------------------------------------------------------------
+# Categorical fail-bin palette. Mirrors frontend/src/theme.ts BIN_COLORS —
+# keep the two lists identical so screen and PDF agree.
+# The ORDER is the colorblind-safety mechanism, not cosmetic: this sequence was
+# validated for adjacent stacked segments on a white surface (worst adjacent
+# CVD dE 9.1, normal-vision dE 19.6). Reordering or inserting a hue voids that.
 BIN_COLORS = [
-    "#2a9d99",  # teal
-    "#1aae39",  # green
-    "#dd5b00",  # orange
-    "#ff64c8",  # pink
-    "#391c57",  # purple
-    "#e9b949",  # yellow
-    "#e03e3e",  # red
-    "#0075de",  # notion blue
-    "#a39e98",  # gray
-    "#37352f",  # warm dark
-    "#097fe8",  # focus blue
-    "#005bab",  # active blue
+    "#2a78d6",  # blue
+    "#eb6834",  # orange
+    "#1baf7a",  # aqua
+    "#eda100",  # yellow
+    "#e87ba4",  # magenta
+    "#008300",  # green
+    "#4a3aa7",  # violet
+    "#e34948",  # red
 ]
+
+# 1px surface-colored ring between stacked segments so adjacent fills read as
+# separate bands instead of one continuous bar.
+BAR_SEPARATOR = "#ffffff"
 
 YIELD_LINE_COLOR = "#292929"
 
@@ -62,8 +67,10 @@ def _create_chart_image(
             x=proc_data.lots,
             y=proc_data.fail_bins[bin_name],
             name=bin_name,
-            marker_color=(color_map or {}).get(bin_name, BIN_COLORS[i % len(BIN_COLORS)]),
-            opacity=0.9,
+            marker=dict(
+                color=(color_map or {}).get(bin_name, BIN_COLORS[i % len(BIN_COLORS)]),
+                line=dict(color=BAR_SEPARATOR, width=1),
+            ),
             yaxis="y",
         ))
 

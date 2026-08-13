@@ -2,20 +2,27 @@
 // Edit here to change colors site-wide — do not duplicate in individual files.
 // Palette source: docs/superpowers/specs/2026-07-19-design-refresh-claude-style-design.md
 
+/** Categorical fail-bin palette. Mirrored in backend/app/services/pdf_service.py
+ *  BIN_COLORS — keep the two lists identical so screen and PDF agree.
+ *
+ *  The ORDER is the colorblind-safety mechanism, not cosmetic: this sequence
+ *  was validated for adjacent stacked segments on a white surface (worst
+ *  adjacent CVD ΔE 9.1, normal-vision ΔE 19.6). Reordering or inserting a hue
+ *  voids that — re-validate before touching it. */
 export const BIN_COLORS = [
-  "#2a9d99", // teal
-  "#1aae39", // green
-  "#dd5b00", // orange
-  "#ff64c8", // pink
-  "#391c57", // purple
-  "#e9b949", // yellow
-  "#e03e3e", // red
-  "#0075de", // blue
-  "#a39e98", // gray
-  "#37352f", // warm dark
-  "#097fe8", // light blue
-  "#005bab", // dark blue
+  "#2a78d6", // blue
+  "#eb6834", // orange
+  "#1baf7a", // aqua
+  "#eda100", // yellow
+  "#e87ba4", // magenta
+  "#008300", // green
+  "#4a3aa7", // violet
+  "#e34948", // red
 ];
+
+/** 1px surface-colored ring between stacked segments so adjacent fills read as
+ *  separate bands instead of one continuous bar. */
+export const BAR_SEPARATOR = "#ffffff";
 
 export const FONT_FAMILY =
   "'Inter Variable', Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif";
