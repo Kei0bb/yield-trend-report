@@ -11,7 +11,7 @@ import PageTitle from "../ui/PageTitle";
 const MAX_LOTS = 12;
 
 // Okabe–Ito colorblind-safe categorical palette (fail bins, legend order).
-const PALETTE = ["#0072B2", "#E69F00", "#009E73", "#D55E00", "#CC79A7", "#56B4E9", "#F0E442", "#999999"];
+const PALETTE = ["#0072B2", "#E69F00", "#009E73", "#D55E00", "#CC79A7", "#56B4E9", "#ff0000", "#999999"];
 
 const todayStr = () => new Date().toISOString().slice(0, 10);
 const monthsAgoStr = (m: number) => { const d = new Date(); d.setMonth(d.getMonth() - m); return d.toISOString().slice(0, 10); };
@@ -181,13 +181,13 @@ export default function WaferMapPage() {
 
       <div style={styles.row}>
         <CheckListCard
-          title="Product" grow={1.65} minWidth={140}
+          title="Product" grow={1.6} minWidth={140}
           selected={[productId]}
           onToggle={(v) => { setProductId(v); setSub(""); }}
           options={products.map((p) => ({ value: p.product_id, label: p.product_id + (p.display_name && p.display_name !== p.product_id ? ` (${p.display_name})` : "") }))}
         />
         <CheckListCard
-          title="Process" grow={1} minWidth={90}
+          title="Process" grow={1} minWidth={100}
           selected={[process]}
           onToggle={(v) => { setProcess(v); setSub(""); }}
           options={[{ value: "CP", label: "CP" }, { value: "FT", label: "FT" }, { value: "SLT", label: "SLT" }]}
@@ -199,10 +199,10 @@ export default function WaferMapPage() {
           options={[{ value: "", label: "All" }, ...(subsByProcess[process] || []).map((s) => ({ value: s, label: s }))]}
         />
         <CheckListCard
-          title="Period" grow={1.5} minWidth={130}
+          title="Period" grow={1} minWidth={100}
           selected={[String(months)]}
           onToggle={(v) => setMonths(Number(v))}
-          options={[{ value: "1", label: "Last 1 month" }, { value: "3", label: "Last 3 months" }, { value: "6", label: "Last 6 months" }]}
+          options={[{ value: "1", label: "1 month" }, { value: "3", label: "3 months" }, { value: "6", label: "6 months" }]}
           footer={
             <Button onClick={() => loadLots()} disabled={lotsLoading} style={{ width: "100%", marginTop: 12 }}>
               {lotsLoading ? "Loading…" : "🔄 Load lots"}
@@ -210,7 +210,7 @@ export default function WaferMapPage() {
           }
         />
         <CheckListCard
-          title="Lots" grow={1.85} minWidth={200}
+          title="Lots" grow={1.6} minWidth={170}
           selected={selectedLots}
           onToggle={toggleLot}
           options={lotsLoading ? [] : displayLots.map((l) => ({
@@ -238,7 +238,7 @@ export default function WaferMapPage() {
           }
         />
         <CheckListCard
-          title="Bin filter" grow={1.65} minWidth={190}
+          title="Bin filter" grow={1.8} minWidth={240}
           selected={selectedBins.map(String)}
           onToggle={(v) => toggleBin(Number(v))}
           options={(mapData?.legend ?? []).map((item) => ({

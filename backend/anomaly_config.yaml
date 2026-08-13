@@ -1,10 +1,10 @@
 # 異常検知の閾値設定。編集後はサーバ再起動で反映されます。
 defaults:
   yield_drop:
-    threshold_pct: 3.0      # (過去平均 - 最新) >= 3.0% で警告
+    threshold_pct: 5.0      # (過去平均 - 最新) >= 3.0% で警告
     min_lots: 3             # 過去ロットがこれ未満なら yield_drop 判定をスキップ
   bin_surge:
-    delta_pct: 3.0          # (最新Bin% - 過去平均Bin%) >= 3.0%pt で警告
+    delta_pct: 5.0          # (最新Bin% - 過去平均Bin%) >= 3.0%pt で警告
 
 overrides:
   # 製品 nickname 単位で defaults を部分上書きできる

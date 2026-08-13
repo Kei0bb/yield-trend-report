@@ -77,7 +77,7 @@ def evaluate(lots: list, config: dict) -> list[dict]:
         if drop >= threshold:
             warnings.append({
                 "type": "yield_drop",
-                "message": f"-{drop:.1f}% vs prior avg (threshold -{threshold:.1f}%)",
+                "message": f"-{drop:.1f}% vs avg",
                 "severity": "warn",
             })
 
@@ -100,7 +100,7 @@ def evaluate(lots: list, config: dict) -> list[dict]:
             codes = b.bin_codes or bin_codes_by_name.get(b.bin_name, [])
             warnings.append({
                 "type": "bin_surge",
-                "message": f"{b.bin_name} +{delta:.1f}%pt vs prior avg",
+                "message": f"{b.bin_name} +{delta:.1f}% vs avg",
                 "severity": "warn",
                 "bin_code": codes[0] if codes else None,
             })
