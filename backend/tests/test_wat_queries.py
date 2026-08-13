@@ -12,14 +12,14 @@ from app.services.wat_queries import (
 def test_lots_query_binds_product_and_period():
     sql, binds = build_wat_lots_query("P12345-A", date(2026, 5, 1), date(2026, 7, 29))
     assert WAT_TABLE in sql
-    assert binds == {"pid": "P12345-A", "start": date(2026, 5, 1), "end": date(2026, 7, 29)}
-    assert ":pid" in sql and ":start" in sql and ":end" in sql
+    assert binds == {"pid": "P12345-A", "start_dt": date(2026, 5, 1), "end_dt": date(2026, 7, 29)}
+    assert ":pid" in sql and ":start_dt" in sql and ":end_dt" in sql
 
 
 def test_lots_query_upper_bound_is_exclusive():
     sql, _ = build_wat_lots_query("P", date(2026, 1, 1), date(2026, 2, 1))
-    assert "START_TIME >= :start" in sql
-    assert "START_TIME <  :end" in sql or "START_TIME < :end" in sql
+    assert "START_TIME >= :start_dt" in sql
+    assert "START_TIME <  :end_dt" in sql or "START_TIME < :end_dt" in sql
 
 
 def test_lots_query_orders_newest_last_by_max_start_time():

@@ -39,7 +39,13 @@ def _product_id_clause(product_id: str) -> str:
 def build_wat_lots_query(product_id: str, start: date, end: date) -> tuple[str, dict]:
     """Lots measured in [start, end). The upper bound is exclusive so the
     caller can pass tomorrow's date and still include everything measured
-    today."""
+    today.
+
+    Bind names carry a `_dt` suffix because the bare words START and END are
+    Oracle reserved words (START WITH / END), and the driver rejects them as
+    bind names with ORA-01745 at execute time — invisible to any test that does
+    not hit a real database. See tests/test_query_bind_names.py.
+    """
     if not product_id:
         return "", {}
     sql = f"""
@@ -48,12 +54,12 @@ def build_wat_lots_query(product_id: str, start: date, end: date) -> tuple[str, 
                COUNT(DISTINCT WAFER_ID) AS wafer_count
         FROM {WAT_TABLE}
         WHERE {_product_id_clause(product_id)}
-          AND START_TIME >= :start
-          AND START_TIME <  :end
+          AND START_TIME >= :start_dt
+          AND START_TIME <  :end_dt
         GROUP BY LOT_ID
         ORDER BY MAX(START_TIME)
     """
-    return sql, {"pid": product_id, "start": start, "end": end}
+    return sql, {"pid": product_id, "start_dt": start, "end_dt": end}
 
 
 def build_wat_detail_query(product_id: str, lot_id: str) -> tuple[str, dict]:
