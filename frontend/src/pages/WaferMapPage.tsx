@@ -175,7 +175,7 @@ export default function WaferMapPage() {
 
   return (
     <main style={styles.container}>
-      <PageTitle breadcrumb="Analysis · Wafer Map" title="Wafer Map" />
+      <PageTitle title="Wafer Map" />
 
       {lotsError && <div style={styles.error}>{lotsError}</div>}
 

@@ -101,10 +101,7 @@ export default function ReportPage() {
     <div style={styles.page}>
       {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
       <main style={styles.container}>
-        <PageTitle
-          breadcrumb={tab === "wat" ? "Reports · PCM / WAT" : "Reports · Yield Trend"}
-          title="Report"
-        />
+        <PageTitle title="Report" />
 
         <div style={styles.tabs}>
           {([["yield", "Yield Trend"], ["wat", "PCM / WAT"]] as const).map(([key, label]) => (

@@ -62,7 +62,6 @@ export default function ReportView({ data, request }: ReportViewProps) {
   return (
     <main style={styles.container}>
       <header style={styles.header}>
-        <div style={styles.breadcrumb}>Reports · Yield Trend</div>
         <h1 style={styles.title}>{titleText}</h1>
         <div style={styles.metaRow}>
           {showDisplayName && (
@@ -113,13 +112,6 @@ const styles: Record<string, React.CSSProperties> = {
     minWidth: 0,
   },
   header: { marginBottom: 32 },
-  breadcrumb: {
-    fontSize: 12,
-    color: "var(--muted-soft)",
-    fontWeight: 500,
-    letterSpacing: "0.02em",
-    marginBottom: 8,
-  },
   title: {
     fontSize: 26,
     fontWeight: 700,

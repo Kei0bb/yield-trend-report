@@ -68,10 +68,15 @@ export default function ExplorePage() {
         <div style={styles.headerLeft}>
           <Button onClick={() => navigate("/dashboard")}>← Back</Button>
           <div>
-            <div style={styles.breadcrumb}>
-              Explore · Lot Drill-down{data?.display_name ? ` · ${data.display_name}` : ""}
-            </div>
-            <h1 style={styles.title}>{productId} <span style={styles.proc}>/ {label}</span></h1>
+            {/* display_name rode along in the removed breadcrumb and is shown
+                nowhere else on this page, so it moves beside the title —
+                matching how the Dashboard and Report show the product name. */}
+            <h1 style={styles.title}>
+              {productId} <span style={styles.proc}>/ {label}</span>
+              {data?.display_name && data.display_name !== productId && (
+                <span style={styles.displayName}>{data.display_name}</span>
+              )}
+            </h1>
           </div>
         </div>
         <label style={styles.field}>
@@ -137,13 +142,6 @@ const styles: Record<string, React.CSSProperties> = {
     letterSpacing: "0.06em",
     color: "var(--muted-soft)",
   },
-  breadcrumb: {
-    fontSize: 12,
-    color: "var(--muted-soft)",
-    fontWeight: 500,
-    letterSpacing: "0.02em",
-    marginBottom: 6,
-  },
   title: {
     fontSize: 26,
     fontWeight: 700,
@@ -152,6 +150,13 @@ const styles: Record<string, React.CSSProperties> = {
     lineHeight: 1.2,
   },
   proc: { color: "var(--muted-soft)", fontWeight: 500 },
+  displayName: {
+    marginLeft: 10,
+    fontSize: 13,
+    fontWeight: 500,
+    color: "var(--muted-soft)",
+    letterSpacing: 0,
+  },
   stack: { display: "flex", flexDirection: "column", gap: 24 },
   card: {
     background: "var(--surface-card)",
