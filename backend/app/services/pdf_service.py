@@ -40,10 +40,6 @@ BIN_COLORS = [
     "#e34948",  # red
 ]
 
-# 1px surface-colored ring between stacked segments so adjacent fills read as
-# separate bands instead of one continuous bar.
-BAR_SEPARATOR = "#ffffff"
-
 YIELD_LINE_COLOR = "#292929"
 
 
@@ -67,10 +63,7 @@ def _create_chart_image(
             x=proc_data.lots,
             y=proc_data.fail_bins[bin_name],
             name=bin_name,
-            marker=dict(
-                color=(color_map or {}).get(bin_name, BIN_COLORS[i % len(BIN_COLORS)]),
-                line=dict(color=BAR_SEPARATOR, width=1),
-            ),
+            marker_color=(color_map or {}).get(bin_name, BIN_COLORS[i % len(BIN_COLORS)]),
             yaxis="y",
         ))
 

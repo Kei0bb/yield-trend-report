@@ -1,6 +1,6 @@
 import Plot from "./PlotlyChart";
 import type { ProcessData } from "../types";
-import { BAR_SEPARATOR, BIN_COLORS, YIELD_LINE_COLOR, MUTED, MUTED_SOFT, GRID, AXIS_LINE, plotlyBaseLayout } from "../theme";
+import { BIN_COLORS, YIELD_LINE_COLOR, MUTED, MUTED_SOFT, GRID, AXIS_LINE, plotlyBaseLayout } from "../theme";
 
 interface YieldChartProps {
   processName: string;
@@ -22,10 +22,7 @@ export default function YieldChart({ processName, data, target, colorMap }: Yiel
         y: data.fail_bins[binName] ?? data.lots.map(() => 0),
         name: binName,
         type: "bar" as const,
-        marker: {
-          color: (colorMap && colorMap[binName]) ?? BIN_COLORS[bIdx % BIN_COLORS.length],
-          line: { color: BAR_SEPARATOR, width: 1 },
-        },
+        marker: { color: (colorMap && colorMap[binName]) ?? BIN_COLORS[bIdx % BIN_COLORS.length] },
         yaxis: "y",
         hovertemplate: `%{x}<br>${binName}: %{y:.3f}%<extra></extra>`,
       } as unknown as Plotly.Data)

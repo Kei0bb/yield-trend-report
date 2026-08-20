@@ -20,10 +20,6 @@ export const BIN_COLORS = [
   "#e34948", // red
 ];
 
-/** 1px surface-colored ring between stacked segments so adjacent fills read as
- *  separate bands instead of one continuous bar. */
-export const BAR_SEPARATOR = "#ffffff";
-
 export const FONT_FAMILY =
   "'Inter Variable', Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif";
 
