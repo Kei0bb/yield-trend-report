@@ -5,10 +5,17 @@ from app.services.lot_queries import lot_column_for, build_lot_query, query_lot_
 
 
 def test_lot_column_for_cp_and_ft():
-    # FT/SLT migrated into the CP schema → all share SUBSTRATE_ID
+    # CP and FT share the CP schema's SUBSTRATE_ID lot identifier.
     assert lot_column_for("CP") == "SUBSTRATE_ID"
     assert lot_column_for("FT") == "SUBSTRATE_ID"
-    assert lot_column_for("SLT") == "SUBSTRATE_ID"
+
+
+def test_slt_builds_no_lot_query():
+    """SLT reads the FT schema (ASSY_LOT_ID, possibly no REV01 column), so the
+    CP-shaped lot SQL must not be built for it — that would be ORA-00904 rather
+    than the empty result the lot-level pages return for SLT today."""
+    assert lot_column_for("SLT") is None
+    assert build_lot_query("SLT", ["P1"], "2025-12", "2026-05", ["cSLT1"]) == ("", {})
 
 
 def test_build_lot_query_selects_real_lot_column():

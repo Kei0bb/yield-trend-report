@@ -62,3 +62,25 @@ def test_bin_pct_denominator_is_substrate_aware_not_wafer_id_alone():
     ], columns=cols)
     out = aggregate_lot_data(df, target_lots=["2026W01"])
     assert out.fail_bins["binA"] == [10.0]
+
+
+def test_lot_without_fail_bins_still_counts_toward_yield_and_denominator():
+    """SLT outer-joins its bin table so a zero-fail lot arrives with a null
+    bin_code. It must still average into the week's yield and contribute its
+    gross die, or bin% is computed against too small a denominator.
+
+    2 assembly lots in one week, gross 1000 each → denominator 2000.
+    Only the first has a fail bin: 20/2000 = 1.0%.
+    """
+    cols = ["lot_id", "substrate_id", "wafer_id", "yield_pct", "gross_die",
+            "bin_code", "bin_fail_count"]
+    df = pd.DataFrame(
+        [
+            ("2026W01", "ASSY-A", "0", 98.0, 1000, "Open", 20),
+            ("2026W01", "ASSY-B", "0", 100.0, 1000, None, None),
+        ],
+        columns=cols,
+    )
+    out = aggregate_lot_data(df, target_lots=["2026W01"])
+    assert out.yield_avg == [99.0]
+    assert out.fail_bins["Open"] == [1.0]

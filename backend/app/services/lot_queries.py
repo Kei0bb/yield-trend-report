@@ -26,11 +26,17 @@ LOT_COLUMNS = [
 ]
 
 # Real per-lot identifier column by process (vs. yield_queries' ISO-week rollup).
-# FT/SLT now live in the CP schema and share CP's SUBSTRATE_ID lot identifier.
+# CP and FT live in the CP schema and share its SUBSTRATE_ID lot identifier.
+#
+# SLT is deliberately absent: it reads the FT schema (see yield_queries._FT_SPEC),
+# whose lot key is ASSY_LOT_ID and which may not carry this query's
+# TEST_PROGRAM_COLUMN. Building the CP-shaped SQL against SEMI_FT_HEADER would
+# raise ORA-00904 instead of the empty result SLT returns today, so the lot-level
+# pages (Dashboard, Explore) keep returning nothing for SLT until that schema is
+# confirmed. Report/PDF do not go through this query.
 _LOT_COLUMN: dict[str, str] = {
     "CP": "SUBSTRATE_ID",
     "FT": "SUBSTRATE_ID",
-    "SLT": "SUBSTRATE_ID",
 }
 
 

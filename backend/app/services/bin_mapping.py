@@ -107,6 +107,11 @@ def apply_bin_groups(df: pd.DataFrame, bin_group: str, process: str) -> pd.DataF
     1. Exact process match in the mapping file
     2. Wildcard '*' row (no process column or blank process)
     Falls back to the DB's BIN_NAME column when no mapping is found.
+
+    Rows with a NULL/non-numeric raw_bin_code are tolerated: the SLT query outer-
+    joins its bin table, so a lot with zero fail bins arrives as a header row with
+    no bin at all. Such rows keep a null bin_code (the aggregator then counts them
+    for yield and gross die only) instead of raising on the int conversion.
     """
     df = df.copy()
     proc_mappings = load_bin_mapping(bin_group)
@@ -119,9 +124,8 @@ def apply_bin_groups(df: pd.DataFrame, bin_group: str, process: str) -> pd.DataF
                 mapping.setdefault(code, name)
 
     if mapping:
-        df["bin_code"] = (
-            df["raw_bin_code"].astype(int).map(mapping).fillna(df["bin_name"])
-        )
+        codes = pd.to_numeric(df["raw_bin_code"], errors="coerce").astype("Int64")
+        df["bin_code"] = codes.map(mapping).fillna(df["bin_name"])
     else:
         df["bin_code"] = df["bin_name"]
     return df
