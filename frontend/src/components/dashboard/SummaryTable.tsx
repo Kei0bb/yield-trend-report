@@ -127,17 +127,21 @@ export default function SummaryTable({ rows, months }: Props) {
   const fmt = (n: number | null, suffix = "") =>
     n == null ? "—" : `${n.toFixed(1)}${suffix}`;
 
+  /** Latest lot date as YYYY-MM-DD (backend may send a full timestamp). */
+  const fmtDate = (d: string | null | undefined) => (d ? d.slice(0, 10) : "—");
+
   return (
     <table style={styles.table}>
       <thead>
         <tr>
           <th style={styles.thLeft} onClick={() => toggleSort("product_id")}>Product ID / Proc{sortKey === "product_id" ? (asc ? " ▲" : " ▼") : ""}</th>
+          <th style={styles.th}>Latest Date</th>
           <th style={styles.th} onClick={() => toggleSort("latest_yield")}>Latest{sortKey === "latest_yield" ? (asc ? " ▲" : " ▼") : ""}</th>
           <th style={styles.th} onClick={() => toggleSort("avg_yield_6m")}>{months}m Avg{sortKey === "avg_yield_6m" ? (asc ? " ▲" : " ▼") : ""}</th>
           <th style={styles.th}>Target</th>
           <th style={styles.th} onClick={() => toggleSort("delta")}>Delta{sortKey === "delta" ? (asc ? " ▲" : " ▼") : ""}</th>
           <th style={styles.th}>Trend</th>
-          <th style={styles.thLeft}>Alerts</th>
+          <th style={styles.thLeft}>Alerts (vs avg)</th>
         </tr>
       </thead>
       <tbody>
@@ -159,7 +163,7 @@ export default function SummaryTable({ rows, months }: Props) {
                   border for separating product groups. */}
               {isProductStart && (
                 <tr style={styles.spacer} aria-hidden="true">
-                  <td colSpan={7} />
+                  <td colSpan={8} />
                 </tr>
               )}
               {/* subs-only product: show a filled, non-clickable major header
@@ -175,6 +179,7 @@ export default function SummaryTable({ rows, months }: Props) {
                     </div>
                     <div style={styles.procLine}>{r.process}</div>
                   </td>
+                  <td style={styles.td}>—</td>
                   <td style={styles.td}>—</td>
                   <td style={styles.td}>—</td>
                   <td style={styles.td}>—</td>
@@ -209,6 +214,7 @@ export default function SummaryTable({ rows, months }: Props) {
                   </>
                 )}
               </td>
+              <td style={{ ...styles.td, ...styles.dateCell, ...cellEnd }}>{fmtDate(r.latest_lot_date)}</td>
               <td style={{ ...styles.td, ...(belowTarget ? { color: "var(--error)" } : {}), ...cellEnd }}>
                 {fmt(r.latest_yield, "%")}
               </td>
@@ -257,4 +263,5 @@ const styles: Record<string, React.CSSProperties> = {
   subName: { color: "var(--muted-soft)", fontSize: 11 },
   procLine: { color: "var(--muted-soft)", marginTop: 2 },
   spacer: { height: 6, background: "var(--canvas)" },
+  dateCell: { color: "var(--muted)", fontVariantNumeric: "tabular-nums" },
 };

@@ -39,7 +39,7 @@ def test_bin_surge_triggers():
     warns = [w for w in evaluate(lots, CFG) if w["type"] == "bin_surge"]
     assert len(warns) == 1
     assert warns[0]["bin_code"] == 5
-    assert "+4.0%pt" in warns[0]["message"]
+    assert "▲4.0%" in warns[0]["message"]
 
 
 def test_bin_surge_does_not_trigger_just_below_delta():
@@ -68,13 +68,14 @@ def test_bin_surge_exact_threshold_triggers():
 
 
 def test_bin_surge_message_format():
-    # Verify the new absolute-pt message format
+    # Verify the badge message format (triangle glyph, no "vs avg" suffix —
+    # the Dashboard column header carries the comparison basis)
     past = [("Open", 2.0, [3])]
     latest = [("Open", 7.0, [3])]
     lots = [_lot(90.0, past), _lot(90.0, past), _lot(90.0, past), _lot(90.0, latest)]
     warns = [w for w in evaluate(lots, CFG) if w["type"] == "bin_surge"]
     assert len(warns) == 1
-    assert warns[0]["message"] == "Open +5.0%pt vs prior avg"
+    assert warns[0]["message"] == "Open ▲5.0%"
 
 
 def test_empty_or_single_lot_returns_empty():
