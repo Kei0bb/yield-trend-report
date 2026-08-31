@@ -20,6 +20,13 @@ from app.services.yield_queries import query_yield_data
 
 FIXED_WEEK_COUNT = 12
 
+# Processes whose fail bins are NOT run through the bin_mappings CSV. SLT reads
+# the FT schema (SEMI_FT_*), whose bin codes have no relation to the CP-oriented
+# mapping files, so mapping them would either miss entirely or collide with a
+# CP bin's group name. An empty bin_group makes apply_bin_groups skip the CSV
+# and use the DB's own BIN_NAME as the category.
+RAW_BIN_PROCESSES = frozenset({"SLT"})
+
 logger = logging.getLogger(__name__)
 
 
@@ -77,7 +84,10 @@ def get_yield_data_merged(
             fail_bins={},
         )
 
-    bin_group = resolve_bin_group(nicknames[0], process)
+    bin_group = (
+        "" if process.upper() in RAW_BIN_PROCESSES
+        else resolve_bin_group(nicknames[0], process)
+    )
 
     if settings.USE_MOCK_DATA:
         display = resolve_display_name(nicknames[0])
