@@ -236,6 +236,8 @@ CORS_ORIGINS=["http://localhost:5173"]
 | `GET` | `/api/debug/config` | 設定ファイル読み込み状況の確認 |
 | `GET` | `/api/debug/probe` | 実 DB クエリの診断（行数・エラー確認） |
 
+コマンドラインの診断ツールとして `backend/scripts/slt_probe.py` もあります（[デバッグ](#デバッグ) 参照）。
+
 ### `POST /api/yield-data` リクエスト例
 
 ```json
@@ -305,6 +307,36 @@ curl http://localhost:8000/api/debug/config?nickname=Product-A
 # 実 DB クエリを叩いて行数を確認（空データの原因調査に有効）
 curl "http://localhost:8000/api/debug/probe?nickname=Product-A&process=FT&start_month=2025-01&end_month=2025-05"
 ```
+
+### Report が空になるときの切り分けスクリプト
+
+`scripts/slt_probe.py` は Report と同じ経路（`report:` の `values:` を使う）を 1 段ずつ実行し、
+どの段で行が消えたかを表示します。SLT 用に作りましたが、label を変えれば CP / FT でも使えます。
+
+```bash
+cd backend
+USE_MOCK_DATA=false uv run python scripts/slt_probe.py <product_id> [label] [start] [end]
+
+# 例
+USE_MOCK_DATA=false uv run python scripts/slt_probe.py SCT101A SLT 2026-03 2026-08
+```
+
+出力は上から順に、最初に異常が出た段が原因です。
+
+| 段 | 内容 | 異常時の原因 |
+|----|------|--------------|
+| 1-2 | product_id → nickname → report unit | label が `report:` に無い |
+| 3 | PRODUCT_ID の解決 | `product_id:` の設定 |
+| 4 | PROCESS 値の最終決定 | `report:` の `values:` が DB の実値と違う |
+| 5 | SQL 実行 | 0 行なら SQL 層（段 6-8 で WHERE を自動で切り分け） |
+| 6 | 12 週ウィンドウとの重なり | `なし` ならデータが期間外（SQL は正常） |
+| 7-8 | bin グループ適用・集計 | bin マッピング不一致 |
+
+段 5 で 0 行だった場合のみ、WHERE を 1 条件ずつ足した件数・実在する PROCESS / REWORK_NEW の値・
+両テーブルの実際の列一覧まで自動で表示します。
+
+> `/api/debug/probe` は PROCESS 値を `processes:` から解決するため Report とは経路が異なります。
+> Report の挙動を再現したい場合はこのスクリプトを使ってください。
 
 ### CSV キャッシュのリセット
 
