@@ -1,16 +1,26 @@
 # ─────────────────────────────────────────────────────────────────
 # Product configuration
 #
-# CP/FT/SLT share ONE product_id and the same CP-schema tables (SEMI_CP_*);
-# they are distinguished only by the PROCESS column value (e.g. cFT1).
+# CP and FT share ONE product_id and the CP-schema tables (SEMI_CP_*),
+# distinguished only by the PROCESS column value (e.g. cFT1).
+# SLT reads the FT schema (SEMI_FT_*), where PRODUCT_ID carries a package
+# suffix — give it its own id via product_ids (see below).
 #
 # Per product (key = internal nickname; never shown in the UI):
 #   display_name : product name (shown as secondary text next to product_id)
 #                  products sharing a display_name are merged into one series
 #   product_id   : DB PRODUCT_ID (the primary key selected/shown in the UI).
 #                  A single value; '%' enables an Oracle LIKE wildcard.
+#   product_ids  : optional per-process PRODUCT_ID overrides, e.g.
+#                  {slt: SC0G29B%}. Only for a process whose schema uses a
+#                  different id; everything else falls back to product_id.
+#                  There is NO cross-process fallback (slt does not inherit ft).
+#                  Accepts a list or a ';'-delimited string, and '%' wildcards —
+#                  a wildcard absorbs new package numbers with no config edit.
 #   bin_group    : bin_mappings/<bin_group>.csv (without extension)
 #   bin_groups   : optional per-process overrides, e.g. {ft: main_ft}
+#                  NOTE: SLT never uses a bin mapping CSV — its fail bins come
+#                  through as the DB's own BIN_NAME (see RAW_BIN_PROCESSES).
 #   processes    : logical process (cp / ft / slt) → DB PROCESS value(s).
 #
 # processes entry forms
@@ -201,6 +211,23 @@ products:
       - {family: cp, label: "CP",   values: [CP]}
       - {family: cp, label: "CP1",  values: [CP1]}
       - {family: ft, label: "cFT1", values: [cFT1]}
+
+  # SLT on a different PRODUCT_ID. The FT schema (SEMI_FT_*) that SLT reads
+  # appends a package number to the id: SC0G29B -> SC0G29BP3-ES. A '%' wildcard
+  # covers every package variant, so a new one needs no config change.
+  # CP and FT are unaffected — they keep the plain product_id above.
+  Draco:
+    display_name: Draco
+    product_id: SC0G29B
+    product_ids:
+      slt: SC0G29B%
+    bin_group: Draco
+    processes:
+      ft: cFT1
+    report:
+      - {family: cp,  label: "CP",  values: [CP]}
+      - {family: ft,  label: "FT",  values: [cFT1]}
+      - {family: slt, label: "SLT", values: [SLT1]}
 
   # Multi sub-process example: CP has a clean roll-up in the DB, plus two
   # sub-process PROCESS values; FT also has a major + one sub.

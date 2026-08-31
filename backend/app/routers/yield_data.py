@@ -71,6 +71,11 @@ def debug_config(nickname: str | None = None) -> dict:
             "display_name": resolve_display_name(nickname),
             "bin_group": bin_group,
             "product_ids": resolve_product_ids(nickname),
+            # Per process too: SLT reads a different schema and may carry its
+            # own PRODUCT_ID, which a single shared value would hide.
+            "product_ids_by_process": {
+                proc: resolve_product_ids(nickname, proc) for proc in ("CP", "FT", "SLT")
+            },
             "process_filters": {
                 proc: resolve_process_filter(nickname, proc) for proc in ("CP", "FT", "SLT")
             },

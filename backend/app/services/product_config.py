@@ -205,6 +205,7 @@ def _config_from_yaml() -> dict[str, dict[str, str]] | None:
         name = str(nickname).strip()
         processes = entry.get("processes") or {}
         bin_groups = entry.get("bin_groups") or {}
+        product_ids = entry.get("product_ids") or {}
 
         row: dict[str, str] = {
             "display_name": str(entry.get("display_name") or name).strip() or name,
@@ -214,6 +215,18 @@ def _config_from_yaml() -> dict[str, dict[str, str]] | None:
             "slt_bin_group": str(bin_groups.get("slt") or "").strip(),
             "target": json.dumps(_parse_target(entry.get("target"), name)),
         }
+
+        # Per-process PRODUCT_ID overrides. SLT reads a different schema whose
+        # PRODUCT_ID carries a package suffix (SC0G29B -> SC0G29BP3-ES), so it
+        # cannot share CP's id. A list is joined with ';' — the same separator
+        # resolve_product_ids already splits on.
+        for proc in ("cp", "ft", "slt"):
+            raw_pid = product_ids.get(proc) if isinstance(product_ids, dict) else None
+            if isinstance(raw_pid, (list, tuple)):
+                value = ";".join(str(v).strip() for v in raw_pid if str(v).strip())
+            else:
+                value = str(raw_pid or "").strip()
+            row[f"{proc}_product_id"] = value
 
         for proc in ("cp", "ft", "slt"):
             if isinstance(processes, dict) and proc in processes:
@@ -255,18 +268,27 @@ def load_product_config() -> dict[str, dict[str, str]] | None:
 
 
 def resolve_product_ids(nickname: str, process: str = "") -> list[str]:
-    """Resolve a nickname to its DB PRODUCT_ID(s).
+    """Resolve a nickname to its DB PRODUCT_ID(s) for a process.
 
-    Process-independent: every process shares the same product_id (CP schema),
-    so `process` is accepted only for call-site compatibility. Supports
-    ';'-delimited lists and '%' wildcards. Returns [nickname] as-is when
+    Lookup order:
+    1. product_ids.<process>  — a per-process override, for a process whose
+       schema uses a different PRODUCT_ID (SLT carries a package suffix)
+    2. product_id             — the shared id every other process uses
+
+    There is no cross-process fallback: SLT and FT read different tables, so
+    inheriting FT's id would be wrong rather than merely unhelpful.
+
+    Supports ';'-delimited lists and '%' wildcards (a wildcard absorbs new
+    package numbers without a config edit). Returns [nickname] as-is when
     product_config.yaml is absent.
     """
     config = load_product_config()
     if config is None or nickname not in config:
         return [nickname] if nickname else []
 
-    raw = config[nickname].get("product_id", "")
+    entry = config[nickname]
+    raw = (entry.get(f"{process.lower()}_product_id", "") if process else "") \
+        or entry.get("product_id", "")
     if not raw:
         return []
     ids = [pid.strip() for pid in raw.replace(",", ";").split(";")]
