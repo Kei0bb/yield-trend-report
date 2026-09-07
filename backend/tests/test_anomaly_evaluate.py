@@ -2,10 +2,7 @@ from types import SimpleNamespace
 
 from app.services.anomaly_service import evaluate
 
-CFG = {
-    "yield_drop": {"threshold_pct": 3.0, "min_lots": 3},
-    "bin_surge": {"delta_pct": 3.0},
-}
+CFG = {"bin_surge": {"delta_pct": 3.0}}
 
 
 def _lot(yield_pct, bins=None):
@@ -19,16 +16,19 @@ def test_no_warning_when_stable():
     assert evaluate(lots, CFG) == []
 
 
-def test_yield_drop_triggers():
-    lots = [_lot(95.0), _lot(95.0), _lot(95.0), _lot(90.0)]
+def test_yield_drop_alone_raises_no_warning():
+    # Yield alerts were removed: the Dashboard shows the delta in its own column.
+    lots = [_lot(95.0), _lot(95.0), _lot(95.0), _lot(60.0)]
+    assert evaluate(lots, CFG) == []
+
+
+def test_only_bin_surge_warnings_are_emitted():
+    # A yield collapse next to a bin surge yields exactly one (bin) warning.
+    past = [("Short", 1.0, [5])]
+    latest = [("Short", 5.0, [5])]
+    lots = [_lot(95.0, past), _lot(95.0, past), _lot(95.0, past), _lot(60.0, latest)]
     warns = evaluate(lots, CFG)
-    types = [w["type"] for w in warns]
-    assert "yield_drop" in types
-
-
-def test_yield_drop_skipped_when_too_few_past_lots():
-    lots = [_lot(95.0), _lot(95.0), _lot(80.0)]
-    assert [w for w in evaluate(lots, CFG) if w["type"] == "yield_drop"] == []
+    assert [w["type"] for w in warns] == ["bin_surge"]
 
 
 def test_bin_surge_triggers():

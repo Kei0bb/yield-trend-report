@@ -65,8 +65,8 @@ def mock_lot_dataframe(product: str, process: str, months: int = 6) -> pd.DataFr
     Deterministic per (product, process, months) — seeded via a stable hash so
     the same inputs reproduce across process restarts. Columns superset
     COMMON_COLUMNS with an added 'lot_date' (ISO string). The newest lot of each
-    series gets a deliberate yield dip + bin spike so anomaly detection is
-    exercised in mock mode.
+    series gets a deliberate yield dip (visible in the trend) plus a fail-bin
+    spike, so bin_surge alerting is exercised in mock mode.
     """
     key = f"lot-{product}-{process}-{months}"
     random.seed(int(hashlib.md5(key.encode()).hexdigest(), 16) % 2**32)
@@ -97,7 +97,9 @@ def mock_lot_dataframe(product: str, process: str, months: int = 6) -> pd.DataFr
             for bin_code in bin_codes:
                 rate = random.uniform(0.001, 0.012)
                 if is_latest and bin_code == bin_codes[0]:
-                    rate *= 4.0
+                    # +8%pt over the ~0.6% baseline: comfortably clears the
+                    # bin_surge threshold so the badge is visible in mock mode.
+                    rate += 0.08
                 fail_count = max(0, int(gross_die * rate))
                 rows.append({
                     "lot_id": lot_id,

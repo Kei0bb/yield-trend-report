@@ -25,7 +25,7 @@ class YieldResponse(BaseModel):
 
 
 class Warning(BaseModel):
-    type: str                      # "yield_drop" | "bin_surge"
+    type: str                      # "bin_surge"
     message: str
     severity: str = "warn"
     bin_code: int | None = None

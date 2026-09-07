@@ -24,7 +24,7 @@ export interface YieldResponse {
 // ---- Dashboard / Explore types ----
 
 export interface Warning {
-  type: string;            // "yield_drop" | "bin_surge"
+  type: string;            // "bin_surge"
   message: string;
   severity: string;
   bin_code?: number | null;

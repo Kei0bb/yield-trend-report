@@ -11,7 +11,6 @@ ANOMALY_CONFIG_YAML = Path(__file__).parent.parent.parent / "anomaly_config.yaml
 
 _EMPTY_CONFIG: dict = {
     "defaults": {
-        "yield_drop": {"threshold_pct": 3.0, "min_lots": 3},
         "bin_surge": {"delta_pct": 3.0},
     },
     "overrides": {},
@@ -56,8 +55,8 @@ def resolve_config(nickname: str, config: dict) -> dict:
 def evaluate(lots: list, config: dict) -> list[dict]:
     """Compare the latest lot against the prior lots and return warning dicts.
 
-    `lots` is ordered oldest→newest. Each lot exposes `.yield_pct` and
-    `.bin_breakdown` (items with `.bin_name`, `.percent`, `.bin_codes`).
+    `lots` is ordered oldest→newest. Each lot exposes `.bin_breakdown`
+    (items with `.bin_name`, `.percent`, `.bin_codes`).
     `config` is a resolved threshold dict (see resolve_config).
     Returns [] when there is no latest+past pair to compare.
     """
@@ -67,21 +66,9 @@ def evaluate(lots: list, config: dict) -> list[dict]:
     latest, past = lots[-1], lots[:-1]
     warnings: list[dict] = []
 
-    # --- B: yield drop vs past average ---
-    yd = config.get("yield_drop", {})
-    min_lots = yd.get("min_lots", 3)
-    threshold = yd.get("threshold_pct", 3.0)
-    if len(past) >= min_lots:
-        past_avg = sum(l.yield_pct for l in past) / len(past)
-        drop = past_avg - latest.yield_pct
-        if drop >= threshold:
-            warnings.append({
-                "type": "yield_drop",
-                "message": f"▼{drop:.1f}%",
-                "severity": "warn",
-            })
-
-    # --- C: fail-bin surge vs past average per bin ---
+    # --- fail-bin surge vs past average per bin ---
+    # Yield drops are intentionally NOT alerted here: the Dashboard already shows
+    # the yield delta as its own ▼ column, so a yield alert only duplicated it.
     bs = config.get("bin_surge", {})
     delta_pct = bs.get("delta_pct", 3.0)  # 絶対差分 (最新 - 過去平均) のしきい値 [%pt]
     past_pct: dict[str, list[float]] = {}

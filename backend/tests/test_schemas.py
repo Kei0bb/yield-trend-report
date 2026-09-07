@@ -8,7 +8,7 @@ def test_lotdata_roundtrip():
     lot = LotData(
         lot_id="LOT-1", lot_date="2026-05-25", wafer_count=25, yield_pct=87.5,
         bin_breakdown=[BinBreakdown(bin_name="Short", bin_codes=[5], count=10, percent=4.0)],
-        warnings=[Warning(type="yield_drop", message="x")],
+        warnings=[Warning(type="bin_surge", message="x")],
     )
     dumped = lot.model_dump()
     assert dumped["yield_pct"] == 87.5

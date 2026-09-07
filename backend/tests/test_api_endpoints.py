@@ -39,7 +39,7 @@ def test_anomaly_config_endpoint():
     r = client.get("/api/anomaly/config")
     assert r.status_code == 200
     body = r.json()
-    assert "defaults" in body and "yield_drop" in body["defaults"]
+    assert "defaults" in body and "bin_surge" in body["defaults"]
 
 
 def test_existing_yield_data_endpoint_unchanged():
