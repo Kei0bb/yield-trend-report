@@ -55,3 +55,12 @@ def test_export_trend_pdf_returns_a_pdf_attachment():
     assert res.headers["content-type"] == "application/pdf"
     assert "attachment" in res.headers["content-disposition"]
     assert res.content.startswith(b"%PDF")
+
+
+def test_export_trend_pdf_rejects_out_of_range_months():
+    """Same bound as GET /wat/trend — an unbounded months would drive a
+    century-wide query and a per-item kaleido render."""
+    for months in (0, 7):
+        res = client.post("/api/wat/export-trend-pdf",
+                          json={"product_id": "P12345-A", "months": months})
+        assert res.status_code == 422, months

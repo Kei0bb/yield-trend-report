@@ -262,4 +262,7 @@ class WatTrendResponse(BaseModel):
 
 class WatTrendExportRequest(BaseModel):
     product_id: str
-    months: int = 3
+    # Same bound as GET /wat/trend's Query(3, ge=1, le=6). Without it this
+    # endpoint would accept any integer and drive an unbounded query plus a
+    # per-item kaleido render.
+    months: int = Field(3, ge=1, le=6)
