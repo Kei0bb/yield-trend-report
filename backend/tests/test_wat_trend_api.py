@@ -28,6 +28,11 @@ def test_trend_endpoint_rejects_out_of_range_months():
         assert res.status_code == 422, months
 
 
+def test_trend_endpoint_response_is_json_serialisable_without_nan():
+    res = client.get("/api/wat/trend", params={"product_id": "P12345-A", "months": 3})
+    assert "NaN" not in res.text, "NaN is not valid JSON"
+
+
 def test_trend_endpoint_items_carry_a_lot_series():
     res = client.get("/api/wat/trend", params={"product_id": "P12345-A", "months": 3})
     item = res.json()["items"][0]

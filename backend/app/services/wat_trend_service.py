@@ -30,10 +30,9 @@ def _period(months: int) -> tuple[date, date]:
     return today - timedelta(days=months * 30), today + timedelta(days=1)
 
 
-def _load_trend(product_id: str, months: int) -> pd.DataFrame:
+def _load_trend(product_id: str, months: int, start: date, end: date) -> pd.DataFrame:
     if settings.USE_MOCK_DATA:
         return mock_wat_trend_dataframe(product_id, months)
-    start, end = _period(months)
     return query_wat_trend(product_id, start, end)
 
 
@@ -43,21 +42,43 @@ def _measured_date(stamps: pd.Series) -> str:
     return str(clean.max())[:10] if not clean.empty else ""
 
 
+def _lot_dates(df: pd.DataFrame) -> dict[str, str]:
+    """Each lot's measured date, computed once from the whole frame.
+
+    build_lot_series and _lot_infos used to each derive this independently —
+    one from a per-item group, one from the full lot's rows — so a lot with
+    an item measured/retested on a different day could land on a different
+    X position on that item's chart than on every other item's chart, and
+    disagree with the header strip. One computation, looked up everywhere.
+    """
+    if df.empty:
+        return {}
+    maxes = df.groupby("lot_id")["start_time"].max()
+    return {
+        str(lot_id): (str(v)[:10] if pd.notna(v) else "")
+        for lot_id, v in maxes.items()
+    }
+
+
 def build_lot_series(group: pd.DataFrame, item_name: str,
                      spec_low: float | None,
-                     spec_high: float | None) -> list[dict]:
+                     spec_high: float | None,
+                     lot_dates: dict[str, str]) -> list[dict]:
     """One point per lot for a single item, oldest measured date first.
 
     The spec limits are passed in rather than re-resolved per lot: the chart
     draws one spec line for the whole period, so judging each lot against a
     different limit would put a red point under a line it never crossed.
+
+    lot_dates is looked up rather than recomputed from `group` so every
+    item's chart orders lots the same way — see _lot_dates.
     """
     points: list[dict] = []
     for lot_id, g in group.groupby("lot_id", sort=False):
         core = _item_core(g, item_name, spec_low, spec_high)
         points.append({
             "lot_id": str(lot_id),
-            "measured_date": _measured_date(g["start_time"]),
+            "measured_date": lot_dates.get(str(lot_id), ""),
             "n": core["n"],
             "mean": core["mean"],
             "sigma": core["sigma"],
@@ -69,13 +90,13 @@ def build_lot_series(group: pd.DataFrame, item_name: str,
     return points
 
 
-def _lot_infos(df: pd.DataFrame) -> list[WatLotInfo]:
+def _lot_infos(df: pd.DataFrame, lot_dates: dict[str, str]) -> list[WatLotInfo]:
     """Lot list for the header strip, newest measured date first."""
     rows: list[WatLotInfo] = []
     for lot_id, g in df.groupby("lot_id", sort=False):
         rows.append(WatLotInfo(
             lot_id=str(lot_id),
-            last_measured=_measured_date(g["start_time"]),
+            last_measured=lot_dates.get(str(lot_id), ""),
             wafer_count=int(g["wafer_id"].nunique()),
         ))
     rows.sort(key=lambda r: (r.last_measured, r.lot_id), reverse=True)
@@ -84,24 +105,25 @@ def _lot_infos(df: pd.DataFrame) -> list[WatLotInfo]:
 
 def get_wat_trend(nickname: str, product_id: str, months: int) -> WatTrendResponse:
     """Period-wide item statistics and per-lot series for one product."""
-    df = _load_trend(product_id, months)
+    start, end = _period(months)
+    df = _load_trend(product_id, months, start, end)
     if df.empty:
         df = pd.DataFrame(columns=WAT_TREND_COLUMNS)
 
-    start, end = _period(months)
+    lot_dates = _lot_dates(df)
     items: list[WatTrendItemStats] = []
 
     for item_name, group in df.groupby("item_name", sort=True):
         name = str(item_name)
         # Resolved once over the whole period, then applied to every lot.
-        spec_low = resolve_spec(group["spec_low"], name)
-        spec_high = resolve_spec(group["spec_high"], name)
+        spec_low = resolve_spec(group["spec_low"], name, scope="the period")
+        spec_high = resolve_spec(group["spec_high"], name, scope="the period")
         core = _item_core(group, name, spec_low, spec_high)
         series = [WatLotPoint(**p)
-                  for p in build_lot_series(group, name, spec_low, spec_high)]
+                  for p in build_lot_series(group, name, spec_low, spec_high, lot_dates)]
         items.append(WatTrendItemStats(**core, lot_series=series))
 
-    lots = _lot_infos(df) if not df.empty else []
+    lots = _lot_infos(df, lot_dates) if not df.empty else []
     logger.info(
         "WAT trend: product=%s months=%d lots=%d items=%d",
         product_id, months, len(lots), len(items),

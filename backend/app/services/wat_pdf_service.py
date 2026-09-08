@@ -16,10 +16,10 @@ from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas
 
 from app.models.schemas import WatItemStats, WatScatterPlot, WatSummaryResponse
-from app.services.pdf_common import FOOTER_H, MARGIN, SUBTEXT_COLOR, draw_footer, draw_logo
+from app.services.pdf_common import FOOTER_H, MARGIN, SUBTEXT_COLOR, draw_footer
 from app.services.wat_pdf_common import (
-    PAGE_BREAK_MARGIN, STATUS_RGB, axis, base_layout, draw_item_row,
-    draw_table_header, render_batch, rows_per_page,
+    PAGE_BREAK_MARGIN, STATUS_RGB, axis, base_layout, draw_header_band,
+    draw_item_row, draw_table_header, render_batch, rows_per_page,
 )
 
 logger = logging.getLogger(__name__)
@@ -116,40 +116,16 @@ def _trend_figure(item: WatItemStats, width: int = 1000, height: int = 647) -> g
 
 def _draw_header(c: canvas.Canvas, page_width: float, page_height: float,
                  summary: WatSummaryResponse) -> float:
-    """Draws the header band; returns the y coordinate where content starts."""
-    top = page_height - MARGIN
-    logo_h = 10 * mm
-    draw_logo(c, MARGIN, top - logo_h, logo_h)
-
-    c.saveState()
-    c.setFillColorRGB(0.216, 0.208, 0.184)
-    c.setFont("Helvetica-Bold", 13)
+    """Builds this report's title/meta and delegates to the shared band —
+    see draw_header_band's docstring for why the drawing itself is shared."""
     title = f"PCM / WAT  —  {summary.product_id}"
     if summary.display_name and summary.display_name != summary.product_id:
         title += f"  ({summary.display_name})"
-    c.drawString(MARGIN, top - logo_h - 7 * mm, title)
-
-    c.setFont("Helvetica", 8.5)
-    c.setFillColorRGB(0.38, 0.36, 0.35)
     meta = (f"Lot {summary.lot_id}    Measured {summary.measured_date or '—'}    "
             f"{summary.wafer_count} wafers    {len(summary.items)} items")
-    c.drawString(MARGIN, top - logo_h - 12 * mm, meta)
-
     reds = sum(1 for i in summary.items if i.status == "red")
     yellows = sum(1 for i in summary.items if i.status == "yellow")
-    c.setFont("Helvetica-Bold", 8.5)
-    c.setFillColorRGB(*STATUS_RGB["red"])
-    c.drawRightString(page_width - MARGIN - 18 * mm, top - logo_h - 12 * mm,
-                      f"● {reds}")
-    c.setFillColorRGB(*STATUS_RGB["yellow"])
-    c.drawRightString(page_width - MARGIN, top - logo_h - 12 * mm, f"▲ {yellows}")
-
-    rule_y = top - logo_h - 15 * mm
-    c.setStrokeColorRGB(0, 0, 0, alpha=0.12)
-    c.setLineWidth(0.6)
-    c.line(MARGIN, rule_y, page_width - MARGIN, rule_y)
-    c.restoreState()
-    return rule_y - 6 * mm
+    return draw_header_band(c, page_width, page_height, title, meta, reds, yellows)
 
 
 # ---------------------------------------------------------------------------

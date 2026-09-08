@@ -52,7 +52,10 @@ export default function WatSummaryTab({ productId }: Props) {
   const summaryReqIdRef = useRef(0);
 
   const loadSummary = useCallback(async () => {
-    if (!productId || !lotId) return;
+    if (!productId || !lotId) {
+      ++summaryReqIdRef.current; // invalidate any in-flight request
+      return;
+    }
     const id = ++summaryReqIdRef.current;
     setLoading(true);
     setError(null);

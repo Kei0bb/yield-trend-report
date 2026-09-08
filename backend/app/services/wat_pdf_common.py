@@ -13,7 +13,7 @@ from reportlab.lib.units import mm
 from reportlab.pdfgen import canvas
 
 from app.services.pdf_common import (
-    FONT_FAMILY, FOOTER_H, MARGIN, SUBTEXT_COLOR, TEXT_COLOR,
+    FONT_FAMILY, FOOTER_H, MARGIN, SUBTEXT_COLOR, TEXT_COLOR, draw_logo,
 )
 
 STATUS_MARK: dict[str, str] = {"red": "●", "yellow": "▲",
@@ -167,3 +167,39 @@ def rows_per_page(content_top: float) -> int:
     """
     usable = content_top - PAGE_BREAK_MARGIN
     return max(1, int(usable // ROW_H))
+
+
+def draw_header_band(c: canvas.Canvas, page_width: float, page_height: float,
+                     title: str, meta: str, reds: int, yellows: int) -> float:
+    """Draws the header band; returns the y coordinate where content starts.
+
+    Shared because that return value feeds rows_per_page(): a geometry change
+    mirrored into only one of the two PDFs would silently repaginate one
+    report and not the other.
+    """
+    top = page_height - MARGIN
+    logo_h = 10 * mm
+    draw_logo(c, MARGIN, top - logo_h, logo_h)
+
+    c.saveState()
+    c.setFillColorRGB(0.216, 0.208, 0.184)
+    c.setFont("Helvetica-Bold", 13)
+    c.drawString(MARGIN, top - logo_h - 7 * mm, title)
+
+    c.setFont("Helvetica", 8.5)
+    c.setFillColorRGB(0.38, 0.36, 0.35)
+    c.drawString(MARGIN, top - logo_h - 12 * mm, meta)
+
+    c.setFont("Helvetica-Bold", 8.5)
+    c.setFillColorRGB(*STATUS_RGB["red"])
+    c.drawRightString(page_width - MARGIN - 18 * mm, top - logo_h - 12 * mm,
+                      f"● {reds}")
+    c.setFillColorRGB(*STATUS_RGB["yellow"])
+    c.drawRightString(page_width - MARGIN, top - logo_h - 12 * mm, f"▲ {yellows}")
+
+    rule_y = top - logo_h - 15 * mm
+    c.setStrokeColorRGB(0, 0, 0, alpha=0.12)
+    c.setLineWidth(0.6)
+    c.line(MARGIN, rule_y, page_width - MARGIN, rule_y)
+    c.restoreState()
+    return rule_y - 6 * mm

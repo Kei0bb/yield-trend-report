@@ -96,3 +96,11 @@ def test_get_endpoints_log_and_return_503_on_db_failure(monkeypatch, caplog):
     assert res2.status_code == 503
     assert res2.json()["detail"] == "WAT data source unavailable"
     assert "ORA-12541" in caplog.text
+
+    caplog.clear()
+    with caplog.at_level("ERROR"):
+        res3 = client.get("/api/wat/trend",
+                          params={"product_id": "P12345-A", "months": 3})
+    assert res3.status_code == 503
+    assert res3.json()["detail"] == "WAT data source unavailable"
+    assert "ORA-12541" in caplog.text

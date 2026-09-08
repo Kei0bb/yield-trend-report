@@ -154,4 +154,3 @@ export async function exportWatTrendPdf(
   a.click();
   URL.revokeObjectURL(url);
 }
-

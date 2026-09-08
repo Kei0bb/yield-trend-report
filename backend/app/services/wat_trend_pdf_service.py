@@ -16,10 +16,11 @@ from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas
 
 from app.models.schemas import WatTrendItemStats, WatTrendResponse
-from app.services.pdf_common import FOOTER_H, MARGIN, draw_footer, draw_logo
+from app.services.pdf_common import FOOTER_H, MARGIN, draw_footer
 from app.services.wat_pdf_common import (
     PAGE_BREAK_MARGIN, STATUS_HEX, STATUS_RGB, axis, base_layout,
-    draw_item_row, draw_table_header, render_batch, rows_per_page,
+    draw_header_band, draw_item_row, draw_table_header, render_batch,
+    rows_per_page,
 )
 
 logger = logging.getLogger(__name__)
@@ -64,41 +65,19 @@ def _lot_trend_figure(item: WatTrendItemStats,
 
 def _draw_header(c: canvas.Canvas, page_width: float, page_height: float,
                  trend: WatTrendResponse) -> float:
-    """Draws the header band; returns the y coordinate where content starts."""
-    top = page_height - MARGIN
-    logo_h = 10 * mm
-    draw_logo(c, MARGIN, top - logo_h, logo_h)
-
-    c.saveState()
-    c.setFillColorRGB(0.216, 0.208, 0.184)
-    c.setFont("Helvetica-Bold", 13)
+    """Builds this report's title/meta and delegates to the shared band —
+    see draw_header_band's docstring for why the drawing itself is shared."""
     title = f"PCM / WAT Trend  —  {trend.product_id}"
     if trend.display_name and trend.display_name != trend.product_id:
         title += f"  ({trend.display_name})"
-    c.drawString(MARGIN, top - logo_h - 7 * mm, title)
 
     latest = trend.lots[0].last_measured if trend.lots else "—"
-    c.setFont("Helvetica", 8.5)
-    c.setFillColorRGB(0.38, 0.36, 0.35)
     meta = (f"{trend.start_date} — {latest}    Last {trend.months} months    "
             f"{len(trend.lots)} lots    {len(trend.items)} items")
-    c.drawString(MARGIN, top - logo_h - 12 * mm, meta)
 
     reds = sum(1 for i in trend.items if i.status == "red")
     yellows = sum(1 for i in trend.items if i.status == "yellow")
-    c.setFont("Helvetica-Bold", 8.5)
-    c.setFillColorRGB(*STATUS_RGB["red"])
-    c.drawRightString(page_width - MARGIN - 18 * mm, top - logo_h - 12 * mm,
-                      f"● {reds}")
-    c.setFillColorRGB(*STATUS_RGB["yellow"])
-    c.drawRightString(page_width - MARGIN, top - logo_h - 12 * mm, f"▲ {yellows}")
-
-    rule_y = top - logo_h - 15 * mm
-    c.setStrokeColorRGB(0, 0, 0, alpha=0.12)
-    c.setLineWidth(0.6)
-    c.line(MARGIN, rule_y, page_width - MARGIN, rule_y)
-    c.restoreState()
-    return rule_y - 6 * mm
+    return draw_header_band(c, page_width, page_height, title, meta, reds, yellows)
 
 
 def count_pages(trend: WatTrendResponse, content_top: float) -> int:

@@ -42,12 +42,15 @@ def _clean(value) -> float | None:
     return None if math.isnan(f) else f
 
 
-def resolve_spec(series: pd.Series, item_name: str) -> float | None:
-    """The spec limit for an item, assumed constant within a lot.
+def resolve_spec(series: pd.Series, item_name: str,
+                 scope: str = "one lot") -> float | None:
+    """The spec limit for an item, assumed constant within `scope`.
 
     When several distinct values appear, the most common one wins (ties break
     on ascending sort) and a WARNING is logged — silently picking one would
-    hide a real data problem.
+    hide a real data problem. `scope` names where the conflict was found
+    ("one lot" for the single-lot report, "the period" for the trend report,
+    where a spec revision between lots is the realistic cause).
     """
     values = series.dropna()
     if values.empty:
@@ -55,8 +58,8 @@ def resolve_spec(series: pd.Series, item_name: str) -> float | None:
     counts = values.value_counts()
     if len(counts) > 1:
         logger.warning(
-            "WAT item %s has %d distinct spec values in one lot: %s — using the most common",
-            item_name, len(counts), sorted(counts.index.tolist()),
+            "WAT item %s has %d distinct spec values in %s: %s — using the most common",
+            item_name, len(counts), scope, sorted(counts.index.tolist()),
         )
     top = counts.max()
     winners = sorted(v for v, c in counts.items() if c == top)
