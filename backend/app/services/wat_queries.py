@@ -27,6 +27,14 @@ WAT_DETAIL_COLUMNS = [
     "spec_low", "spec_high", "meas_data", "start_time",
 ]
 
+# Column names in the SAME order as the trend SELECT below. lot_id leads
+# because the trend path aggregates per lot; everything after it matches
+# WAT_DETAIL_COLUMNS so the two frames share one normalizer.
+WAT_TREND_COLUMNS = [
+    "lot_id", "wafer_id", "site_no", "item_name", "item_unit",
+    "spec_low", "spec_high", "meas_data", "start_time",
+]
+
 
 def _product_id_clause(product_id: str) -> str:
     """`LIKE` when product_id carries a '%' wildcard (see product_config.yaml's
@@ -83,6 +91,38 @@ def build_wat_detail_query(product_id: str, lot_id: str) -> tuple[str, dict]:
     return sql, {"pid": product_id, "lot": lot_id}
 
 
+def build_wat_trend_query(product_id: str, start: date, end: date) -> tuple[str, dict]:
+    """Every measurement of every lot measured in [start, end).
+
+    One query, not one per lot: 25 wafers x 9 sites x 30 items is ~6,750 rows
+    per lot, so a 3-month window is ~70k rows — a single fetch pandas handles
+    comfortably, against N round trips that do not.
+
+    The `_dt` bind suffixes are mandatory: bare START / END are Oracle
+    reserved words and oracledb raises ORA-01745 only at execute time, against
+    a real database. See tests/test_query_bind_names.py.
+    """
+    if not product_id:
+        return "", {}
+    sql = f"""
+        SELECT LOT_ID     AS lot_id,
+               WAFER_ID   AS wafer_id,
+               SITE_NO    AS site_no,
+               ITEM_NAME  AS item_name,
+               ITEM_UNIT  AS item_unit,
+               SPEC_LOW   AS spec_low,
+               SPEC_HIGH  AS spec_high,
+               MEAS_DATA  AS meas_data,
+               START_TIME AS start_time
+        FROM {WAT_TABLE}
+        WHERE {_product_id_clause(product_id)}
+          AND START_TIME >= :start_dt
+          AND START_TIME <  :end_dt
+        ORDER BY item_name, start_time, lot_id, wafer_id, site_no
+    """
+    return sql, {"pid": product_id, "start_dt": start, "end_dt": end}
+
+
 def _run(sql: str, binds: dict, columns: list[str], what: str) -> pd.DataFrame:
     if not sql:
         return pd.DataFrame(columns=columns)
@@ -102,22 +142,36 @@ def query_wat_lots(product_id: str, start: date, end: date) -> pd.DataFrame:
     return _run(sql, binds, WAT_LOT_COLUMNS, "lots")
 
 
-def query_wat_detail(product_id: str, lot_id: str) -> pd.DataFrame:
-    """Detail rows, normalised at the boundary so mock and real-DB data end up
-    the same shape:
+def _normalize_detail(df: pd.DataFrame) -> pd.DataFrame:
+    """Boundary normalisation so mock and real-DB frames end up the same shape.
 
-    - ITEM_NAME / ITEM_UNIT come back space-padded from an Oracle CHAR
-      column; unstripped, the configured `wat:` item names never match.
+    - LOT_ID / ITEM_NAME / ITEM_UNIT come back space-padded from Oracle CHAR
+      columns; unstripped, the configured `wat:` item names never match and a
+      lot id renders with trailing blanks.
     - MEAS_DATA / SPEC_LOW / SPEC_HIGH can arrive as decimal.Decimal (e.g. if
       oracledb.defaults.fetch_decimals is set), which makes the column
       object-dtype and breaks Series.std(ddof=1) downstream with a TypeError.
+
+    Shared by the detail and trend readers on purpose: this is exactly the
+    kind of fix that gets applied to one path and forgotten on the other.
     """
-    sql, binds = build_wat_detail_query(product_id, lot_id)
-    df = _run(sql, binds, WAT_DETAIL_COLUMNS, "detail")
     if df.empty:
         return df
-    for col in ("item_name", "item_unit"):
-        df[col] = df[col].str.strip()
+    for col in ("lot_id", "item_name", "item_unit"):
+        if col in df.columns:
+            df[col] = df[col].str.strip()
     for col in ("meas_data", "spec_low", "spec_high"):
         df[col] = pd.to_numeric(df[col], errors="coerce")
     return df
+
+
+def query_wat_detail(product_id: str, lot_id: str) -> pd.DataFrame:
+    """Detail rows for one lot, normalised by _normalize_detail()."""
+    sql, binds = build_wat_detail_query(product_id, lot_id)
+    return _normalize_detail(_run(sql, binds, WAT_DETAIL_COLUMNS, "detail"))
+
+
+def query_wat_trend(product_id: str, start: date, end: date) -> pd.DataFrame:
+    """Detail rows for every lot in the period, normalised the same way."""
+    sql, binds = build_wat_trend_query(product_id, start, end)
+    return _normalize_detail(_run(sql, binds, WAT_TREND_COLUMNS, "trend"))
