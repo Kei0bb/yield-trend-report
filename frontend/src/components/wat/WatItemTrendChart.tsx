@@ -18,13 +18,16 @@ interface Props {
   specHigh: number | null;
   /** Lot ids are categories, not numbers — keeps them evenly spaced. */
   categoryAxis?: boolean;
+  /** Prepended to the hovered X value, e.g. "Wafer " → "Wafer 12". A bare
+   *  number reads as nothing on its own, so each caller names its axis. */
+  hoverPrefix?: string;
 }
 
 /** Means with ±3σ whiskers and the spec limits. One series, so no legend —
  *  the title names it. Shared by the wafer axis (single-lot report) and the
  *  lot axis (trend report); the two must not drift apart. */
 export default function WatItemTrendChart({
-  title, points, xTitle, specLow, specHigh, categoryAxis = false,
+  title, points, xTitle, specLow, specHigh, categoryAxis = false, hoverPrefix = "",
 }: Props) {
   const shapes = [];
   const annotations = [];
@@ -59,7 +62,7 @@ export default function WatItemTrendChart({
           thickness: 1.2,
           width: 3,
         },
-        hovertemplate: "%{x}<br>%{y:.4g}<extra></extra>",
+        hovertemplate: `${hoverPrefix}%{x}<br>%{y:.4g}<extra></extra>`,
       }]}
       layout={{
         ...plotlyBaseLayout(),

@@ -149,6 +149,7 @@ export default function WatSummaryTab({ productId }: Props) {
                 xTitle="Wafer #"
                 specLow={item.spec_low}
                 specHigh={item.spec_high}
+                hoverPrefix="Wafer "
               />
             )}
           />
