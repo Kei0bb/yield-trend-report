@@ -1,18 +1,34 @@
 import Plot from "../PlotlyChart";
-import type { WatItemStats } from "../../types";
 import { INK, MUTED_SOFT, SPEC_LINE_COLOR, plotlyBaseLayout } from "../../theme";
 
-interface Props {
-  item: WatItemStats;
+export interface TrendPoint {
+  /** X value: a wafer number, or a lot id. */
+  label: string | number;
+  mean: number | null;
+  sigma: number | null;
+  /** Marker color; defaults to INK. Used to carry a lot's own judgement. */
+  color?: string;
 }
 
-/** Wafer means with ±3σ whiskers and the spec limits. One series, so no
- *  legend — the title names it. */
-export default function WatItemTrendChart({ item }: Props) {
-  const series = item.wafer_series;
+interface Props {
+  title: string;
+  points: TrendPoint[];
+  xTitle: string;
+  specLow: number | null;
+  specHigh: number | null;
+  /** Lot ids are categories, not numbers — keeps them evenly spaced. */
+  categoryAxis?: boolean;
+}
+
+/** Means with ±3σ whiskers and the spec limits. One series, so no legend —
+ *  the title names it. Shared by the wafer axis (single-lot report) and the
+ *  lot axis (trend report); the two must not drift apart. */
+export default function WatItemTrendChart({
+  title, points, xTitle, specLow, specHigh, categoryAxis = false,
+}: Props) {
   const shapes = [];
   const annotations = [];
-  for (const [limit, label] of [[item.spec_low, "LSL"], [item.spec_high, "USL"]] as const) {
+  for (const [limit, label] of [[specLow, "LSL"], [specHigh, "USL"]] as const) {
     if (limit === null || limit === undefined) continue;
     shapes.push({
       type: "line" as const, xref: "paper" as const, x0: 0, x1: 1,
@@ -26,37 +42,36 @@ export default function WatItemTrendChart({ item }: Props) {
     });
   }
 
-  const unit = item.unit ? ` [${item.unit}]` : "";
-
   return (
     <Plot
       data={[{
-        x: series.map((w) => w.wafer_id),
-        y: series.map((w) => w.mean),
+        x: points.map((p) => p.label),
+        y: points.map((p) => p.mean),
         type: "scatter",
         mode: "lines+markers",
         line: { color: INK, width: 2 },
-        marker: { size: 8, color: INK },
+        marker: { size: 8, color: points.map((p) => p.color ?? INK) },
         error_y: {
           type: "data",
-          array: series.map((w) => (w.sigma === null ? 0 : w.sigma * 3)),
+          array: points.map((p) => (p.sigma === null ? 0 : p.sigma * 3)),
           visible: true,
           color: "rgba(20,20,19,0.35)",
           thickness: 1.2,
           width: 3,
         },
-        hovertemplate: "Wafer %{x}<br>%{y:.4g}<extra></extra>",
+        hovertemplate: "%{x}<br>%{y:.4g}<extra></extra>",
       }]}
       layout={{
         ...plotlyBaseLayout(),
-        title: { text: `${item.item_name}${unit}`, font: { size: 13 } },
+        title: { text: title, font: { size: 13 } },
         height: 300,
-        margin: { l: 64, r: 56, t: 40, b: 44 },
+        margin: { l: 64, r: 56, t: 40, b: categoryAxis ? 96 : 44 },
         showlegend: false,
         xaxis: {
-          title: { text: "Wafer #", font: { size: 11, color: MUTED_SOFT } },
+          title: { text: xTitle, font: { size: 11, color: MUTED_SOFT } },
           gridcolor: "rgba(0,0,0,0.05)",
           zeroline: false,
+          ...(categoryAxis ? { type: "category" as const, tickangle: -45 } : {}),
         },
         yaxis: { gridcolor: "rgba(0,0,0,0.05)", zeroline: false },
         shapes,
