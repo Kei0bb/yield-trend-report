@@ -3,7 +3,7 @@ import type {
   Product, YieldRequest, YieldResponse,
   DashboardSummaryResponse, ExploreLotsResponse,
   WaferMapLotsResponse, WaferMapResponse,
-  WatLotsResponse, WatSummaryResponse,
+  WatLotsResponse, WatSummaryResponse, WatTrendResponse,
 } from "../types";
 
 const api = axios.create({
@@ -125,6 +125,32 @@ export async function exportWatPdf(productId: string, lotId: string): Promise<vo
   const a = document.createElement("a");
   a.href = url;
   a.download = `WAT_${productId}_${lotId}.pdf`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+export async function fetchWatTrend(
+  productId: string, months: number
+): Promise<WatTrendResponse> {
+  const res = await api.get<WatTrendResponse>("/wat/trend", {
+    params: { product_id: productId, months },
+  });
+  return res.data;
+}
+
+export async function exportWatTrendPdf(
+  productId: string, months: number
+): Promise<void> {
+  const res = await api.post(
+    "/wat/export-trend-pdf",
+    { product_id: productId, months },
+    { responseType: "blob" },
+  );
+  const blob = new Blob([res.data], { type: "application/pdf" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `WAT_TREND_${productId}_${months}M.pdf`;
   a.click();
   URL.revokeObjectURL(url);
 }
