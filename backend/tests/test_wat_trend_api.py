@@ -46,3 +46,12 @@ def test_trend_endpoint_survives_an_unconfigured_product_id():
                      params={"product_id": "nope-nope", "months": 3})
     assert res.status_code == 200
     assert res.json()["product_id"]
+
+
+def test_export_trend_pdf_returns_a_pdf_attachment():
+    res = client.post("/api/wat/export-trend-pdf",
+                      json={"product_id": "P12345-A", "months": 3})
+    assert res.status_code == 200
+    assert res.headers["content-type"] == "application/pdf"
+    assert "attachment" in res.headers["content-disposition"]
+    assert res.content.startswith(b"%PDF")
