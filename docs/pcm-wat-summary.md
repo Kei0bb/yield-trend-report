@@ -1,5 +1,8 @@
 # PCM / WAT ロットサマリー — 実装サマリー
 
+> 本書は**単ロットレポート**の仕様。ロット横断のトレンドレポートは
+> `docs/superpowers/specs/2026-09-07-pcm-wat-trend-report-design.md` を参照。
+
 Report ページに追加した 2 つ目の機能。選択した **1 ロット**の WAT（パラメトリック測定）の出来栄えを確認し、報告用 PDF を出力する。
 
 - 設計仕様: `docs/superpowers/specs/2026-07-28-pcm-wat-lot-summary-design.md`

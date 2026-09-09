@@ -4,11 +4,16 @@ import traceback
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import Response
 
-from app.models.schemas import WatExportRequest, WatLotsResponse, WatSummaryResponse
+from app.models.schemas import (
+    WatExportRequest, WatLotsResponse, WatSummaryResponse, WatTrendExportRequest,
+    WatTrendResponse,
+)
 from app.services.pdf_common import content_disposition
 from app.services.product_config import nickname_for_product_id
 from app.services.wat_pdf_service import generate_wat_pdf
 from app.services.wat_service import get_wat_lots, get_wat_summary
+from app.services.wat_trend_pdf_service import generate_wat_trend_pdf
+from app.services.wat_trend_service import get_wat_trend
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -40,6 +45,19 @@ def wat_summary(
         raise HTTPException(status_code=503, detail="WAT data source unavailable")
 
 
+@router.get("/wat/trend", response_model=WatTrendResponse)
+def wat_trend(
+    product_id: str = Query(...),
+    months: int = Query(3, ge=1, le=6),
+) -> WatTrendResponse:
+    nickname = nickname_for_product_id(product_id) or product_id
+    try:
+        return get_wat_trend(nickname, product_id, months)
+    except Exception:
+        logger.error("get_wat_trend failed:\n%s", traceback.format_exc())
+        raise HTTPException(status_code=503, detail="WAT data source unavailable")
+
+
 @router.post("/wat/export-pdf")
 def wat_export_pdf(req: WatExportRequest) -> Response:
     nickname = nickname_for_product_id(req.product_id) or req.product_id
@@ -51,4 +69,19 @@ def wat_export_pdf(req: WatExportRequest) -> Response:
         raise HTTPException(status_code=500, detail=f"PDF generation failed: {e}")
 
     headers = {"Content-Disposition": content_disposition(f"WAT_{req.product_id}_{req.lot_id}")}
+    return Response(content=pdf_bytes, media_type="application/pdf", headers=headers)
+
+
+@router.post("/wat/export-trend-pdf")
+def wat_export_trend_pdf(req: WatTrendExportRequest) -> Response:
+    nickname = nickname_for_product_id(req.product_id) or req.product_id
+    try:
+        trend = get_wat_trend(nickname, req.product_id, req.months)
+        pdf_bytes = generate_wat_trend_pdf(trend)
+    except Exception as e:
+        logger.error("wat_export_trend_pdf failed:\n%s", traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"PDF generation failed: {e}")
+
+    name = f"WAT_TREND_{req.product_id}_{req.months}M"
+    headers = {"Content-Disposition": content_disposition(name)}
     return Response(content=pdf_bytes, media_type="application/pdf", headers=headers)

@@ -55,12 +55,23 @@ export const WAFER_COLORSCALE: [number, string][] = [
   [1.0, "#5c2f1e"],
 ];
 
-/** PCM/WAT judgement. Reserved status colors — never reused as series colors. */
+/** PCM/WAT judgement. Reserved status colors — never reused as series colors.
+ *  These are CSS custom properties: do NOT hand them to Plotly (marker.color
+ *  etc.) — tinycolor cannot resolve `var(...)` and silently falls back to
+ *  black. Use STATUS_PLOT_COLOR for anything Plotly-facing. */
 export const STATUS_COLOR: Record<string, string> = {
   red: "var(--error)",
   yellow: "var(--warning)",
   gray: "var(--muted-soft)",
   ok: "var(--ink)",
+};
+
+/** Plotly parses colors with tinycolor and cannot resolve CSS custom
+ *  properties — a `var(--error)` marker silently renders black, with no
+ *  error. Literal mirror of STATUS_COLOR for anything handed to Plotly.
+ *  Values match index.css and the backend's STATUS_HEX. */
+export const STATUS_PLOT_COLOR: Record<string, string> = {
+  red: "#c64545", yellow: "#d4a017", gray: "#8e8b82", ok: INK,
 };
 
 /** Printed alongside the color so a black-and-white PDF still carries the

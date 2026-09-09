@@ -42,12 +42,15 @@ def _clean(value) -> float | None:
     return None if math.isnan(f) else f
 
 
-def resolve_spec(series: pd.Series, item_name: str) -> float | None:
-    """The spec limit for an item, assumed constant within a lot.
+def resolve_spec(series: pd.Series, item_name: str,
+                 scope: str = "one lot") -> float | None:
+    """The spec limit for an item, assumed constant within `scope`.
 
     When several distinct values appear, the most common one wins (ties break
     on ascending sort) and a WARNING is logged — silently picking one would
-    hide a real data problem.
+    hide a real data problem. `scope` names where the conflict was found
+    ("one lot" for the single-lot report, "the period" for the trend report,
+    where a spec revision between lots is the realistic cause).
     """
     values = series.dropna()
     if values.empty:
@@ -55,8 +58,8 @@ def resolve_spec(series: pd.Series, item_name: str) -> float | None:
     counts = values.value_counts()
     if len(counts) > 1:
         logger.warning(
-            "WAT item %s has %d distinct spec values in one lot: %s — using the most common",
-            item_name, len(counts), sorted(counts.index.tolist()),
+            "WAT item %s has %d distinct spec values in %s: %s — using the most common",
+            item_name, len(counts), scope, sorted(counts.index.tolist()),
         )
     top = counts.max()
     winners = sorted(v for v, c in counts.items() if c == top)
@@ -139,11 +142,18 @@ def _wafer_series(group: pd.DataFrame) -> list[dict]:
     return out
 
 
-def compute_item_stats(group: pd.DataFrame, item_name: str) -> dict:
-    """Statistics for one ITEM_NAME across every wafer and site of one lot."""
-    spec_low = resolve_spec(group["spec_low"], item_name)
-    spec_high = resolve_spec(group["spec_high"], item_name)
+def _item_core(group: pd.DataFrame, item_name: str,
+               spec_low: float | None, spec_high: float | None) -> dict:
+    """Every scalar statistic for one item over `group`, judged against the
+    spec limits it is handed.
 
+    The caller resolves the spec, because the two callers resolve it over
+    different scopes: the single-lot report over one lot, the trend report
+    once for the whole period (so a lot's point and the chart's spec line
+    can never disagree). Series generation lives in the callers too — this
+    function is the shared Cpk/OOS/judgement core, and there is exactly one
+    of it.
+    """
     units = group["item_unit"].dropna()
     unit = str(units.iloc[0]) if not units.empty else ""
 
@@ -170,6 +180,15 @@ def compute_item_stats(group: pd.DataFrame, item_name: str) -> dict:
         "oos_count": oos_count,
         "oos_pct": round(oos_count / n * 100, 4) if n else 0.0,
         "status": classify_status(cpk, cpk_state, oos_count),
+    }
+
+
+def compute_item_stats(group: pd.DataFrame, item_name: str) -> dict:
+    """Statistics for one ITEM_NAME across every wafer and site of one lot."""
+    spec_low = resolve_spec(group["spec_low"], item_name)
+    spec_high = resolve_spec(group["spec_high"], item_name)
+    return {
+        **_item_core(group, item_name, spec_low, spec_high),
         "wafer_series": _wafer_series(group),
     }
 

@@ -214,3 +214,55 @@ class WatSummaryResponse(BaseModel):
 class WatExportRequest(BaseModel):
     product_id: str
     lot_id: str
+
+
+class WatLotPoint(BaseModel):
+    """One lot's statistics for one item — a point on the trend chart."""
+    lot_id: str
+    measured_date: str
+    n: int
+    mean: float | None = None
+    sigma: float | None = None
+    cpk: float | None = None
+    cpk_state: str          # "value" | "infinite" | "undefined"
+    status: str             # "red" | "yellow" | "gray" | "ok"
+
+
+class WatTrendItemStats(BaseModel):
+    """Period-wide statistics for one item, pooled over every lot's raw site
+    measurements — not an average of lot averages."""
+    item_name: str
+    unit: str = ""
+    spec_low: float | None = None
+    spec_high: float | None = None
+    n: int
+    mean: float | None = None
+    sigma: float | None = None
+    min: float | None = None
+    max: float | None = None
+    cpk: float | None = None
+    cpk_state: str
+    oos_count: int
+    oos_pct: float
+    status: str
+    lot_series: list[WatLotPoint]
+
+
+class WatTrendResponse(BaseModel):
+    """`lots` is newest first (header strip); `lot_series` inside each item is
+    oldest first (chart X axis). The two orders differ on purpose."""
+    product_id: str
+    display_name: str
+    months: int
+    start_date: str         # inclusive
+    end_date: str           # exclusive
+    lots: list[WatLotInfo]
+    items: list[WatTrendItemStats]
+
+
+class WatTrendExportRequest(BaseModel):
+    product_id: str
+    # Same bound as GET /wat/trend's Query(3, ge=1, le=6). Without it this
+    # endpoint would accept any integer and drive an unbounded query plus a
+    # per-item kaleido render.
+    months: int = Field(3, ge=1, le=6)

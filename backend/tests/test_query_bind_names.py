@@ -21,7 +21,9 @@ import pytest
 
 from app.services.lot_queries import build_lot_query
 from app.services.map_queries import build_bin_meta_query, build_die_map_query
-from app.services.wat_queries import build_wat_detail_query, build_wat_lots_query
+from app.services.wat_queries import (
+    build_wat_detail_query, build_wat_lots_query, build_wat_trend_query,
+)
 from app.services.yield_queries import build_product_id_where, build_yield_query
 
 # Oracle SQL reserved words (V$RESERVED_WORDS, the RESERVED='Y' subset).
@@ -106,6 +108,8 @@ BUILDER_CASES = [
     ("wat_lots", lambda: build_wat_lots_query("P1", date(2026, 1, 1), date(2026, 2, 1))),
     ("wat_lots_wildcard", lambda: build_wat_lots_query("P%", date(2026, 1, 1), date(2026, 2, 1))),
     ("wat_detail", lambda: build_wat_detail_query("P1", "LOT-1")),
+    ("wat_trend", lambda: build_wat_trend_query("P1", date(2026, 1, 1), date(2026, 2, 1))),
+    ("wat_trend_wildcard", lambda: build_wat_trend_query("P%", date(2026, 1, 1), date(2026, 2, 1))),
     ("lot_cp", lambda: build_lot_query("CP", ["P1", "P%"], "2026-01", "2026-03", ["CP", "CP1"])),
     ("die_map", lambda: build_die_map_query(["LOT-1", "LOT-2"], ["CP"])),
     ("bin_meta", lambda: build_bin_meta_query(["LOT-1", "LOT-2"], ["CP"])),

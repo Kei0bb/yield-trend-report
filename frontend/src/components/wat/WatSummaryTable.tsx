@@ -1,15 +1,22 @@
 import { useState } from "react";
 import type { WatItemStats } from "../../types";
 import { STATUS_COLOR, STATUS_MARK } from "../../theme";
-import WatItemTrendChart from "./WatItemTrendChart";
 import { tableStyles } from "../../ui/tableStyles";
 import { fmtCpk, fmtValue } from "../../ui/format";
 
-interface Props {
-  items: WatItemStats[];
+/** The scalar columns this table draws. Both the single-lot and the trend
+ *  item types satisfy it; neither series field is read here. */
+export type WatTableRow = Omit<WatItemStats, "wafer_series">;
+
+interface Props<T extends WatTableRow> {
+  items: T[];
+  /** Rendered inside the expanded row, under the clicked item. */
+  renderChart: (item: T) => React.ReactNode;
 }
 
-export default function WatSummaryTable({ items }: Props) {
+export default function WatSummaryTable<T extends WatTableRow>(
+  { items, renderChart }: Props<T>
+) {
   const [openItem, setOpenItem] = useState<string | null>(null);
 
   return (
@@ -68,7 +75,7 @@ export default function WatSummaryTable({ items }: Props) {
               open ? (
                 <tr key={`${item.item_name}-chart`}>
                   <td colSpan={12} style={styles.chartCell}>
-                    <WatItemTrendChart item={item} />
+                    {renderChart(item)}
                   </td>
                 </tr>
               ) : null,

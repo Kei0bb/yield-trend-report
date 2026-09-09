@@ -198,3 +198,43 @@ export interface WatSummaryResponse {
   items: WatItemStats[];
   scatter_pairs: WatScatterPair[];
 }
+
+export interface WatLotPoint {
+  lot_id: string;
+  measured_date: string;
+  n: number;
+  mean: number | null;
+  sigma: number | null;
+  cpk: number | null;
+  cpk_state: WatCpkState;
+  status: WatStatus;
+}
+
+export interface WatTrendItemStats {
+  item_name: string;
+  unit: string;
+  spec_low: number | null;
+  spec_high: number | null;
+  n: number;
+  mean: number | null;
+  sigma: number | null;
+  min: number | null;
+  max: number | null;
+  cpk: number | null;
+  cpk_state: WatCpkState;
+  oos_count: number;
+  oos_pct: number;
+  status: WatStatus;
+  lot_series: WatLotPoint[];
+}
+
+/** `lots` is newest first; each item's `lot_series` is oldest first. */
+export interface WatTrendResponse {
+  product_id: string;
+  display_name: string;
+  months: number;
+  start_date: string;
+  end_date: string;
+  lots: WatLotInfo[];
+  items: WatTrendItemStats[];
+}

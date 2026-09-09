@@ -178,6 +178,8 @@ WAT_DETAIL_COLUMNS = [
 
 WAT_LOT_COLUMNS = ["lot_id", "last_measured", "wafer_count"]
 
+WAT_TREND_COLUMNS = ["lot_id"] + WAT_DETAIL_COLUMNS
+
 # (item suffix, unit, center, spread, spec half-width) per flavor family.
 # Vth centers differ per flavor so the Ion-Vt clusters separate visibly.
 _WAT_VTH_CENTER = {"RVT": 0.45, "LVT": 0.32, "HVT": 0.58,
@@ -369,3 +371,24 @@ def mock_wat_dataframe(product_id: str, lot_id: str) -> pd.DataFrame:
                 })
 
     return pd.DataFrame(rows, columns=WAT_DETAIL_COLUMNS)
+
+
+def mock_wat_trend_dataframe(product_id: str, months: int) -> pd.DataFrame:
+    """Deterministic per-site WAT measurements for every lot in the period.
+
+    Reuses mock_wat_dataframe per lot, so a lot's rows are identical whether
+    read through the single-lot path or the trend path, and the deliberate
+    defects (VTHN_ULVT red, RS_NDIFF yellow) show up on the trend too.
+    """
+    lots = mock_wat_lots(product_id, months)
+    frames: list[pd.DataFrame] = []
+    for lot_id in lots["lot_id"]:
+        df = mock_wat_dataframe(product_id, str(lot_id))
+        if df.empty:
+            continue
+        df = df.copy()
+        df.insert(0, "lot_id", str(lot_id))
+        frames.append(df)
+    if not frames:
+        return pd.DataFrame(columns=WAT_TREND_COLUMNS)
+    return pd.concat(frames, ignore_index=True)[WAT_TREND_COLUMNS]

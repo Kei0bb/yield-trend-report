@@ -7,6 +7,7 @@ import PageTitle from "../ui/PageTitle";
 import Select from "../ui/Select";
 import Button from "../ui/Button";
 import WatSummaryTab from "../components/wat/WatSummaryTab";
+import WatTrendTab from "../components/wat/WatTrendTab";
 
 function formatYM(d: Date): string {
   const y = d.getFullYear();
@@ -23,7 +24,7 @@ function addMonths(d: Date, n: number): Date {
 export default function ReportPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [productId, setProductId] = useState("");
-  const [tab, setTab] = useState<"yield" | "wat">("yield");
+  const [tab, setTab] = useState<"yield" | "wat" | "watTrend">("yield");
   const [units, setUnits] = useState<{ family: string; label: string }[]>([]);
   const [processes, setProcesses] = useState<string[]>([]);
   const [isMock, setIsMock] = useState<boolean | null>(null);
@@ -104,7 +105,11 @@ export default function ReportPage() {
         <PageTitle title="Report" />
 
         <div style={styles.tabs}>
-          {([["yield", "Yield Trend"], ["wat", "PCM / WAT"]] as const).map(([key, label]) => (
+          {([
+            ["yield", "Yield Trend"],
+            ["wat", "PCM / WAT (Lot)"],
+            ["watTrend", "PCM / WAT (Trend)"],
+          ] as const).map(([key, label]) => (
             <button
               key={key}
               type="button"
@@ -164,9 +169,9 @@ export default function ReportPage() {
           </span>
         </div>
 
-        {tab === "yield"
-          ? <ReportView data={data} request={request} />
-          : <WatSummaryTab productId={productId} />}
+        {tab === "yield" && <ReportView data={data} request={request} />}
+        {tab === "wat" && <WatSummaryTab productId={productId} />}
+        {tab === "watTrend" && <WatTrendTab productId={productId} />}
       </main>
     </div>
   );

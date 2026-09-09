@@ -5,6 +5,7 @@ import Button from "../../ui/Button";
 import Select from "../../ui/Select";
 import { STATUS_MARK } from "../../theme";
 import WatSummaryTable from "./WatSummaryTable";
+import WatItemTrendChart from "./WatItemTrendChart";
 import WatScatterGrid from "./WatScatterGrid";
 
 interface Props {
@@ -51,7 +52,10 @@ export default function WatSummaryTab({ productId }: Props) {
   const summaryReqIdRef = useRef(0);
 
   const loadSummary = useCallback(async () => {
-    if (!productId || !lotId) return;
+    if (!productId || !lotId) {
+      ++summaryReqIdRef.current; // invalidate any in-flight request
+      return;
+    }
     const id = ++summaryReqIdRef.current;
     setLoading(true);
     setError(null);
@@ -137,7 +141,21 @@ export default function WatSummaryTab({ productId }: Props) {
               <span style={styles.yellow}>{STATUS_MARK.yellow} {yellows}</span>
             </span>
           </div>
-          <WatSummaryTable items={summary.items} />
+          <WatSummaryTable
+            items={summary.items}
+            renderChart={(item) => (
+              <WatItemTrendChart
+                title={`${item.item_name}${item.unit ? ` [${item.unit}]` : ""}`}
+                points={item.wafer_series.map((w) => ({
+                  label: w.wafer_id, mean: w.mean, sigma: w.sigma,
+                }))}
+                xTitle="Wafer #"
+                specLow={item.spec_low}
+                specHigh={item.spec_high}
+                hoverPrefix="Wafer "
+              />
+            )}
+          />
           <WatScatterGrid pairs={summary.scatter_pairs} />
         </>
       )}

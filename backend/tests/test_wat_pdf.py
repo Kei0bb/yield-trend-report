@@ -4,9 +4,8 @@ import pytest
 
 from app.models.schemas import WatItemStats, WatSummaryResponse
 from app.services.mock_data import mock_wat_lots
-from app.services.wat_pdf_service import (
-    STATUS_MARK, fmt_cpk, fmt_value, generate_wat_pdf,
-)
+from app.services.wat_pdf_common import STATUS_MARK, fmt_cpk, fmt_value
+from app.services.wat_pdf_service import generate_wat_pdf
 from app.services.wat_service import get_wat_summary
 
 
