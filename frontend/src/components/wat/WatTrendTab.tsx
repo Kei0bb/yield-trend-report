@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { exportWatTrendPdf, fetchWatTrend } from "../../api/client";
 import type { WatTrendResponse } from "../../types";
 import Button from "../../ui/Button";
@@ -13,49 +13,62 @@ interface Props {
 
 export default function WatTrendTab({ productId }: Props) {
   const [months, setMonths] = useState(3);
-  const [trend, setTrend] = useState<WatTrendResponse | null>(null);
-  const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  // Guards against out-of-order responses: only the latest request may write
-  // state when product or period changes mid-fetch (same idiom as
-  // WatSummaryTab's loadSummary).
+  // Nothing is fetched until Generate. Every result, pending request and
+  // error is tagged with the conditions it was made under and shown only
+  // while those are still the current conditions — so a late response can
+  // never paint one period's data under another period's toolbar.
+  const key = `${productId}|${months}`;
+  const [result, setResult] = useState<{ key: string; trend: WatTrendResponse } | null>(null);
+  const [pendingKey, setPendingKey] = useState<string | null>(null);
+  const [failure, setFailure] = useState<{ key: string; message: string } | null>(null);
+
+  // Changing product or period clears the previous result (React's
+  // "adjust state during render" pattern — no effect, no flash of stale data).
+  const [prevKey, setPrevKey] = useState(key);
+  if (prevKey !== key) {
+    setPrevKey(key);
+    setResult(null);
+    setFailure(null);
+  }
+
+  const trend = result?.key === key ? result.trend : null;
+  const loading = pendingKey === key;
+  const error = failure?.key === key ? failure.message : null;
+
+  // Only the latest Generate may write state (out-of-order responses).
   const reqIdRef = useRef(0);
 
-  const loadTrend = useCallback(async () => {
-    if (!productId) {
-      ++reqIdRef.current; // invalidate any in-flight request
-      setTrend(null);
-      return;
-    }
+  const handleGenerate = async () => {
+    if (!productId) return;
     const id = ++reqIdRef.current;
-    setLoading(true);
-    setError(null);
+    const reqKey = key;
+    setPendingKey(reqKey);
+    setFailure(null);
     try {
       const res = await fetchWatTrend(productId, months);
       if (id !== reqIdRef.current) return; // stale response
-      setTrend(res);
+      setResult({ key: reqKey, trend: res });
     } catch (e) {
       if (id !== reqIdRef.current) return; // stale response
       console.error("Failed to load WAT trend:", e);
-      setError("Failed to load WAT trend.");
-      setTrend(null);
+      setFailure({ key: reqKey, message: "Failed to load WAT trend." });
+      setResult(null);
     } finally {
-      if (id === reqIdRef.current) setLoading(false);
+      if (id === reqIdRef.current) setPendingKey(null);
     }
-  }, [productId, months]);
-
-  useEffect(() => { void loadTrend(); }, [loadTrend]);
+  };
 
   const handleExport = async () => {
-    if (!productId) return;
+    if (!productId || !trend) return;
+    const reqKey = key;
     setExporting(true);
     try {
       await exportWatTrendPdf(productId, months);
     } catch (e) {
       console.error("WAT trend PDF export failed:", e);
-      setError("PDF export failed.");
+      setFailure({ key: reqKey, message: "PDF export failed." });
     } finally {
       setExporting(false);
     }
@@ -77,6 +90,10 @@ export default function WatTrendTab({ productId }: Props) {
           </Select>
         </label>
 
+        <Button variant="primary" onClick={handleGenerate} disabled={!productId || loading}>
+          {loading ? "Loading…" : "Generate"}
+        </Button>
+
         <Button onClick={handleExport} disabled={!trend || loading || exporting}>
           {exporting ? "Generating…" : "Export PDF"}
         </Button>
@@ -86,6 +103,10 @@ export default function WatTrendTab({ productId }: Props) {
       {error && <div style={styles.error}>{error}</div>}
 
       {loading && <div style={styles.hint}>Loading…</div>}
+
+      {!loading && !trend && !error && (
+        <div style={styles.empty}>Choose a period and press Generate.</div>
+      )}
 
       {!loading && trend && trend.items.length === 0 && (
         <div style={styles.empty}>No WAT data for this period.</div>

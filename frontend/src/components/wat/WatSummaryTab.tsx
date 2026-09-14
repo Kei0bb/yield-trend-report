@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { exportWatPdf, fetchWatLots, fetchWatSummary } from "../../api/client";
 import type { WatLotInfo, WatSummaryResponse } from "../../types";
 import Button from "../../ui/Button";
@@ -16,10 +16,28 @@ export default function WatSummaryTab({ productId }: Props) {
   const [months, setMonths] = useState(3);
   const [lots, setLots] = useState<WatLotInfo[]>([]);
   const [lotId, setLotId] = useState("");
-  const [summary, setSummary] = useState<WatSummaryResponse | null>(null);
-  const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [lotsError, setLotsError] = useState<string | null>(null);
+
+  // Nothing but the lot list is fetched until Generate. The summary, pending
+  // request and error are tagged with the conditions they were made under and
+  // shown only while those are still current (see WatTrendTab).
+  const key = `${productId}|${months}|${lotId}`;
+  const [result, setResult] = useState<{ key: string; summary: WatSummaryResponse } | null>(null);
+  const [pendingKey, setPendingKey] = useState<string | null>(null);
+  const [failure, setFailure] = useState<{ key: string; message: string } | null>(null);
+
+  // Changing product, period or lot clears the previous result.
+  const [prevKey, setPrevKey] = useState(key);
+  if (prevKey !== key) {
+    setPrevKey(key);
+    setResult(null);
+    setFailure(null);
+  }
+
+  const summary = result?.key === key ? result.summary : null;
+  const loading = pendingKey === key;
+  const error = lotsError ?? (failure?.key === key ? failure.message : null);
 
   // Lot list follows product + period. Reset the selection when it reloads so
   // a stale lot_id from a previous product is never queried.
@@ -30,7 +48,7 @@ export default function WatSummaryTab({ productId }: Props) {
       return;
     }
     let cancelled = false;
-    setError(null);
+    setLotsError(null);
     fetchWatLots(productId, months)
       .then((res) => {
         if (cancelled) return;
@@ -41,48 +59,43 @@ export default function WatSummaryTab({ productId }: Props) {
         if (cancelled) return;
         setLots([]);
         setLotId("");
-        setError("Failed to load WAT lots.");
+        setLotsError("Failed to load WAT lots.");
       });
     return () => { cancelled = true; };
   }, [productId, months]);
 
-  // Guards loadSummary against out-of-order responses: only the latest
-  // request may write state when lotId changes mid-fetch (see WaferMapPage's
-  // loadLots for the same idiom).
+  // Only the latest Generate may write state (out-of-order responses).
   const summaryReqIdRef = useRef(0);
 
-  const loadSummary = useCallback(async () => {
-    if (!productId || !lotId) {
-      ++summaryReqIdRef.current; // invalidate any in-flight request
-      return;
-    }
+  const handleGenerate = async () => {
+    if (!productId || !lotId) return;
     const id = ++summaryReqIdRef.current;
-    setLoading(true);
-    setError(null);
+    const reqKey = key;
+    setPendingKey(reqKey);
+    setFailure(null);
     try {
       const res = await fetchWatSummary(productId, lotId);
       if (id !== summaryReqIdRef.current) return; // stale response
-      setSummary(res);
+      setResult({ key: reqKey, summary: res });
     } catch (e) {
       if (id !== summaryReqIdRef.current) return; // stale response
       console.error("Failed to load WAT summary:", e);
-      setError("Failed to load WAT summary.");
-      setSummary(null);
+      setFailure({ key: reqKey, message: "Failed to load WAT summary." });
+      setResult(null);
     } finally {
-      if (id === summaryReqIdRef.current) setLoading(false);
+      if (id === summaryReqIdRef.current) setPendingKey(null);
     }
-  }, [productId, lotId]);
-
-  useEffect(() => { void loadSummary(); }, [loadSummary]);
+  };
 
   const handleExport = async () => {
-    if (!productId || !lotId) return;
+    if (!productId || !summary) return;
+    const reqKey = key;
     setExporting(true);
     try {
-      await exportWatPdf(productId, lotId);
+      await exportWatPdf(productId, summary.lot_id);
     } catch (e) {
       console.error("WAT PDF export failed:", e);
-      setError("PDF export failed.");
+      setFailure({ key: reqKey, message: "PDF export failed." });
     } finally {
       setExporting(false);
     }
@@ -115,7 +128,11 @@ export default function WatSummaryTab({ productId }: Props) {
           </Select>
         </label>
 
-        <Button onClick={handleExport} disabled={!lotId || loading || exporting}>
+        <Button variant="primary" onClick={handleGenerate} disabled={!lotId || loading}>
+          {loading ? "Loading…" : "Generate"}
+        </Button>
+
+        <Button onClick={handleExport} disabled={!summary || loading || exporting}>
           {exporting ? "Generating…" : "Export PDF"}
         </Button>
         {exporting && <span style={styles.hint}>24 charts — this takes a while</span>}
@@ -124,6 +141,10 @@ export default function WatSummaryTab({ productId }: Props) {
       {error && <div style={styles.error}>{error}</div>}
 
       {loading && <div style={styles.hint}>Loading…</div>}
+
+      {!loading && !summary && !error && lotId && (
+        <div style={styles.empty}>Choose a lot and press Generate.</div>
+      )}
 
       {!loading && summary && summary.items.length === 0 && (
         <div style={styles.empty}>No WAT data for this lot.</div>
