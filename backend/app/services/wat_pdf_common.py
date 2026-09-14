@@ -4,6 +4,8 @@ The item table is the reason this module exists: it was drawn identically by
 both reports, and a copy would drift the moment one of them gained a column.
 """
 
+import io
+import math
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -11,6 +13,7 @@ from pathlib import Path
 import plotly.graph_objects as go
 import plotly.io as pio
 from reportlab.lib.units import mm
+from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas
 
 from app.services.pdf_common import (
@@ -65,23 +68,37 @@ def fmt_cpk(cpk, cpk_state: str) -> str:
     return "—"
 
 
+# Every chart in both PDFs sits in a 2 x 3 grid, six per page.
+GRID_COLS = 2
+GRID_ROWS = 3
+CHARTS_PER_PAGE = GRID_COLS * GRID_ROWS
+
+# The pixel canvas each chart is drawn on. Its aspect matches one grid cell
+# (~88 x 77 mm on A4 portrait), and it is deliberately small: Plotly sizes
+# text in px, so a small canvas placed into the cell keeps labels legible,
+# where shrinking a 1000px-wide figure into the same cell would not.
+CHART_W = 460
+CHART_H = 400
+
+
 def base_layout(width: int, height: int, title: str) -> dict:
     return dict(
-        title=dict(text=title, font=dict(size=13, color=TEXT_COLOR, family=FONT_FAMILY)),
+        title=dict(text=title, x=0.02, xanchor="left",
+                   font=dict(size=12, color=TEXT_COLOR, family=FONT_FAMILY)),
         font=dict(family=FONT_FAMILY, size=10, color=TEXT_COLOR),
         plot_bgcolor="#ffffff",
         paper_bgcolor="#ffffff",
         showlegend=False,
         width=width,
         height=height,
-        margin=dict(l=62, r=24, t=42, b=48),
+        margin=dict(l=54, r=16, t=34, b=42),
     )
 
 
 def axis(title: str) -> dict:
     return dict(
         title=dict(text=title, font=dict(size=10, color=SUBTEXT_COLOR)),
-        tickfont=dict(size=9, color=SUBTEXT_COLOR),
+        tickfont=dict(size=10, color=SUBTEXT_COLOR),
         gridcolor="rgba(0,0,0,0.05)",
         linecolor="rgba(0,0,0,0.12)",
         zeroline=False,
@@ -110,6 +127,32 @@ def render_batch(figs: list[go.Figure]) -> list[bytes]:
         pio.write_images(figs, file=paths, format="png", scale=2,
                          width=widths, height=heights)
         return [p.read_bytes() for p in paths]
+
+
+def chart_page_count(n_charts: int) -> int:
+    return math.ceil(n_charts / CHARTS_PER_PAGE)
+
+
+def draw_chart_grid(c: canvas.Canvas, images: list[bytes], page_width: float,
+                    new_page) -> None:
+    """Places `images` six per page, left-to-right then top-to-bottom.
+
+    `new_page()` footers the current page, starts the next and returns its
+    content top — it is called once per grid page, so the page count is
+    exactly chart_page_count(len(images)).
+    """
+    cell_w = (page_width - 2 * MARGIN) / GRID_COLS
+    for i in range(0, len(images), CHARTS_PER_PAGE):
+        top = new_page()
+        cell_h = (top - FOOTER_H - 4 * mm) / GRID_ROWS
+        for j, img_bytes in enumerate(images[i:i + CHARTS_PER_PAGE]):
+            col, row = j % GRID_COLS, j // GRID_COLS
+            c.drawImage(
+                ImageReader(io.BytesIO(img_bytes)),
+                MARGIN + col * cell_w, top - (row + 1) * cell_h,
+                width=cell_w - 2 * mm, height=cell_h - 2 * mm,
+                preserveAspectRatio=True, anchor="n", mask="auto",
+            )
 
 
 def draw_table_header(c: canvas.Canvas, y: float) -> float:

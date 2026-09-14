@@ -1,25 +1,23 @@
 """PCM/WAT lot report PDF (A4 portrait).
 
 Layout: lot header + summary, then the full item table across as many pages
-as it needs, then the scatter plots 2x2 per page, then a wafer-trend chart
-for every item judged red or yellow.
+as it needs, then the scatter plots, then a wafer-trend chart for every item
+judged red or yellow — charts six per page (see draw_chart_grid).
 """
 
 import io
 import logging
-import math
 
 import plotly.graph_objects as go
 from reportlab.lib.pagesizes import A4
-from reportlab.lib.units import mm
-from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas
 
 from app.models.schemas import WatItemStats, WatScatterPlot, WatSummaryResponse
-from app.services.pdf_common import FOOTER_H, MARGIN, SUBTEXT_COLOR, draw_footer
+from app.services.pdf_common import MARGIN, SUBTEXT_COLOR, draw_footer
 from app.services.wat_pdf_common import (
-    STATUS_RGB, axis, base_layout, draw_header_band, draw_table_header,
-    draw_table_rows, paginate_table, render_batch, rows_per_page,
+    CHART_H, CHART_W, STATUS_RGB, axis, base_layout, chart_page_count,
+    draw_chart_grid, draw_header_band, draw_table_header, draw_table_rows,
+    paginate_table, render_batch, rows_per_page,
 )
 
 logger = logging.getLogger(__name__)
@@ -47,8 +45,12 @@ PLOT_TITLES = {
 # one batched plotly.io.write_images() call pays it once.
 # ---------------------------------------------------------------------------
 
-def _scatter_figure(plot: WatScatterPlot, width: int = 620, height: int = 820) -> go.Figure:
-    title = PLOT_TITLES.get(plot.kind, plot.kind)
+def _scatter_figure(plot: WatScatterPlot, pair_label: str = "",
+                    width: int = CHART_W, height: int = CHART_H) -> go.Figure:
+    # A device pair's four plots can now straddle a page, so each title names
+    # its pair.
+    kind = PLOT_TITLES.get(plot.kind, plot.kind)
+    title = f"{pair_label}  —  {kind}" if pair_label else kind
     fig = go.Figure()
 
     if plot.points:
@@ -57,12 +59,12 @@ def _scatter_figure(plot: WatScatterPlot, width: int = 620, height: int = 820) -
             y=[p.y for p in plot.points],
             mode="markers",
             marker=dict(
-                size=8,
+                size=6,
                 color=[p.wafer_id for p in plot.points],
                 colorscale=WAFER_COLORSCALE,
                 colorbar=dict(title=dict(text="Wafer", font=dict(size=9)),
-                              thickness=10, len=0.8),
-                line=dict(width=1, color="#ffffff"),   # ring separates overlaps
+                              tickfont=dict(size=9), thickness=8, len=0.8),
+                line=dict(width=0.6, color="#ffffff"),  # ring separates overlaps
             ),
         ))
         # Spec box: a rectangle is read instantly, four lines are not.
@@ -83,19 +85,19 @@ def _scatter_figure(plot: WatScatterPlot, width: int = 620, height: int = 820) -
     return fig
 
 
-def _trend_figure(item: WatItemStats, width: int = 1000, height: int = 647) -> go.Figure:
+def _trend_figure(item: WatItemStats, width: int = CHART_W, height: int = CHART_H) -> go.Figure:
     series = item.wafer_series
     fig = go.Figure()
     fig.add_trace(go.Scatter(
         x=[w.wafer_id for w in series],
         y=[w.mean for w in series],
         mode="lines+markers",
-        line=dict(color="#141413", width=2),
-        marker=dict(size=8, color="#141413"),
+        line=dict(color="#141413", width=1.5),
+        marker=dict(size=5, color="#141413"),
         error_y=dict(
             type="data",
             array=[(w.sigma * 3 if w.sigma is not None else 0) for w in series],
-            visible=True, color="rgba(20,20,19,0.35)", thickness=1.2, width=3,
+            visible=True, color="rgba(20,20,19,0.35)", thickness=1, width=2,
         ),
     ))
     for limit, label in ((item.spec_low, "LSL"), (item.spec_high, "USL")):
@@ -141,10 +143,8 @@ def count_pages(summary: WatSummaryResponse, content_top: float) -> int:
     """
     table_pages = len(paginate_table(summary.items, rows_per_page(content_top)))
     scatter = sum(len(pair.plots) for pair in summary.scatter_pairs)
-    scatter_pages = math.ceil(scatter / 4)
     flagged = sum(1 for i in summary.items if i.status in ("red", "yellow"))
-    trend_pages = math.ceil(flagged / 2)
-    return table_pages + scatter_pages + trend_pages
+    return table_pages + chart_page_count(scatter) + chart_page_count(flagged)
 
 
 def generate_wat_pdf(summary: WatSummaryResponse) -> bytes:
@@ -154,12 +154,12 @@ def generate_wat_pdf(summary: WatSummaryResponse) -> bytes:
     c = canvas.Canvas(buf, pagesize=A4)
 
     flagged = [i for i in summary.items if i.status in ("red", "yellow")]
-    scatter_plots = [p for pair in summary.scatter_pairs for p in pair.plots]
+    scatter_plots = [(pair.label, p) for pair in summary.scatter_pairs for p in pair.plots]
 
     # Every figure this report needs is known right now, before any page is
     # drawn — so build them all up front and render the whole batch in one
     # kaleido call (see render_batch) instead of one call per figure.
-    scatter_figs = [_scatter_figure(p) for p in scatter_plots]
+    scatter_figs = [_scatter_figure(p, label) for label, p in scatter_plots]
     trend_figs = [_trend_figure(i) for i in flagged]
     rendered = render_batch(scatter_figs + trend_figs)
     scatter_images = rendered[:len(scatter_figs)]
@@ -196,36 +196,9 @@ def generate_wat_pdf(summary: WatSummaryResponse) -> bytes:
             y = draw_table_header(c, end_page())
         y = draw_table_rows(c, y, rows)
 
-    # --- Scatter plots, 2x2 per page ----------------------------------------
-    for i in range(0, len(scatter_images), 4):
-        top = end_page()
-        chunk = scatter_images[i:i + 4]
-        cell_w = (page_width - 2 * MARGIN) / 2
-        cell_h = (top - FOOTER_H - 4 * mm) / 2
-        for j, img_bytes in enumerate(chunk):
-            col, row = j % 2, j // 2
-            img = ImageReader(io.BytesIO(img_bytes))
-            c.drawImage(
-                img,
-                MARGIN + col * cell_w,
-                top - (row + 1) * cell_h,
-                width=cell_w - 2 * mm, height=cell_h - 2 * mm,
-                preserveAspectRatio=True, anchor="n", mask="auto",
-            )
-
-    # --- Trend charts for flagged items -------------------------------------
-    for i in range(0, len(trend_images), 2):
-        top = end_page()
-        chunk = trend_images[i:i + 2]
-        cell_h = (top - FOOTER_H - 4 * mm) / 2
-        for j, img_bytes in enumerate(chunk):
-            img = ImageReader(io.BytesIO(img_bytes))
-            c.drawImage(
-                img,
-                MARGIN, top - (j + 1) * cell_h,
-                width=page_width - 2 * MARGIN, height=cell_h - 2 * mm,
-                preserveAspectRatio=True, anchor="n", mask="auto",
-            )
+    # --- Scatter plots, then trend charts for flagged items -----------------
+    draw_chart_grid(c, scatter_images, page_width, end_page)
+    draw_chart_grid(c, trend_images, page_width, end_page)
 
     draw_footer(c, page_width, page_no, total_pages)
     c.save()

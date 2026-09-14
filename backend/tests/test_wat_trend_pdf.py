@@ -16,12 +16,12 @@ def _empty_trend() -> WatTrendResponse:
     )
 
 
-def test_count_pages_is_table_pages_plus_two_charts_per_page():
+def test_count_pages_is_table_pages_plus_six_charts_per_page():
     trend = get_wat_trend("product_a", "P12345-A", 3)
     content_top = 700.0
     per_page = rows_per_page(content_top)
     expected = (max(1, math.ceil(len(trend.items) / per_page))
-                + math.ceil(len(trend.items) / 2))
+                + math.ceil(len(trend.items) / 6))
     assert count_pages(trend, content_top) == expected
 
 
