@@ -18,8 +18,8 @@ from reportlab.pdfgen import canvas
 from app.models.schemas import WatTrendItemStats, WatTrendResponse
 from app.services.pdf_common import FOOTER_H, MARGIN, draw_footer
 from app.services.wat_pdf_common import (
-    PAGE_BREAK_MARGIN, STATUS_HEX, STATUS_RGB, axis, base_layout,
-    draw_header_band, draw_item_row, draw_table_header, render_batch,
+    STATUS_HEX, STATUS_RGB, axis, base_layout, draw_header_band,
+    draw_table_header, draw_table_rows, paginate_table, render_batch,
     rows_per_page,
 )
 
@@ -83,8 +83,7 @@ def _draw_header(c: canvas.Canvas, page_width: float, page_height: float,
 def count_pages(trend: WatTrendResponse, content_top: float) -> int:
     """Total page count, known before drawing — ReportLab cannot revisit a
     finished page, so "Page n of N" needs N up front."""
-    per_page = rows_per_page(content_top)
-    table_pages = max(1, math.ceil(len(trend.items) / per_page))
+    table_pages = len(paginate_table(trend.items, rows_per_page(content_top)))
     chart_pages = math.ceil(len(trend.items) / 2)
     return table_pages + chart_pages
 
@@ -123,10 +122,10 @@ def generate_wat_trend_pdf(trend: WatTrendResponse) -> bytes:
         c.setFont("Helvetica", 9)
         c.setFillColorRGB(*STATUS_RGB["gray"])
         c.drawString(MARGIN, y, "No WAT data for this period.")
-    for item in trend.items:
-        if y < PAGE_BREAK_MARGIN:
+    for k, rows in enumerate(paginate_table(trend.items, rows_per_page(probe_top))):
+        if k > 0:
             y = draw_table_header(c, end_page())
-        y = draw_item_row(c, y, item)
+        y = draw_table_rows(c, y, rows)
 
     # --- Lot trend charts, 2 per page ---------------------------------------
     for i in range(0, len(chart_images), 2):

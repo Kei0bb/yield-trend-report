@@ -162,6 +162,7 @@ class WatWaferPoint(BaseModel):
 
 class WatItemStats(BaseModel):
     item_name: str
+    section: str            # "Isat" | "Vtl" | "Rc" | "Con" | "Others"
     unit: str = ""
     spec_low: float | None = None
     spec_high: float | None = None
@@ -174,7 +175,7 @@ class WatItemStats(BaseModel):
     cpk_state: str          # "value" | "infinite" | "undefined"
     oos_count: int
     oos_pct: float
-    status: str             # "red" | "yellow" | "gray" | "ok"
+    status: str             # "red" | "yellow" | "gray" | "ok" | "excluded"
     wafer_series: list[WatWaferPoint]
 
 
@@ -225,13 +226,14 @@ class WatLotPoint(BaseModel):
     sigma: float | None = None
     cpk: float | None = None
     cpk_state: str          # "value" | "infinite" | "undefined"
-    status: str             # "red" | "yellow" | "gray" | "ok"
+    status: str             # "red" | "yellow" | "gray" | "ok" | "excluded"
 
 
 class WatTrendItemStats(BaseModel):
     """Period-wide statistics for one item, pooled over every lot's raw site
     measurements — not an average of lot averages."""
     item_name: str
+    section: str
     unit: str = ""
     spec_low: float | None = None
     spec_high: float | None = None

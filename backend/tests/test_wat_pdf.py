@@ -10,7 +10,7 @@ from app.services.wat_service import get_wat_summary
 
 
 def test_status_marks_cover_every_status():
-    assert set(STATUS_MARK) == {"red", "yellow", "gray", "ok"}
+    assert set(STATUS_MARK) == {"red", "yellow", "gray", "ok", "excluded"}
     assert STATUS_MARK["red"] == "●"
     assert STATUS_MARK["yellow"] == "▲"
     assert STATUS_MARK["ok"] == ""
@@ -54,10 +54,10 @@ def test_generate_wat_pdf_handles_empty_summary():
 
 
 _TWO_FLAVOR_WAT_PAIRS = [
-    {"label": "Core RVT", "vth_n": "VTHN_RVT", "vth_p": "VTHP_RVT",
-     "idsat_n": "IDSATN_RVT", "idsat_p": "IDSATP_RVT"},
-    {"label": "Core LVT", "vth_n": "VTHN_LVT", "vth_p": "VTHP_LVT",
-     "idsat_n": "IDSATN_LVT", "idsat_p": "IDSATP_LVT"},
+    {"label": "Core RVT", "vth_n": "Vtl_N_RVT", "vth_p": "Vtl_P_RVT",
+     "idsat_n": "Isat_N_RVT", "idsat_p": "Isat_P_RVT"},
+    {"label": "Core LVT", "vth_n": "Vtl_N_LVT", "vth_p": "Vtl_P_LVT",
+     "idsat_n": "Isat_N_LVT", "idsat_p": "Isat_P_LVT"},
 ]
 
 
@@ -114,12 +114,15 @@ def test_page_count_matches_the_precomputed_total():
     assert actual == predicted
 
 
-def _make_table_only_summary(n_items: int) -> WatSummaryResponse:
+def _make_table_only_summary(n_items: int, sections=("Vtl",)) -> WatSummaryResponse:
     """A summary with only the item table (no scatter, nothing flagged), so
-    `count_pages`'s table_pages term is isolated from the scatter/trend terms."""
+    `count_pages`'s table_pages term is isolated from the scatter/trend terms.
+    Items are spread evenly over `sections`, in order."""
+    per_section = -(-n_items // len(sections))
     items = [
         WatItemStats(
-            item_name=f"ITEM_{i:03d}", unit="V", spec_low=0.0, spec_high=1.0,
+            item_name=f"{sections[i // per_section]}_ITEM_{i:03d}",
+            section=sections[i // per_section], unit="V", spec_low=0.0, spec_high=1.0,
             n=5, mean=0.5, sigma=0.05, min=0.4, max=0.6, cpk=2.0,
             cpk_state="value", oos_count=0, oos_pct=0.0, status="ok",
             wafer_series=[],
@@ -132,8 +135,9 @@ def _make_table_only_summary(n_items: int) -> WatSummaryResponse:
     )
 
 
+@pytest.mark.parametrize("sections", [("Vtl",), ("Isat", "Vtl", "Rc", "Con", "Others")])
 @pytest.mark.parametrize("n_items", [30, 51, 52, 53, 103])
-def test_page_count_matches_actual_across_item_counts(n_items):
+def test_page_count_matches_actual_across_item_counts(n_items, sections):
     """Regression for the _rows_per_page off-by-one: the drawing loop fits
     one more row per page than the old formula predicted, so a real ~60-item
     lot printed 'Page 1 of 4' on a 3-page report."""
@@ -143,7 +147,7 @@ def test_page_count_matches_actual_across_item_counts(n_items):
     from reportlab.pdfgen import canvas as _canvas
     from app.services.wat_pdf_service import _draw_header, count_pages
 
-    summary = _make_table_only_summary(n_items)
+    summary = _make_table_only_summary(n_items, sections)
     probe = _canvas.Canvas(io.BytesIO(), pagesize=A4)
     top = _draw_header(probe, A4[0], A4[1], summary)
     predicted = count_pages(summary, top)
@@ -152,16 +156,17 @@ def test_page_count_matches_actual_across_item_counts(n_items):
     assert actual == predicted, f"items={n_items} predicted={predicted} actual={actual}"
 
 
-def test_page_count_matches_at_52_items():
-    """The specific count called out in review: 52 items filled exactly one
-    page in the drawing loop while the old formula predicted 2."""
+def test_page_count_matches_at_51_items():
+    """The specific count called out in review: 52 rows filled exactly one
+    page in the drawing loop while the old formula predicted 2. With the
+    section heading, 51 items + 1 heading are those 52 rows."""
     import io
     from pypdf import PdfReader
     from reportlab.lib.pagesizes import A4
     from reportlab.pdfgen import canvas as _canvas
     from app.services.wat_pdf_service import _draw_header, count_pages
 
-    summary = _make_table_only_summary(52)
+    summary = _make_table_only_summary(51)
     probe = _canvas.Canvas(io.BytesIO(), pagesize=A4)
     top = _draw_header(probe, A4[0], A4[1], summary)
     predicted = count_pages(summary, top)

@@ -201,10 +201,10 @@ _WAT_IDSAT_CENTER = {"RVT": 620.0, "LVT": 780.0, "HVT": 480.0,
 # lots — do not read them as realistic PCM/WAT spec limits.
 _WAT_MISC_ITEMS = [
     ("RS_POLY", "Ohm/sq", 1040.0, 20.0, None, None),
-    ("RS_NDIFF", "Ohm/sq", 78.0, 2.5, 64.0, 92.0),
-    ("RS_PDIFF", "Ohm/sq", 132.0, 4.0, 106.0, 158.0),
+    ("Rc_NDIFF", "Ohm/sq", 78.0, 2.5, 64.0, 92.0),
+    ("Rc_PDIFF", "Ohm/sq", 132.0, 4.0, 106.0, 158.0),
     ("CAP_MIM", "fF/um2", 2.05, 0.04, 1.79, 2.31),
-    ("VIA_CHAIN_R", "Ohm", 1.85, 0.09, 1.265, 2.435),
+    ("Con_VIA_CHAIN", "Ohm", 1.85, 0.09, 1.265, 2.435),
     ("GATE_OX_TOX", "nm", 2.20, 0.05, 1.875, 2.525),
 ]
 
@@ -253,7 +253,7 @@ def mock_wat_dataframe(product_id: str, lot_id: str) -> pd.DataFrame:
 
     25 wafers x 9 sites x (6 flavors x 4 items + 6 misc items) = 30 items.
     Two items are deliberately degraded so the red/yellow paths render in
-    mock mode: VTHN_ULVT drifts out of spec (red) and RS_NDIFF is given a
+    mock mode: Vtl_N_ULVT drifts out of spec (red) and Rc_NDIFF is given a
     wide spread that lands its Cpk between 1.00 and 1.33 (yellow).
     """
     lots = mock_wat_lots(product_id, _WAT_LOT_HORIZON_MONTHS)
@@ -269,19 +269,19 @@ def mock_wat_dataframe(product_id: str, lot_id: str) -> pd.DataFrame:
         vc = _WAT_VTH_CENTER[flavor]
         ic = _WAT_IDSAT_CENTER[flavor]
         # Margins below give a theoretical Cpk ~2.05 for non-degraded items
-        # (see the sizing note above _WAT_MISC_ITEMS); VTHN_ULVT's
+        # (see the sizing note above _WAT_MISC_ITEMS); Vtl_N_ULVT's
         # center-shift defect (below) still clears this wider Vth margin.
-        specs.append((f"VTHN_{flavor}", "V", vc, 0.018, vc - 0.117, vc + 0.117))
-        specs.append((f"VTHP_{flavor}", "V", -vc, 0.018, -vc - 0.117, -vc + 0.117))
-        specs.append((f"IDSATN_{flavor}", "uA/um", ic, ic * 0.03, ic * 0.805, ic * 1.195))
-        specs.append((f"IDSATP_{flavor}", "uA/um", ic * 0.45, ic * 0.014,
+        specs.append((f"Vtl_N_{flavor}", "V", vc, 0.018, vc - 0.117, vc + 0.117))
+        specs.append((f"Vtl_P_{flavor}", "V", -vc, 0.018, -vc - 0.117, -vc + 0.117))
+        specs.append((f"Isat_N_{flavor}", "uA/um", ic, ic * 0.03, ic * 0.805, ic * 1.195))
+        specs.append((f"Isat_P_{flavor}", "uA/um", ic * 0.45, ic * 0.014,
                       ic * 0.359, ic * 0.541))
     specs.extend(_WAT_MISC_ITEMS)
 
     rows: list[dict] = []
     for item_name, unit, center, spread, spec_low, spec_high in specs:
         # Deliberate defects so mock exercises red / yellow rendering.
-        if item_name == "VTHN_ULVT":
+        if item_name == "Vtl_N_ULVT":
             # Pushes tail past the upper spec → red. Coefficient re-tuned
             # alongside the round-2 Vth margin widening (0.086 -> 0.117);
             # the old 3.2 only cleared a Cpk of ~1.04 against the wider
@@ -292,8 +292,8 @@ def mock_wat_dataframe(product_id: str, lot_id: str) -> pd.DataFrame:
             # sampling below is enough here.
             center += spread * 5.0
 
-        if item_name == "RS_NDIFF":
-            # RS_NDIFF is the deliberate yellow (low-Cpk, in-spec) example.
+        if item_name == "Rc_NDIFF":
+            # Rc_NDIFF is the deliberate yellow (low-Cpk, in-spec) example.
             # A plain random draw isn't reliable enough for this one: at
             # n=225, a Cpk estimator's standard error is ~Cpk*0.047 (per the
             # statistical review that drove this fix), which is large
@@ -378,7 +378,7 @@ def mock_wat_trend_dataframe(product_id: str, months: int) -> pd.DataFrame:
 
     Reuses mock_wat_dataframe per lot, so a lot's rows are identical whether
     read through the single-lot path or the trend path, and the deliberate
-    defects (VTHN_ULVT red, RS_NDIFF yellow) show up on the trend too.
+    defects (Vtl_N_ULVT red, Rc_NDIFF yellow) show up on the trend too.
     """
     lots = mock_wat_lots(product_id, months)
     frames: list[pd.DataFrame] = []

@@ -5,6 +5,7 @@ both reports, and a copy would drift the moment one of them gained a column.
 """
 
 import tempfile
+from dataclasses import dataclass
 from pathlib import Path
 
 import plotly.graph_objects as go
@@ -15,20 +16,23 @@ from reportlab.pdfgen import canvas
 from app.services.pdf_common import (
     FONT_FAMILY, FOOTER_H, MARGIN, SUBTEXT_COLOR, TEXT_COLOR, draw_logo,
 )
+from app.services.wat_service import SECTION_OTHERS
 
 STATUS_MARK: dict[str, str] = {"red": "●", "yellow": "▲",
-                               "gray": "–", "ok": ""}
+                               "gray": "–", "ok": "", "excluded": ""}
 
 STATUS_RGB: dict[str, tuple[float, float, float]] = {
     "red": (0.776, 0.271, 0.271),
     "yellow": (0.831, 0.627, 0.090),
     "gray": (0.557, 0.545, 0.510),
     "ok": (0.216, 0.208, 0.184),
+    "excluded": (0.216, 0.208, 0.184),
 }
 
 # Plotly needs hex; ReportLab needs float triples. Same colors, both forms.
 STATUS_HEX: dict[str, str] = {
     "red": "#c64545", "yellow": "#d4a017", "gray": "#8e8b82", "ok": "#141413",
+    "excluded": "#141413",
 }
 
 # 12 columns: mark, item, unit, low, high, N, mean, sigma, min, max, cpk, oos.
@@ -138,7 +142,7 @@ def draw_item_row(c: canvas.Canvas, y: float, item) -> float:
         fmt_value(item.min),
         fmt_value(item.max),
         fmt_cpk(item.cpk, item.cpk_state),
-        str(item.oos_count),
+        "—" if item.section == SECTION_OTHERS else str(item.oos_count),
     ]
     c.saveState()
     c.setFont("Helvetica", TABLE_FONT)
@@ -155,6 +159,80 @@ def draw_item_row(c: canvas.Canvas, y: float, item) -> float:
         x += width * mm
     c.restoreState()
     return y - ROW_H
+
+
+def section_label(name: str, count: int) -> str:
+    """Heading text; the web table mirrors it (with σ — built-in Helvetica
+    has no σ glyph, hence "Sigma" here, as in COL_HEADERS)."""
+    label = f"{name}  ·  {count} item{'s' if count != 1 else ''}"
+    if name == SECTION_OTHERS:
+        label += "  ·  Sigma / Cpk / OOS not evaluated"
+    return label
+
+
+def draw_section_row(c: canvas.Canvas, y: float, name: str, count: int) -> float:
+    """A tinted full-width band naming the section that follows."""
+    c.saveState()
+    c.setFillColorRGB(0.955, 0.945, 0.925)
+    c.rect(MARGIN, y - 1.3 * mm, sum(COL_WIDTHS) * mm, ROW_H, stroke=0, fill=1)
+    c.setFillColorRGB(*STATUS_RGB["ok"])
+    c.setFont("Helvetica-Bold", TABLE_FONT)
+    c.drawString(MARGIN + 1 * mm, y, section_label(name, count))
+    c.restoreState()
+    return y - ROW_H
+
+
+@dataclass(frozen=True)
+class TableRow:
+    """One drawn table row: a section heading (`item` is None) or an item."""
+    section: str
+    count: int = 0
+    item: object = None
+
+
+def table_rows(items) -> list[TableRow]:
+    """Items with a heading row before each section. `items` must already be
+    in section order (the services sort them)."""
+    rows: list[TableRow] = []
+    i = 0
+    while i < len(items):
+        section = items[i].section
+        j = i
+        while j < len(items) and items[j].section == section:
+            j += 1
+        rows.append(TableRow(section=section, count=j - i))
+        rows.extend(TableRow(section=section, item=it) for it in items[i:j])
+        i = j
+    return rows
+
+
+def paginate_table(items, per_page: int) -> list[list[TableRow]]:
+    """Table rows split into pages. Always at least one (possibly empty) page.
+
+    A heading is never left as the last row of a page — it moves to the next
+    page with its first item. Both count_pages and the drawing loop use this
+    one split, so "Page n of N" cannot drift from what is drawn.
+    """
+    pages: list[list[TableRow]] = [[]]
+    rows = table_rows(items)
+    for k, row in enumerate(rows):
+        page = pages[-1]
+        full = len(page) >= per_page
+        orphan = (row.item is None and len(page) == per_page - 1
+                  and k + 1 < len(rows) and per_page > 1)
+        if page and (full or orphan):
+            pages.append([])
+        pages[-1].append(row)
+    return pages
+
+
+def draw_table_rows(c: canvas.Canvas, y: float, rows: list[TableRow]) -> float:
+    for row in rows:
+        if row.item is None:
+            y = draw_section_row(c, y, row.section, row.count)
+        else:
+            y = draw_item_row(c, y, row.item)
+    return y
 
 
 def rows_per_page(content_top: float) -> int:

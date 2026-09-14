@@ -64,6 +64,7 @@ export const STATUS_COLOR: Record<string, string> = {
   yellow: "var(--warning)",
   gray: "var(--muted-soft)",
   ok: "var(--ink)",
+  excluded: "var(--ink)",
 };
 
 /** Plotly parses colors with tinycolor and cannot resolve CSS custom
@@ -71,7 +72,7 @@ export const STATUS_COLOR: Record<string, string> = {
  *  error. Literal mirror of STATUS_COLOR for anything handed to Plotly.
  *  Values match index.css and the backend's STATUS_HEX. */
 export const STATUS_PLOT_COLOR: Record<string, string> = {
-  red: "#c64545", yellow: "#d4a017", gray: "#8e8b82", ok: INK,
+  red: "#c64545", yellow: "#d4a017", gray: "#8e8b82", ok: INK, excluded: INK,
 };
 
 /** Printed alongside the color so a black-and-white PDF still carries the
@@ -81,6 +82,7 @@ export const STATUS_MARK: Record<string, string> = {
   yellow: "▲",
   gray: "–",
   ok: "",
+  excluded: "",
 };
 
 export const SPEC_LINE_COLOR = "#c64545";

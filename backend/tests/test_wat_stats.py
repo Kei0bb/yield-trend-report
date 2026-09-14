@@ -117,27 +117,27 @@ def test_out_of_spec_without_spec_is_zero():
 # --- resolve_spec ----------------------------------------------------------
 
 def test_resolve_spec_returns_the_single_value():
-    assert resolve_spec(pd.Series([0.38, 0.38, 0.38]), "VTH_N") == 0.38
+    assert resolve_spec(pd.Series([0.38, 0.38, 0.38]), "Vtl_N") == 0.38
 
 
 def test_resolve_spec_ignores_nulls():
-    assert resolve_spec(pd.Series([None, 0.38, None]), "VTH_N") == 0.38
+    assert resolve_spec(pd.Series([None, 0.38, None]), "Vtl_N") == 0.38
 
 
 def test_resolve_spec_all_null_is_none():
-    assert resolve_spec(pd.Series([None, None]), "VTH_N") is None
+    assert resolve_spec(pd.Series([None, None]), "Vtl_N") is None
 
 
 def test_resolve_spec_takes_the_mode_and_warns_on_mixed(caplog):
     s = pd.Series([0.38, 0.38, 0.40])
     with caplog.at_level("WARNING"):
-        assert resolve_spec(s, "VTH_N") == 0.38
-    assert "VTH_N" in caplog.text
+        assert resolve_spec(s, "Vtl_N") == 0.38
+    assert "Vtl_N" in caplog.text
 
 
 def test_resolve_spec_tie_breaks_on_ascending_sort():
     s = pd.Series([0.40, 0.38])
-    assert resolve_spec(s, "VTH_N") == 0.38
+    assert resolve_spec(s, "Vtl_N") == 0.38
 
 
 # --- compute_item_stats ----------------------------------------------------
@@ -154,8 +154,8 @@ def _group(values, spec_low=0.38, spec_high=0.52, unit="V"):
 
 
 def test_item_stats_basic_fields():
-    st = compute_item_stats(_group([0.44, 0.45, 0.46]), "VTH_N")
-    assert st["item_name"] == "VTH_N"
+    st = compute_item_stats(_group([0.44, 0.45, 0.46]), "Vtl_N")
+    assert st["item_name"] == "Vtl_N"
     assert st["unit"] == "V"
     assert st["n"] == 3
     assert st["mean"] == pytest.approx(0.45)
@@ -166,17 +166,17 @@ def test_item_stats_basic_fields():
 
 
 def test_item_stats_uses_sample_stddev_ddof_1():
-    st = compute_item_stats(_group([1.0, 2.0, 3.0], spec_low=None, spec_high=None), "X")
+    st = compute_item_stats(_group([1.0, 2.0, 3.0], spec_low=None, spec_high=None), "Vtl_X")
     assert st["sigma"] == pytest.approx(1.0)   # ddof=1, not 0.8165
 
 
 def test_item_stats_drops_null_measurements_from_n():
-    st = compute_item_stats(_group([0.44, None, 0.46]), "VTH_N")
+    st = compute_item_stats(_group([0.44, None, 0.46]), "Vtl_N")
     assert st["n"] == 2
 
 
 def test_item_stats_all_null_yields_zero_n_and_gray():
-    st = compute_item_stats(_group([None, None]), "VTH_N")
+    st = compute_item_stats(_group([None, None]), "Vtl_N")
     assert st["n"] == 0
     assert st["mean"] is None
     assert st["cpk_state"] == "undefined"
@@ -184,7 +184,7 @@ def test_item_stats_all_null_yields_zero_n_and_gray():
 
 
 def test_item_stats_reports_out_of_spec_count_and_pct():
-    st = compute_item_stats(_group([0.30, 0.45, 0.45, 0.45]), "VTH_N")
+    st = compute_item_stats(_group([0.30, 0.45, 0.45, 0.45]), "Vtl_N")
     assert st["oos_count"] == 1
     assert st["oos_pct"] == pytest.approx(25.0)
 
@@ -198,7 +198,7 @@ def test_item_stats_wafer_series_is_ordered_and_sized():
         "spec_high": [0.52] * 4,
         "meas_data": [0.46, 0.46, 0.44, 0.44],
     })
-    st = compute_item_stats(df, "VTH_N")
+    st = compute_item_stats(df, "Vtl_N")
     assert [w["wafer_id"] for w in st["wafer_series"]] == [1, 2]
     assert st["wafer_series"][0]["mean"] == pytest.approx(0.44)
     assert st["wafer_series"][0]["n"] == 2
@@ -213,12 +213,12 @@ def test_item_stats_wafer_sigma_is_none_when_single_site():
         "spec_high": [0.52],
         "meas_data": [0.45],
     })
-    st = compute_item_stats(df, "VTH_N")
+    st = compute_item_stats(df, "Vtl_N")
     assert st["wafer_series"][0]["sigma"] is None
 
 
 def test_item_stats_has_no_nan_in_json_facing_fields():
     """NaN is not valid JSON — every numeric field must be a float or None."""
-    st = compute_item_stats(_group([None, None]), "VTH_N")
+    st = compute_item_stats(_group([None, None]), "Vtl_N")
     for key in ("mean", "sigma", "min", "max", "cpk"):
         assert st[key] is None or not math.isnan(st[key])

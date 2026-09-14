@@ -18,7 +18,7 @@ from app.models.schemas import (
 from app.services.mock_data import mock_wat_trend_dataframe
 from app.services.product_config import primary_product_id, resolve_display_name
 from app.services.wat_queries import WAT_TREND_COLUMNS, query_wat_trend
-from app.services.wat_service import _item_core, resolve_spec
+from app.services.wat_service import _item_core, item_sort_key, resolve_spec
 
 logger = logging.getLogger(__name__)
 
@@ -122,6 +122,7 @@ def get_wat_trend(nickname: str, product_id: str, months: int) -> WatTrendRespon
         series = [WatLotPoint(**p)
                   for p in build_lot_series(group, name, spec_low, spec_high, lot_dates)]
         items.append(WatTrendItemStats(**core, lot_series=series))
+    items.sort(key=lambda i: item_sort_key(i.item_name))
 
     lots = _lot_infos(df, lot_dates) if not df.empty else []
     logger.info(

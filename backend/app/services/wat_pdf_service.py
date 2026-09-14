@@ -18,8 +18,8 @@ from reportlab.pdfgen import canvas
 from app.models.schemas import WatItemStats, WatScatterPlot, WatSummaryResponse
 from app.services.pdf_common import FOOTER_H, MARGIN, SUBTEXT_COLOR, draw_footer
 from app.services.wat_pdf_common import (
-    PAGE_BREAK_MARGIN, STATUS_RGB, axis, base_layout, draw_header_band,
-    draw_item_row, draw_table_header, render_batch, rows_per_page,
+    STATUS_RGB, axis, base_layout, draw_header_band, draw_table_header,
+    draw_table_rows, paginate_table, render_batch, rows_per_page,
 )
 
 logger = logging.getLogger(__name__)
@@ -139,8 +139,7 @@ def count_pages(summary: WatSummaryResponse, content_top: float) -> int:
     front. Every section's length is a pure function of the summary, so the
     count is computed rather than guessed.
     """
-    per_page = rows_per_page(content_top)
-    table_pages = max(1, math.ceil(len(summary.items) / per_page))
+    table_pages = len(paginate_table(summary.items, rows_per_page(content_top)))
     scatter = sum(len(pair.plots) for pair in summary.scatter_pairs)
     scatter_pages = math.ceil(scatter / 4)
     flagged = sum(1 for i in summary.items if i.status in ("red", "yellow"))
@@ -192,10 +191,10 @@ def generate_wat_pdf(summary: WatSummaryResponse) -> bytes:
         c.setFont("Helvetica", 9)
         c.setFillColorRGB(*STATUS_RGB["gray"])
         c.drawString(MARGIN, y, "No WAT data for this lot.")
-    for item in summary.items:
-        if y < PAGE_BREAK_MARGIN:
+    for k, rows in enumerate(paginate_table(summary.items, rows_per_page(probe_top))):
+        if k > 0:
             y = draw_table_header(c, end_page())
-        y = draw_item_row(c, y, item)
+        y = draw_table_rows(c, y, rows)
 
     # --- Scatter plots, 2x2 per page ----------------------------------------
     for i in range(0, len(scatter_images), 4):

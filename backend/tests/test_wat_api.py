@@ -2,6 +2,7 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.services.mock_data import mock_wat_lots
+from app.services.wat_service import item_sort_key
 
 client = TestClient(app)
 
@@ -29,7 +30,7 @@ def test_summary_endpoint_returns_items_and_scatter():
     body = res.json()
     assert body["lot_id"] == lot
     assert len(body["items"]) == 30
-    assert body["items"] == sorted(body["items"], key=lambda i: i["item_name"])
+    assert body["items"] == sorted(body["items"], key=lambda i: item_sort_key(i["item_name"]))
 
 
 def test_summary_endpoint_unknown_lot_is_empty_not_500():

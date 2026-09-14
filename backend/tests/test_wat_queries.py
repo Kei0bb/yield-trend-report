@@ -102,7 +102,7 @@ def test_query_wat_detail_strips_padded_names_and_coerces_decimal(monkeypatch):
     """Oracle CHAR columns arrive space-padded, and MEAS_DATA/SPEC_* can
     arrive as decimal.Decimal — either would break downstream matching
     (item_name lookup) or stats (Series.std(ddof=1) on object dtype)."""
-    row = (1, 1, "VTHN_RVT   ", "V   ", Decimal("0.10"), Decimal("0.90"),
+    row = (1, 1, "Vtl_N_RVT   ", "V   ", Decimal("0.10"), Decimal("0.90"),
            Decimal("0.45"), "2026-01-01")
     cursor = MagicMock()
     cursor.fetchall.return_value = [row]
@@ -113,7 +113,7 @@ def test_query_wat_detail_strips_padded_names_and_coerces_decimal(monkeypatch):
 
     df = wat_queries.query_wat_detail("P12345-A", "LOT-1")
 
-    assert df.loc[0, "item_name"] == "VTHN_RVT"
+    assert df.loc[0, "item_name"] == "Vtl_N_RVT"
     assert df.loc[0, "item_unit"] == "V"
     assert df["meas_data"].dtype.kind == "f"
     assert df["spec_low"].dtype.kind == "f"

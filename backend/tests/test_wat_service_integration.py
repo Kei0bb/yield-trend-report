@@ -1,5 +1,5 @@
 from app.services.mock_data import mock_wat_lots
-from app.services.wat_service import get_wat_lots, get_wat_summary
+from app.services.wat_service import get_wat_lots, get_wat_summary, item_sort_key
 
 
 def _first_lot(product_id="P12345-A"):
@@ -13,10 +13,12 @@ def test_lots_are_returned_newest_first():
     assert res.product_id == "P12345-A"
 
 
-def test_summary_items_are_sorted_by_item_name():
+def test_summary_items_are_sorted_by_section_then_item_name():
     res = get_wat_summary("product_a", "P12345-A", _first_lot())
     names = [i.item_name for i in res.items]
-    assert names == sorted(names)
+    assert names == sorted(names, key=item_sort_key)
+    assert [i.section for i in res.items][0] == "Isat"
+    assert [i.section for i in res.items][-1] == "Others"
     assert len(names) == 30      # 6 flavors x 4 + 6 misc
 
 
@@ -58,10 +60,10 @@ def test_product_without_wat_config_has_no_scatter_pairs(monkeypatch):
 
 _REALISTIC_WAT_PAIR = [{
     "label": "Core RVT",
-    "vth_n": "VTHN_RVT",
-    "vth_p": "VTHP_RVT",
-    "idsat_n": "IDSATN_RVT",
-    "idsat_p": "IDSATP_RVT",
+    "vth_n": "Vtl_N_RVT",
+    "vth_p": "Vtl_P_RVT",
+    "idsat_n": "Isat_N_RVT",
+    "idsat_p": "Isat_P_RVT",
 }]
 
 
