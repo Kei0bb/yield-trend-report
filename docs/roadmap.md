@@ -10,16 +10,16 @@
 
 ---
 
-## 現状サマリ（2026-06 時点）
+## 現状サマリ（2026-09 時点）
 
 | 項目 | 現状 |
 |---|---|
 | アクセス | 共有 Windows マシン上で `http://yieldportal.socionext.com`（nginx → uvicorn :8000）を計画中。平文 HTTP。 |
 | 認証 | なし（社内 LAN・閲覧専用のため不要） |
-| ページ | Dashboard（一覧）/ Report（単一製品トレンド + PDF）/ Explore（ロット drill-down） |
-| データ | Oracle `SEMI_CP_HEADER` / `SEMI_CP_BIN_SUM`。CP/FT/SLT を `PROCESS` 列で区別。 |
+| ページ | Dashboard（一覧）/ Report（単一製品の歩留りトレンド + PDF、PCM/WAT 単ロット・トレンドの各タブ）/ Explore（ロット drill-down）/ Wafer Map |
+| データ | Oracle `SEMI_CP_HEADER` / `SEMI_CP_BIN_SUM`（CP/FT を `PROCESS` 列で区別）、`SEMI_FT_HEADER` / `SEMI_FT_BIN_SUM`（SLT。Report/PDF のみ）、`WAT_MEASURE_DETAIL`（PCM/WAT） |
 | キャッシュ | メモリ内 3h TTL（単一プロセス） |
-| 設定 | `product_config.yaml`（製品ごとの process / report ユニット / bin_group） |
+| 設定 | `product_config.yaml`（製品ごとの process / report ユニット / bin_group、散布図項目対応の `wat:` ブロック） |
 | デプロイ | 手動（git pull → build → サービス再起動） |
 
 ---
@@ -106,10 +106,13 @@
 ## C. データ層
 
 ### C-1. FT / SLT の本格活用 〔中期〕
-- **なぜ:** スキーマ上は CP/FT/SLT を `PROCESS` 列で扱えるが、運用・設定の
-  作り込みは製品ごとにまちまち。
+- **なぜ:** CP/FT は `SEMI_CP_HEADER`/`SEMI_CP_BIN_SUM` を `PROCESS` 列で区別して
+  扱えるが、SLT は別テーブル（`SEMI_FT_HEADER`/`SEMI_FT_BIN_SUM`、Report/PDF の
+  みで有効。Dashboard/Explore の `lot_queries.py` は SLT 非対応）で、運用・設定
+  の作り込みも製品ごとにまちまち。
 - **トリガー:** FT/SLT を定常的にレポートする製品が増えたとき。
-- **規模感:** 中。`product_config.yaml` の整備と、工程横断ビューの検討。
+- **規模感:** 中。`product_config.yaml` の整備と、工程横断ビューの検討。SLT を
+  Dashboard/Explore にも出す場合は `lot_queries.py` の対応が別途必要。
 
 ### C-2. 工程間の歩留まり相関・追跡 〔長期〕
 - **なぜ:** CP → FT → SLT の歩留まり連動を 1 つの substrate で追えると原因分析が進む。
