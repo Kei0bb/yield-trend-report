@@ -7,15 +7,15 @@ def test_parse_wat_pairs_reads_labels_and_items():
     raw = {
         "pairs": [
             {"label": "Core RVT",
-             "vth": {"n": "VTHN_RVT", "p": "VTHP_RVT"},
-             "idsat": {"n": "IDSATN_RVT", "p": "IDSATP_RVT"}},
+             "vth": {"n": "Vtl_N_RVT", "p": "Vtl_P_RVT"},
+             "idsat": {"n": "Isat_N_RVT", "p": "Isat_P_RVT"}},
         ]
     }
     pairs = _parse_wat_pairs(raw, "prod_a")
     assert pairs == [{
         "label": "Core RVT",
-        "vth_n": "VTHN_RVT", "vth_p": "VTHP_RVT",
-        "idsat_n": "IDSATN_RVT", "idsat_p": "IDSATP_RVT",
+        "vth_n": "Vtl_N_RVT", "vth_p": "Vtl_P_RVT",
+        "idsat_n": "Isat_N_RVT", "idsat_p": "Isat_P_RVT",
     }]
 
 

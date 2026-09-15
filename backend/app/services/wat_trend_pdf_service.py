@@ -1,7 +1,7 @@
 """PCM/WAT trend report PDF (A4 portrait).
 
 Layout: period header + the full item table, then a lot-trend chart for
-EVERY item, two per page. The single-lot report charts only its flagged
+EVERY item, six per page. The single-lot report charts only its flagged
 items; this one is the period's record, so nothing is dropped.
 """
 
@@ -11,23 +11,23 @@ import math
 
 import plotly.graph_objects as go
 from reportlab.lib.pagesizes import A4
-from reportlab.lib.units import mm
-from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas
 
 from app.models.schemas import WatTrendItemStats, WatTrendResponse
-from app.services.pdf_common import FOOTER_H, MARGIN, draw_footer
+from app.services.pdf_common import MARGIN, draw_footer
 from app.services.wat_pdf_common import (
-    PAGE_BREAK_MARGIN, STATUS_HEX, STATUS_RGB, axis, base_layout,
-    draw_header_band, draw_item_row, draw_table_header, render_batch,
-    rows_per_page,
+    CHART_H, CHART_W, STATUS_HEX, STATUS_RGB, axis, base_layout,
+    chart_page_count, draw_chart_grid, draw_header_band, draw_table_header,
+    draw_table_rows, paginate_table, render_batch, rows_per_page,
 )
 
 logger = logging.getLogger(__name__)
 
+MAX_LOT_LABELS = 12
+
 
 def _lot_trend_figure(item: WatTrendItemStats,
-                      width: int = 1000, height: int = 647) -> go.Figure:
+                      width: int = CHART_W, height: int = CHART_H) -> go.Figure:
     """Lot means with +/-3 sigma whiskers against the period's spec lines.
 
     Marker color carries each lot's own judgement, so a reader can see which
@@ -39,15 +39,15 @@ def _lot_trend_figure(item: WatTrendItemStats,
         x=[p.lot_id for p in series],
         y=[p.mean for p in series],
         mode="lines+markers",
-        line=dict(color="#141413", width=2),
+        line=dict(color="#141413", width=1.5),
         marker=dict(
-            size=8,
+            size=6,
             color=[STATUS_HEX.get(p.status, STATUS_HEX["ok"]) for p in series],
         ),
         error_y=dict(
             type="data",
             array=[(p.sigma * 3 if p.sigma is not None else 0) for p in series],
-            visible=True, color="rgba(20,20,19,0.35)", thickness=1.2, width=3,
+            visible=True, color="rgba(20,20,19,0.35)", thickness=1, width=2,
         ),
     ))
     for limit, label in ((item.spec_low, "LSL"), (item.spec_high, "USL")):
@@ -56,10 +56,19 @@ def _lot_trend_figure(item: WatTrendItemStats,
                           annotation_text=label,
                           annotation_font=dict(size=9, color="#c64545"))
 
+    # In a six-per-page cell a 6-month period's lot ids, all printed upright,
+    # would eat a third of the chart. Every lot keeps its point; only the
+    # labels are thinned to at most MAX_LOT_LABELS.
+    lot_ids = [p.lot_id for p in series]
+    step = max(1, math.ceil(len(lot_ids) / MAX_LOT_LABELS))
+    x_axis = axis("")
+    x_axis["tickfont"] = dict(x_axis["tickfont"], size=8)
+    x_axis.update(type="category", tickangle=-90, tickmode="array",
+                  tickvals=lot_ids[::step], ticktext=lot_ids[::step])
+
     unit = f" [{item.unit}]" if item.unit else ""
     fig.update_layout(**base_layout(width, height, f"{item.item_name}{unit}"),
-                      xaxis=dict(**axis("Lot"), type="category"),
-                      yaxis=axis(""))
+                      xaxis=x_axis, yaxis=axis(""))
     return fig
 
 
@@ -83,10 +92,8 @@ def _draw_header(c: canvas.Canvas, page_width: float, page_height: float,
 def count_pages(trend: WatTrendResponse, content_top: float) -> int:
     """Total page count, known before drawing — ReportLab cannot revisit a
     finished page, so "Page n of N" needs N up front."""
-    per_page = rows_per_page(content_top)
-    table_pages = max(1, math.ceil(len(trend.items) / per_page))
-    chart_pages = math.ceil(len(trend.items) / 2)
-    return table_pages + chart_pages
+    table_pages = len(paginate_table(trend.items, rows_per_page(content_top)))
+    return table_pages + chart_page_count(len(trend.items))
 
 
 def generate_wat_trend_pdf(trend: WatTrendResponse) -> bytes:
@@ -123,24 +130,13 @@ def generate_wat_trend_pdf(trend: WatTrendResponse) -> bytes:
         c.setFont("Helvetica", 9)
         c.setFillColorRGB(*STATUS_RGB["gray"])
         c.drawString(MARGIN, y, "No WAT data for this period.")
-    for item in trend.items:
-        if y < PAGE_BREAK_MARGIN:
+    for k, rows in enumerate(paginate_table(trend.items, rows_per_page(probe_top))):
+        if k > 0:
             y = draw_table_header(c, end_page())
-        y = draw_item_row(c, y, item)
+        y = draw_table_rows(c, y, rows)
 
-    # --- Lot trend charts, 2 per page ---------------------------------------
-    for i in range(0, len(chart_images), 2):
-        top = end_page()
-        chunk = chart_images[i:i + 2]
-        cell_h = (top - FOOTER_H - 4 * mm) / 2
-        for j, img_bytes in enumerate(chunk):
-            img = ImageReader(io.BytesIO(img_bytes))
-            c.drawImage(
-                img,
-                MARGIN, top - (j + 1) * cell_h,
-                width=page_width - 2 * MARGIN, height=cell_h - 2 * mm,
-                preserveAspectRatio=True, anchor="n", mask="auto",
-            )
+    # --- Lot trend charts, six per page -------------------------------------
+    draw_chart_grid(c, chart_images, page_width, end_page)
 
     draw_footer(c, page_width, page_no, total_pages)
     c.save()

@@ -61,7 +61,7 @@ def test_query_wat_trend_normalizes_padded_text_and_decimals(monkeypatch):
     object-dtype column breaks Series.std(ddof=1) downstream.
     """
     rows = [(
-        "LOT-1  ", 3, 5, "VTHN_RVT  ", "V  ",
+        "LOT-1  ", 3, 5, "Vtl_N_RVT  ", "V  ",
         Decimal("0.30"), Decimal("0.60"), Decimal("0.45"), "2026-06-14",
     )]
     cursor = MagicMock()
@@ -74,7 +74,7 @@ def test_query_wat_trend_normalizes_padded_text_and_decimals(monkeypatch):
     df = wat_queries.query_wat_trend("P", date(2026, 1, 1), date(2026, 2, 1))
 
     assert df["lot_id"].iloc[0] == "LOT-1"
-    assert df["item_name"].iloc[0] == "VTHN_RVT"
+    assert df["item_name"].iloc[0] == "Vtl_N_RVT"
     assert df["item_unit"].iloc[0] == "V"
     assert pd.api.types.is_numeric_dtype(df["meas_data"])
     assert pd.api.types.is_numeric_dtype(df["spec_low"])

@@ -145,11 +145,15 @@ export interface WatWaferPoint {
   sigma: number | null;
 }
 
-export type WatStatus = "red" | "yellow" | "gray" | "ok";
+/** "excluded" = an Others item: no sigma/Cpk/OOS, never judged. */
+export type WatStatus = "red" | "yellow" | "gray" | "ok" | "excluded";
+/** Item-table section, in display order; the backend assigns it. */
+export type WatSection = "Isat" | "Vtl" | "Rc" | "Con" | "Others";
 export type WatCpkState = "value" | "infinite" | "undefined";
 
 export interface WatItemStats {
   item_name: string;
+  section: WatSection;
   unit: string;
   spec_low: number | null;
   spec_high: number | null;
@@ -212,6 +216,7 @@ export interface WatLotPoint {
 
 export interface WatTrendItemStats {
   item_name: string;
+  section: WatSection;
   unit: string;
   spec_low: number | null;
   spec_high: number | null;

@@ -11,7 +11,7 @@ def _group(values, spec_low=0.0, spec_high=1.0):
     return pd.DataFrame({
         "wafer_id": [1] * len(values),
         "site_no": list(range(1, len(values) + 1)),
-        "item_name": ["ITEM"] * len(values),
+        "item_name": ["Vtl_ITEM"] * len(values),
         "item_unit": ["V"] * len(values),
         "spec_low": [spec_low] * len(values),
         "spec_high": [spec_high] * len(values),
@@ -20,9 +20,9 @@ def _group(values, spec_low=0.0, spec_high=1.0):
 
 
 def test_item_core_carries_every_scalar_column_but_no_series():
-    core = _item_core(_group([0.4, 0.5, 0.6]), "ITEM", 0.0, 1.0)
+    core = _item_core(_group([0.4, 0.5, 0.6]), "Vtl_ITEM", 0.0, 1.0)
     assert set(core) == {
-        "item_name", "unit", "spec_low", "spec_high", "n", "mean", "sigma",
+        "item_name", "section", "unit", "spec_low", "spec_high", "n", "mean", "sigma",
         "min", "max", "cpk", "cpk_state", "oos_count", "oos_pct", "status",
     }
 
@@ -32,7 +32,7 @@ def test_item_core_uses_the_spec_it_is_given_not_the_frame():
     every lot; a per-lot re-resolve would let a chart's spec line disagree with
     the point judged against it."""
     group = _group([0.4, 0.5, 0.6], spec_low=0.0, spec_high=1.0)
-    core = _item_core(group, "ITEM", 0.45, 0.55)
+    core = _item_core(group, "Vtl_ITEM", 0.45, 0.55)
     assert core["spec_low"] == 0.45
     assert core["spec_high"] == 0.55
     assert core["oos_count"] == 2      # 0.4 and 0.6 are outside 0.45..0.55
@@ -40,8 +40,8 @@ def test_item_core_uses_the_spec_it_is_given_not_the_frame():
 
 
 def test_compute_item_stats_still_returns_the_wafer_series():
-    stats = compute_item_stats(_group([0.4, 0.5, 0.6]), "ITEM")
-    assert stats["item_name"] == "ITEM"
+    stats = compute_item_stats(_group([0.4, 0.5, 0.6]), "Vtl_ITEM")
+    assert stats["item_name"] == "Vtl_ITEM"
     assert [w["wafer_id"] for w in stats["wafer_series"]] == [1]
 
 
@@ -50,7 +50,7 @@ def test_get_wat_summary_output_is_unchanged_by_the_extraction():
     lot = mock_wat_lots("P12345-A", 3)["lot_id"].iloc[-1]
     summary = get_wat_summary("product_a", "P12345-A", lot)
     assert len(summary.items) == 30
-    vthn = next(i for i in summary.items if i.item_name == "VTHN_ULVT")
+    vthn = next(i for i in summary.items if i.item_name == "Vtl_N_ULVT")
     assert vthn.status == "red"
     assert len(vthn.wafer_series) == 25
 
@@ -61,7 +61,7 @@ def test_trend_models_accept_a_minimal_payload():
         mean=0.45, sigma=0.02, cpk=1.2, cpk_state="value", status="yellow",
     )
     item = WatTrendItemStats(
-        item_name="VTHN_RVT", unit="V", spec_low=0.3, spec_high=0.6,
+        item_name="Vtl_N_RVT", section="Vtl", unit="V", spec_low=0.3, spec_high=0.6,
         n=225, mean=0.45, sigma=0.02, min=0.4, max=0.5,
         cpk=1.2, cpk_state="value", oos_count=0, oos_pct=0.0,
         status="yellow", lot_series=[point],

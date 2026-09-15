@@ -30,6 +30,35 @@ logger = logging.getLogger(__name__)
 CPK_RED = 1.00
 CPK_YELLOW = 1.33
 
+# Item-table sections, in display order. An item belongs to the first section
+# whose prefix its name starts with (case-insensitive); anything else falls
+# into Others, which carries descriptive statistics only — no sigma, Cpk, OOS
+# or judgement, because those items have no process-capability meaning here.
+WAT_SECTIONS: list[tuple[str, str]] = [
+    ("Isat", "isat_"),
+    ("Vtl", "vtl_"),
+    ("Rc", "rc_"),
+    ("Con", "con_"),
+]
+SECTION_OTHERS = "Others"
+SECTION_ORDER: list[str] = [name for name, _ in WAT_SECTIONS] + [SECTION_OTHERS]
+
+# Status for an Others item: never red/yellow, never counted, no mark.
+STATUS_EXCLUDED = "excluded"
+
+
+def classify_section(item_name: str) -> str:
+    lowered = item_name.strip().lower()
+    for name, prefix in WAT_SECTIONS:
+        if lowered.startswith(prefix):
+            return name
+    return SECTION_OTHERS
+
+
+def item_sort_key(item_name: str) -> tuple[int, str]:
+    """Section order first, then item name — the order every table uses."""
+    return SECTION_ORDER.index(classify_section(item_name)), item_name
+
 
 def _clean(value) -> float | None:
     """NaN and pandas NA collapse to None — NaN is not valid JSON."""
@@ -123,11 +152,12 @@ def classify_status(cpk, cpk_state: str, oos_count: int) -> str:
     return "ok"
 
 
-def _wafer_series(group: pd.DataFrame) -> list[dict]:
+def _wafer_series(group: pd.DataFrame, with_sigma: bool = True) -> list[dict]:
     """Per-wafer mean and sigma, wafer number ascending.
 
     A wafer measured at a single site has no sample sigma; its error bar is
-    omitted rather than drawn as zero.
+    omitted rather than drawn as zero. `with_sigma=False` (Others items)
+    omits it for every wafer.
     """
     out: list[dict] = []
     for wafer_id, g in group.groupby("wafer_id", sort=True):
@@ -137,7 +167,7 @@ def _wafer_series(group: pd.DataFrame) -> list[dict]:
             "wafer_id": int(wafer_id),
             "n": n,
             "mean": _clean(values.mean()) if n else None,
-            "sigma": _clean(values.std(ddof=1)) if n >= 2 else None,
+            "sigma": _clean(values.std(ddof=1)) if with_sigma and n >= 2 else None,
         })
     return out
 
@@ -153,20 +183,30 @@ def _item_core(group: pd.DataFrame, item_name: str,
     can never disagree). Series generation lives in the callers too — this
     function is the shared Cpk/OOS/judgement core, and there is exactly one
     of it.
+
+    Others items stop at N/mean/min/max: sigma, Cpk and OOS are not computed
+    and the status is "excluded", so they never reach a red/yellow count.
     """
     units = group["item_unit"].dropna()
     unit = str(units.iloc[0]) if not units.empty else ""
+    section = classify_section(item_name)
 
     values = group["meas_data"].dropna()
     n = int(len(values))
-    oos_count = count_out_of_spec(group["meas_data"], spec_low, spec_high)
-
     mean = _clean(values.mean()) if n else None
-    sigma = _clean(values.std(ddof=1)) if n >= 2 else None
-    cpk, cpk_state = compute_cpk(mean, sigma, spec_low, spec_high, n, oos_count)
+
+    if section == SECTION_OTHERS:
+        sigma, cpk, cpk_state, oos_count = None, None, "undefined", 0
+        status = STATUS_EXCLUDED
+    else:
+        oos_count = count_out_of_spec(group["meas_data"], spec_low, spec_high)
+        sigma = _clean(values.std(ddof=1)) if n >= 2 else None
+        cpk, cpk_state = compute_cpk(mean, sigma, spec_low, spec_high, n, oos_count)
+        status = classify_status(cpk, cpk_state, oos_count)
 
     return {
         "item_name": item_name,
+        "section": section,
         "unit": unit,
         "spec_low": spec_low,
         "spec_high": spec_high,
@@ -179,7 +219,7 @@ def _item_core(group: pd.DataFrame, item_name: str,
         "cpk_state": cpk_state,
         "oos_count": oos_count,
         "oos_pct": round(oos_count / n * 100, 4) if n else 0.0,
-        "status": classify_status(cpk, cpk_state, oos_count),
+        "status": status,
     }
 
 
@@ -187,9 +227,11 @@ def compute_item_stats(group: pd.DataFrame, item_name: str) -> dict:
     """Statistics for one ITEM_NAME across every wafer and site of one lot."""
     spec_low = resolve_spec(group["spec_low"], item_name)
     spec_high = resolve_spec(group["spec_high"], item_name)
+    core = _item_core(group, item_name, spec_low, spec_high)
     return {
-        **_item_core(group, item_name, spec_low, spec_high),
-        "wafer_series": _wafer_series(group),
+        **core,
+        "wafer_series": _wafer_series(
+            group, with_sigma=core["section"] != SECTION_OTHERS),
     }
 
 
@@ -322,6 +364,7 @@ def get_wat_summary(nickname: str, product_id: str, lot_id: str) -> WatSummaryRe
     stats: list[dict] = []
     for item_name, group in df.groupby("item_name", sort=True):
         stats.append(compute_item_stats(group, str(item_name)))
+    stats.sort(key=lambda s: item_sort_key(s["item_name"]))
 
     stats_by_item = {s["item_name"]: s for s in stats}
     scatter_pairs = (

@@ -117,8 +117,8 @@ def _parse_wat_pairs(raw, nickname: str) -> list[dict]:
         wat:
           pairs:
             - label: Core RVT
-              vth:   {n: VTHN_RVT, p: VTHP_RVT}
-              idsat: {n: IDSATN_RVT, p: IDSATP_RVT}
+              vth:   {n: Vtl_N_RVT, p: Vtl_P_RVT}
+              idsat: {n: Isat_N_RVT, p: Isat_P_RVT}
 
     Returns [] when the block is absent or unusable — the scatter section is
     simply omitted for that product rather than erroring.

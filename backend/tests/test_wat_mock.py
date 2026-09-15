@@ -41,14 +41,14 @@ def test_mock_wat_dataframe_covers_every_flavor():
     df = mock_wat_dataframe("P12345-A", lot)
     names = set(df["item_name"])
     for flavor in MOCK_WAT_FLAVORS:
-        for prefix in ("VTHN", "VTHP", "IDSATN", "IDSATP"):
+        for prefix in ("Vtl_N", "Vtl_P", "Isat_N", "Isat_P"):
             assert f"{prefix}_{flavor}" in names
 
 
 def test_mock_wat_dataframe_has_spec_and_units():
     lot = mock_wat_lots("P12345-A", 3)["lot_id"].iloc[0]
     df = mock_wat_dataframe("P12345-A", lot)
-    vth = df[df["item_name"] == "VTHN_RVT"]
+    vth = df[df["item_name"] == "Vtl_N_RVT"]
     assert vth["item_unit"].iloc[0] == "V"
     # spec is constant within an item
     assert vth["spec_low"].nunique() == 1

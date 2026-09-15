@@ -43,8 +43,8 @@ Report ページに追加した 2 つ目の機能。選択した **1 ロット**
 
 | 項目 | Cpk | 規格外 | 判定 |
 | --- | --- | --- | --- |
-| `VTHN_ULVT` | 0.50 | 13 件 | `●` 赤 |
-| `RS_NDIFF` | 1.21 | 0 件 | `▲` 黄 |
+| `Vtl_N_ULVT` | 0.50 | 13 件 | `●` 赤 |
+| `Rc_NDIFF` | 1.21 | 0 件 | `▲` 黄 |
 | `RS_POLY` | — | — | `–` 規格未設定 |
 
 ### 2.2 ウェハ別トレンド（行クリックで展開）
@@ -156,11 +156,11 @@ product_a:
   wat:
     pairs:
       - label: Core RVT
-        vth:   {n: VTHN_RVT,   p: VTHP_RVT}
-        idsat: {n: IDSATN_RVT, p: IDSATP_RVT}
+        vth:   {n: Vtl_N_RVT,   p: Vtl_P_RVT}
+        idsat: {n: Isat_N_RVT, p: Isat_P_RVT}
       - label: Core LVT
-        vth:   {n: VTHN_LVT,   p: VTHP_LVT}
-        idsat: {n: IDSATN_LVT, p: IDSATP_LVT}
+        vth:   {n: Vtl_N_LVT,   p: Vtl_P_LVT}
+        idsat: {n: Isat_N_LVT, p: Isat_P_LVT}
 ```
 
 `pairs` は宣言順に表示される。記述例は `backend/product_config.yaml.example` にもある。
@@ -221,7 +221,7 @@ product_a:
 
 `USE_MOCK_DATA=true`（既定）で Oracle なしに全機能が動く。6 フレーバー分の Vth/Idsat ＋ その他項目で 30 項目、25 ウェハ × 9 サイト。
 
-**規格外の測定値と低 Cpk の項目を意図的に仕込んである**（`VTHN_ULVT` が赤、`RS_NDIFF` が黄）。赤・黄の描画、判定記号、PDF の「要注意項目だけチャートを載せる」ロジックを実 DB なしで検証するため。6 製品 × 20 ロットの走査で、全ロットに赤 1 件・黄 1 件が現れ、それ以外の項目は判定されないことを確認している。
+**規格外の測定値と低 Cpk の項目を意図的に仕込んである**（`Vtl_N_ULVT` が赤、`Rc_NDIFF` が黄）。赤・黄の描画、判定記号、PDF の「要注意項目だけチャートを載せる」ロジックを実 DB なしで検証するため。6 製品 × 20 ロットの走査で、全ロットに赤 1 件・黄 1 件が現れ、それ以外の項目は判定されないことを確認している。
 
 ---
 
