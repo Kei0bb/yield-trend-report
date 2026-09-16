@@ -43,12 +43,19 @@ WAT_SECTIONS: list[tuple[str, str]] = [
 SECTION_OTHERS = "Others"
 SECTION_ORDER: list[str] = [name for name, _ in WAT_SECTIONS] + [SECTION_OTHERS]
 
+# Isat_*AB / Isat_*BB items (Isat_CAB, Isat_CBB, Isat_DAB, Isat_DBB,
+# Isat_GAB, Isat_GBB, Isat_UAB, Isat_UBB) are structural/leakage items, not
+# process-capability ones — they must land in Others despite the Isat_ prefix.
+ISAT_OTHERS_SUFFIXES = ("ab", "bb")
+
 # Status for an Others item: never red/yellow, never counted, no mark.
 STATUS_EXCLUDED = "excluded"
 
 
 def classify_section(item_name: str) -> str:
     lowered = item_name.strip().lower()
+    if lowered.startswith("isat_") and lowered.endswith(ISAT_OTHERS_SUFFIXES):
+        return SECTION_OTHERS
     for name, prefix in WAT_SECTIONS:
         if lowered.startswith(prefix):
             return name
@@ -69,6 +76,16 @@ def _clean(value) -> float | None:
     except (TypeError, ValueError):
         return None
     return None if math.isnan(f) else f
+
+
+def _point_values(values: pd.Series) -> list[float]:
+    """Raw measurements for one chart X position, NaN dropped.
+
+    Rounded to six significant digits: a trend response carries ~2,500 of
+    these per item, and full float repr doubles the JSON for digits no
+    chart can show.
+    """
+    return [float(f"{v:.6g}") for v in values]
 
 
 def resolve_spec(series: pd.Series, item_name: str,
@@ -168,6 +185,7 @@ def _wafer_series(group: pd.DataFrame, with_sigma: bool = True) -> list[dict]:
             "n": n,
             "mean": _clean(values.mean()) if n else None,
             "sigma": _clean(values.std(ddof=1)) if with_sigma and n >= 2 else None,
+            "values": _point_values(values),
         })
     return out
 

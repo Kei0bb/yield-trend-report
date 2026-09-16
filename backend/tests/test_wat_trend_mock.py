@@ -4,6 +4,7 @@ from app.services.mock_data import (
     mock_wat_dataframe, mock_wat_lots, mock_wat_trend_dataframe,
 )
 from app.services.wat_queries import WAT_TREND_COLUMNS
+from app.services.wat_trend_service import get_wat_trend
 
 
 def test_trend_frame_covers_every_lot_in_the_period():
@@ -31,6 +32,15 @@ def test_trend_frame_is_deterministic():
     a = mock_wat_trend_dataframe("P12345-A", 3)
     b = mock_wat_trend_dataframe("P12345-A", 3)
     assert a.equals(b)
+
+
+def test_lot_series_values_match_n():
+    """Every lot point on a trend chart carries its raw measurements — one
+    per site across every wafer of that lot, so length must equal n."""
+    trend = get_wat_trend("product_a", "P12345-A", 3)
+    for item in trend.items:
+        for point in item.lot_series:
+            assert len(point.values) == point.n
 
 
 def test_trend_frame_is_empty_when_the_period_holds_no_lots(monkeypatch):

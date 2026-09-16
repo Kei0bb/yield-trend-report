@@ -1,13 +1,10 @@
 import Plot from "../PlotlyChart";
-import { INK, MUTED_SOFT, SPEC_LINE_COLOR, plotlyBaseLayout } from "../../theme";
+import { MUTED_SOFT, SPEC_LINE_COLOR, plotlyBaseLayout } from "../../theme";
 
 export interface TrendPoint {
   /** X value: a wafer number, or a lot id. */
   label: string | number;
-  mean: number | null;
-  sigma: number | null;
-  /** Marker color; defaults to INK. Used to carry a lot's own judgement. */
-  color?: string;
+  values: number[];
 }
 
 interface Props {
@@ -23,9 +20,10 @@ interface Props {
   hoverPrefix?: string;
 }
 
-/** Means with ±3σ whiskers and the spec limits. One series, so no legend —
- *  the title names it. Shared by the wafer axis (single-lot report) and the
- *  lot axis (trend report); the two must not drift apart. */
+/** Every raw site measurement, plotted as a scatter, plus the spec limits.
+ *  One series, so no legend — the title names it. Shared by the wafer axis
+ *  (single-lot report) and the lot axis (trend report); the two must not
+ *  drift apart. */
 export default function WatItemTrendChart({
   title, points, xTitle, specLow, specHigh, categoryAxis = false, hoverPrefix = "",
 }: Props) {
@@ -48,20 +46,11 @@ export default function WatItemTrendChart({
   return (
     <Plot
       data={[{
-        x: points.map((p) => p.label),
-        y: points.map((p) => p.mean),
+        x: points.flatMap((p) => p.values.map(() => p.label)),
+        y: points.flatMap((p) => p.values),
         type: "scatter",
-        mode: "lines+markers",
-        line: { color: INK, width: 2 },
-        marker: { size: 8, color: points.map((p) => p.color ?? INK) },
-        error_y: {
-          type: "data",
-          array: points.map((p) => (p.sigma === null ? 0 : p.sigma * 3)),
-          visible: true,
-          color: "rgba(20,20,19,0.35)",
-          thickness: 1.2,
-          width: 3,
-        },
+        mode: "markers",
+        marker: { size: 4, color: "rgba(20,20,19,0.45)" },
         hovertemplate: `${hoverPrefix}%{x}<br>%{y:.4g}<extra></extra>`,
       }]}
       layout={{

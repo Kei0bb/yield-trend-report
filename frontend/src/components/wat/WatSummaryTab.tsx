@@ -168,7 +168,7 @@ export default function WatSummaryTab({ productId }: Props) {
               <WatItemTrendChart
                 title={`${item.item_name}${item.unit ? ` [${item.unit}]` : ""}`}
                 points={item.wafer_series.map((w) => ({
-                  label: w.wafer_id, mean: w.mean, sigma: w.sigma,
+                  label: w.wafer_id, values: w.values,
                 }))}
                 xTitle="Wafer #"
                 specLow={item.spec_low}

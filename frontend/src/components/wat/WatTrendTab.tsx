@@ -3,7 +3,7 @@ import { exportWatTrendPdf, fetchWatTrend } from "../../api/client";
 import type { WatTrendResponse } from "../../types";
 import Button from "../../ui/Button";
 import Select from "../../ui/Select";
-import { STATUS_COLOR, STATUS_MARK, STATUS_PLOT_COLOR } from "../../theme";
+import { STATUS_COLOR, STATUS_MARK } from "../../theme";
 import WatSummaryTable from "./WatSummaryTable";
 import WatItemTrendChart from "./WatItemTrendChart";
 
@@ -134,9 +134,7 @@ export default function WatTrendTab({ productId }: Props) {
                 title={`${item.item_name}${item.unit ? ` [${item.unit}]` : ""}`}
                 points={item.lot_series.map((p) => ({
                   label: p.lot_id,
-                  mean: p.mean,
-                  sigma: p.sigma,
-                  color: STATUS_PLOT_COLOR[p.status],
+                  values: p.values,
                 }))}
                 xTitle="Lot"
                 specLow={item.spec_low}

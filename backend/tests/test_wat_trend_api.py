@@ -40,7 +40,7 @@ def test_trend_endpoint_items_carry_a_lot_series():
     point = item["lot_series"][0]
     assert set(point) == {
         "lot_id", "measured_date", "n", "mean", "sigma",
-        "cpk", "cpk_state", "status",
+        "cpk", "cpk_state", "status", "values",
     }
 
 

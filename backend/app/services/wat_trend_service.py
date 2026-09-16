@@ -18,7 +18,9 @@ from app.models.schemas import (
 from app.services.mock_data import mock_wat_trend_dataframe
 from app.services.product_config import primary_product_id, resolve_display_name
 from app.services.wat_queries import WAT_TREND_COLUMNS, query_wat_trend
-from app.services.wat_service import _item_core, item_sort_key, resolve_spec
+from app.services.wat_service import (
+    _item_core, _point_values, item_sort_key, resolve_spec,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -85,6 +87,7 @@ def build_lot_series(group: pd.DataFrame, item_name: str,
             "cpk": core["cpk"],
             "cpk_state": core["cpk_state"],
             "status": core["status"],
+            "values": _point_values(g["meas_data"].dropna()),
         })
     points.sort(key=lambda p: (p["measured_date"], p["lot_id"]))
     return points

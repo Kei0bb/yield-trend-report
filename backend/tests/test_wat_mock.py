@@ -3,6 +3,7 @@ import pandas as pd
 from app.services.mock_data import (
     MOCK_WAT_FLAVORS, mock_wat_dataframe, mock_wat_lots,
 )
+from app.services.wat_service import get_wat_summary
 
 WAT_DETAIL_COLUMNS = [
     "wafer_id", "site_no", "item_name", "item_unit",
@@ -67,3 +68,16 @@ def test_mock_wat_dataframe_unknown_lot_is_empty():
     df = mock_wat_dataframe("P12345-A", "__no_such_lot__")
     assert df.empty
     assert list(df.columns) == WAT_DETAIL_COLUMNS
+
+
+def test_wafer_series_values_match_n_and_site_count():
+    """Every chart point carries its raw measurements, one per site — the
+    mock lot has 9 sites/wafer, so a fully-populated wafer point carries 9."""
+    lot = mock_wat_lots("P12345-A", 3)["lot_id"].iloc[0]
+    summary = get_wat_summary("product_a", "P12345-A", str(lot))
+    for item in summary.items:
+        for point in item.wafer_series:
+            assert len(point.values) == point.n
+    vth = next(i for i in summary.items if i.item_name == "Vtl_N_RVT")
+    assert vth.wafer_series[0].n == 9
+    assert len(vth.wafer_series[0].values) == 9

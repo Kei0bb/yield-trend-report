@@ -86,19 +86,18 @@ def _scatter_figure(plot: WatScatterPlot, pair_label: str = "",
 
 
 def _trend_figure(item: WatItemStats, width: int = CHART_W, height: int = CHART_H) -> go.Figure:
+    """Every raw site measurement, plotted against its wafer, against the
+    lot's spec lines. Small semi-transparent markers so overlap reads as
+    density rather than as one indistinguishable blob."""
     series = item.wafer_series
+    x = [w.wafer_id for w in series for _ in w.values]
+    y = [v for w in series for v in w.values]
     fig = go.Figure()
     fig.add_trace(go.Scatter(
-        x=[w.wafer_id for w in series],
-        y=[w.mean for w in series],
-        mode="lines+markers",
-        line=dict(color="#141413", width=1.5),
-        marker=dict(size=5, color="#141413"),
-        error_y=dict(
-            type="data",
-            array=[(w.sigma * 3 if w.sigma is not None else 0) for w in series],
-            visible=True, color="rgba(20,20,19,0.35)", thickness=1, width=2,
-        ),
+        x=x,
+        y=y,
+        mode="markers",
+        marker=dict(size=3, color="rgba(20,20,19,0.45)"),
     ))
     for limit, label in ((item.spec_low, "LSL"), (item.spec_high, "USL")):
         if limit is not None:

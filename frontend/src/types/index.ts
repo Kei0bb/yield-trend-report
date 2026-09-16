@@ -143,6 +143,8 @@ export interface WatWaferPoint {
   n: number;
   mean: number | null;
   sigma: number | null;
+  /** Raw site measurements at this X position, plotted as the chart's points. */
+  values: number[];
 }
 
 /** "excluded" = an Others item: no sigma/Cpk/OOS, never judged. */
@@ -212,6 +214,8 @@ export interface WatLotPoint {
   cpk: number | null;
   cpk_state: WatCpkState;
   status: WatStatus;
+  /** Raw site measurements at this X position, plotted as the chart's points. */
+  values: number[];
 }
 
 export interface WatTrendItemStats {

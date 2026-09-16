@@ -36,6 +36,19 @@ def _group(values, spec_low=0.0, spec_high=1.0, name="X"):
     ("Isat", "Others"),         # the prefix includes the underscore
     ("XIsat_N", "Others"),      # prefix, not substring
     ("", "Others"),
+    # Isat_*AB / Isat_*BB: structural/leakage items, not process-capability
+    # ones — Others despite the Isat_ prefix.
+    ("Isat_CAB", "Others"),
+    ("Isat_CBB", "Others"),
+    ("Isat_DAB", "Others"),
+    ("Isat_DBB", "Others"),
+    ("Isat_GAB", "Others"),
+    ("Isat_GBB", "Others"),
+    ("Isat_UAB", "Others"),
+    ("Isat_UBB", "Others"),
+    ("isat_cab", "Others"),     # case-insensitive
+    ("Isat_N_ULVT", "Isat"),    # ordinary Isat items still classify normally
+    ("Isat_P_SVT", "Isat"),
 ])
 def test_classify_section(name, section):
     assert classify_section(name) == section

@@ -158,6 +158,7 @@ class WatWaferPoint(BaseModel):
     n: int
     mean: float | None = None
     sigma: float | None = None
+    values: list[float] = []  # raw site measurements at this X position, plotted as the chart's points
 
 
 class WatItemStats(BaseModel):
@@ -227,6 +228,7 @@ class WatLotPoint(BaseModel):
     cpk: float | None = None
     cpk_state: str          # "value" | "infinite" | "undefined"
     status: str             # "red" | "yellow" | "gray" | "ok" | "excluded"
+    values: list[float] = []  # raw site measurements at this X position, plotted as the chart's points
 
 
 class WatTrendItemStats(BaseModel):

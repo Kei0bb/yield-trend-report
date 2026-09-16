@@ -1,8 +1,9 @@
 """PCM/WAT trend report PDF (A4 portrait).
 
 Layout: period header + the full item table, then a lot-trend chart for
-EVERY item, six per page. The single-lot report charts only its flagged
-items; this one is the period's record, so nothing is dropped.
+every item, six per page — except Others, which has no process-capability
+meaning and so is not charted. The single-lot report charts only its
+flagged items; this one is the period's record of every judged item.
 """
 
 import io
@@ -16,39 +17,40 @@ from reportlab.pdfgen import canvas
 from app.models.schemas import WatTrendItemStats, WatTrendResponse
 from app.services.pdf_common import MARGIN, draw_footer
 from app.services.wat_pdf_common import (
-    CHART_H, CHART_W, STATUS_HEX, STATUS_RGB, axis, base_layout,
+    CHART_H, CHART_W, STATUS_RGB, axis, base_layout,
     chart_page_count, draw_chart_grid, draw_header_band, draw_table_header,
     draw_table_rows, paginate_table, render_batch, rows_per_page,
 )
+from app.services.wat_service import SECTION_OTHERS
 
 logger = logging.getLogger(__name__)
 
 MAX_LOT_LABELS = 12
 
 
+def chart_items(trend: WatTrendResponse) -> list[WatTrendItemStats]:
+    """Items worth a trend chart — Others carries no Cpk, so it never is one.
+
+    render_batch and count_pages must both filter through this one function:
+    a difference between them would make "Page n of N" wrong.
+    """
+    return [i for i in trend.items if i.section != SECTION_OTHERS]
+
+
 def _lot_trend_figure(item: WatTrendItemStats,
                       width: int = CHART_W, height: int = CHART_H) -> go.Figure:
-    """Lot means with +/-3 sigma whiskers against the period's spec lines.
-
-    Marker color carries each lot's own judgement, so a reader can see which
-    lot went out without cross-referencing the table.
-    """
+    """Every raw site measurement, plotted against its lot, against the
+    period's spec lines. Small semi-transparent markers so overlap reads as
+    density rather than as one indistinguishable blob."""
     series = item.lot_series
+    x = [p.lot_id for p in series for _ in p.values]
+    y = [v for p in series for v in p.values]
     fig = go.Figure()
     fig.add_trace(go.Scatter(
-        x=[p.lot_id for p in series],
-        y=[p.mean for p in series],
-        mode="lines+markers",
-        line=dict(color="#141413", width=1.5),
-        marker=dict(
-            size=6,
-            color=[STATUS_HEX.get(p.status, STATUS_HEX["ok"]) for p in series],
-        ),
-        error_y=dict(
-            type="data",
-            array=[(p.sigma * 3 if p.sigma is not None else 0) for p in series],
-            visible=True, color="rgba(20,20,19,0.35)", thickness=1, width=2,
-        ),
+        x=x,
+        y=y,
+        mode="markers",
+        marker=dict(size=3, color="rgba(20,20,19,0.45)"),
     ))
     for limit, label in ((item.spec_low, "LSL"), (item.spec_high, "USL")):
         if limit is not None:
@@ -93,7 +95,7 @@ def count_pages(trend: WatTrendResponse, content_top: float) -> int:
     """Total page count, known before drawing — ReportLab cannot revisit a
     finished page, so "Page n of N" needs N up front."""
     table_pages = len(paginate_table(trend.items, rows_per_page(content_top)))
-    return table_pages + chart_page_count(len(trend.items))
+    return table_pages + chart_page_count(len(chart_items(trend)))
 
 
 def generate_wat_trend_pdf(trend: WatTrendResponse) -> bytes:
@@ -104,7 +106,7 @@ def generate_wat_trend_pdf(trend: WatTrendResponse) -> bytes:
 
     # Every figure is known before any page is drawn, so the whole batch goes
     # through one kaleido call instead of one call per figure.
-    chart_images = render_batch([_lot_trend_figure(i) for i in trend.items])
+    chart_images = render_batch([_lot_trend_figure(i) for i in chart_items(trend)])
 
     probe_top = _draw_header(c, page_width, page_height, trend)
     total_pages = count_pages(trend, probe_top)
