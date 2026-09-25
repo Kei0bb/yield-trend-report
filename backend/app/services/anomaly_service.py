@@ -77,11 +77,16 @@ def evaluate(lots: list, config: dict) -> list[dict]:
         for b in lot.bin_breakdown:
             past_pct.setdefault(b.bin_name, []).append(b.percent)
             bin_codes_by_name.setdefault(b.bin_name, b.bin_codes)
+    n_past = len(past)
     for b in latest.bin_breakdown:
-        history = past_pct.get(b.bin_name)
-        if not history:
-            continue
-        avg = sum(history) / len(history)
+        # bin_breakdown only lists bins with ≥1 fail (lot_service.py), so a bin
+        # absent from a past lot means 0% there — mirror explore_service.py's
+        # "absent lots contribute 0" convention rather than averaging only over
+        # the lots where the bin happened to appear (that inflates the baseline
+        # and can hide a surge). This also covers a bin that never appeared in
+        # any past lot (implicit past average of 0%), which used to be skipped.
+        history = past_pct.get(b.bin_name, [])
+        avg = sum(history) / n_past if n_past else 0.0
         delta = b.percent - avg
         if delta >= delta_pct:
             codes = b.bin_codes or bin_codes_by_name.get(b.bin_name, [])

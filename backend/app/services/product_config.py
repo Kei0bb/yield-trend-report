@@ -264,7 +264,29 @@ def load_product_config() -> dict[str, dict[str, str]] | None:
     config = _config_from_yaml()
     if config:
         logger.info("Loaded product_config.yaml: %d products", len(config))
+        _warn_duplicate_product_ids(config)
     return config
+
+
+def _warn_duplicate_product_ids(config: dict[str, dict[str, str]]) -> None:
+    """Log a warning for each product_id shared by more than one nickname.
+
+    _reverse_product_id_map() (first-wins) is called per lookup and isn't
+    cached, so warning there would spam the log on every request; this runs
+    once per load_product_config() call instead, since that is lru_cached.
+    """
+    seen: dict[str, str] = {}
+    for nickname, entry in config.items():
+        pid = entry.get("product_id", "")
+        if not pid:
+            continue
+        if pid in seen:
+            logger.warning(
+                "product_config.yaml: product_id %s is used by both %s and %s — %s wins (first match)",
+                pid, seen[pid], nickname, seen[pid],
+            )
+        else:
+            seen[pid] = nickname
 
 
 def resolve_product_ids(nickname: str, process: str = "") -> list[str]:
