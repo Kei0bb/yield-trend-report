@@ -1,39 +1,52 @@
-/* Design tokens — Claude-style data tool.
-   Spec: docs/superpowers/specs/2026-07-19-design-refresh-claude-style-design.md
+/* Design tokens — Vercel-style data tool.
+   Spec: docs/superpowers/specs/2026-09-25-design-refresh-vercel-style-design.md
    Fonts are self-hosted via @fontsource (imported in main.tsx); corporate
    networks block external CDNs, so nothing here references a CDN. */
 
 :root {
   /* Surfaces */
-  --canvas: #faf9f5;
+  --canvas: #fafafa;
   --surface-card: #ffffff;
-  --surface-soft: #f5f0e8;
+  --surface-soft: #f5f5f5;
 
   /* Text */
-  --ink: #141413;
-  --body: #3d3d3a;
-  --muted: #6c6a64;
-  --muted-soft: #8e8b82;
+  --ink: #171717;
+  --body: #4d4d4d;
+  --muted: #666666;
+  --muted-soft: #888888;
 
-  /* Primary (coral) */
-  --primary: #cc785c;
-  --primary-active: #a9583e;
-  --primary-disabled: #e6dfd8;
+  /* Primary (ink) */
+  --primary: #171717;
+  --primary-active: #383838;
+  --primary-disabled: #ebebeb;
+  --link: #0070f3;
 
-  /* Semantic (yield status) */
-  --success: #5db872;
-  --warning: #d4a017;
-  --error: #c64545;
+  /* Semantic (yield status) — base / soft background / deep text */
+  --success: #45a557;
+  --success-soft: #e8f5eb;
+  --success-deep: #2e7d3e;
+  --warning: #f5a623;
+  --warning-soft: #fff5e0;
+  --warning-deep: #ab570a;
+  --error: #ee0000;
+  --error-soft: #fdecec;
+  --error-deep: #c50000;
 
   /* Structure */
-  --hairline-color: #e6dfd8;
-  --hairline: 1px solid #e6dfd8;
-  --hairline-soft: 1px solid #ebe6df;
-  --shadow-hover: 0 1px 3px rgba(20, 20, 19, 0.08);
+  --hairline-color: #ebebeb;
+  --hairline: 1px solid #ebebeb;
+  --hairline-soft: 1px solid #f2f2f2;
+  --hairline-strong: #a1a1a1;
+  --shadow-hover: 0 1px 1px rgba(0, 0, 0, 0.02), 0 2px 2px rgba(0, 0, 0, 0.04);
+  /* Cards: ring + stacked drop. Use INSTEAD of border, never with it. */
+  --shadow-card: 0 0 0 1px rgba(0, 0, 0, 0.08), 0 1px 1px rgba(0, 0, 0, 0.02),
+    0 2px 2px rgba(0, 0, 0, 0.04);
+  --shadow-popover: 0 0 0 1px rgba(0, 0, 0, 0.08), 0 8px 16px -4px rgba(0, 0, 0, 0.04),
+    0 24px 32px -8px rgba(0, 0, 0, 0.06);
 
   /* Radius hierarchy */
-  --radius-control: 8px;
-  --radius-card: 12px;
+  --radius-control: 6px;
+  --radius-card: 8px;
   --radius-pill: 9999px;
 
   /* Typography */
@@ -72,15 +85,24 @@ select {
   font-family: inherit;
 }
 
+table {
+  font-variant-numeric: tabular-nums;
+}
+
 input:focus,
 select:focus {
   outline: none;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(204, 120, 92, 0.18);
+  border-color: var(--link);
+  box-shadow: 0 0 0 3px rgba(0, 112, 243, 0.18);
+}
+
+button:focus-visible {
+  outline: 2px solid var(--link);
+  outline-offset: 2px;
 }
 
 input[type="checkbox"] {
-  accent-color: var(--primary);
+  accent-color: var(--ink);
 }
 
 ::-webkit-scrollbar {
@@ -88,11 +110,11 @@ input[type="checkbox"] {
   height: 10px;
 }
 ::-webkit-scrollbar-thumb {
-  background: #d9d2c7;
+  background: #d4d4d4;
   border-radius: 999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #b8b2a7;
+  background: #a1a1a1;
 }
 
 @keyframes spin {
@@ -106,7 +128,7 @@ input[type="checkbox"] {
   width: 20px;
   height: 20px;
   border: 2px solid var(--hairline-color);
-  border-top-color: var(--primary);
+  border-top-color: var(--ink);
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
 }
