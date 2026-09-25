@@ -60,7 +60,7 @@ export default function CheckListCard({
 const styles: Record<string, CSSProperties> = {
   card: {
     background: "var(--surface-card)",
-    border: "var(--hairline)",
+    boxShadow: "var(--shadow-card)",
     borderRadius: "var(--radius-card)",
     padding: 20,
     marginBottom: 0,

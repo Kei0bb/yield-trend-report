@@ -18,13 +18,13 @@ const base: CSSProperties = {
   borderRadius: "var(--radius-pill)",
   fontSize: 11,
   fontWeight: 500,
-  letterSpacing: "0.02em",
+  letterSpacing: 0,
   whiteSpace: "nowrap",
 };
 
 const variants: Record<Variant, CSSProperties> = {
   neutral: { background: "var(--surface-soft)", color: "var(--body)" },
-  success: { background: "rgba(93, 184, 114, 0.14)", color: "#3e7d4f" },
-  warning: { background: "rgba(212, 160, 23, 0.14)", color: "#8a6a0f" },
-  error: { background: "rgba(198, 69, 69, 0.12)", color: "var(--error)" },
+  success: { background: "var(--success-soft)", color: "var(--success-deep)" },
+  warning: { background: "var(--warning-soft)", color: "var(--warning-deep)" },
+  error: { background: "var(--error-soft)", color: "var(--error-deep)" },
 };

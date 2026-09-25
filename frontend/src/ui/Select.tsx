@@ -1,13 +1,13 @@
 import type { CSSProperties, SelectHTMLAttributes } from "react";
 
-/** Kit select: 36px, hairline border, control radius. Focus ring comes from
- *  the global select:focus rule in index.css (coral). */
+/** Kit select: 32px, hairline border, control radius. Focus ring comes from
+ *  the global select:focus rule in index.css (blue). */
 export default function Select({ style, ...rest }: SelectHTMLAttributes<HTMLSelectElement>) {
   return <select style={{ ...base, ...style }} {...rest} />;
 }
 
 const base: CSSProperties = {
-  height: 36,
+  height: 32,
   padding: "0 10px",
   borderRadius: "var(--radius-control)",
   border: "var(--hairline)",
