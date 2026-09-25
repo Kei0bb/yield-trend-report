@@ -148,7 +148,7 @@ export default function SummaryTable({ rows, months }: Props) {
       <tbody>
         {sorted.map((r, i) => {
           const warn = r.warnings.length > 0;
-          const deltaColor = r.delta == null ? "var(--muted-soft)" : r.delta < 0 ? "var(--error)" : "var(--success)";
+          const deltaColor = r.delta == null ? "var(--muted-soft)" : r.delta < 0 ? "var(--error)" : "var(--success-deep)";
           const belowTarget = r.latest_yield != null && r.target != null && r.latest_yield < r.target;
           const isSub = r.level === 1;
           const orphanKey = `${r.product_id}|${r.process}|${r.process_label}`;

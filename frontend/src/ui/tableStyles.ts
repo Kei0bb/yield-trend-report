@@ -37,5 +37,5 @@ export const tableStyles: Record<string, CSSProperties> = {
     fontVariantNumeric: "tabular-nums",
   },
   tdLeft: { textAlign: "left", padding: "10px 14px", borderBottom: "var(--hairline-soft)" },
-  rowWarn: { background: "var(--error-soft)" },
+  rowWarn: { background: "rgba(238, 0, 0, 0.04)" },
 };
