@@ -6,7 +6,6 @@ pdf_common.py — shared with the PCM/WAT report — not here.
 """
 
 import io
-from datetime import date, timedelta
 
 import plotly.graph_objects as go
 from reportlab.lib.pagesizes import A4, landscape
@@ -178,11 +177,9 @@ def _draw_header(
     c.saveState()
     c.setFont("Helvetica", 8.5)
     c.setFillColorRGB(0.38, 0.36, 0.35)
-    today = date.today()
-    period_start = today - timedelta(days=90)
     meta = (
         f"Product  {product}"
-        f"   ·   Period  {period_start.isoformat()} to {today.isoformat()}"
+        f"   ·   Period  {start_month} to {end_month}"
         f"   ·   Process  {process_name}"
     )
     c.drawRightString(page_width - MARGIN, title_y, meta)

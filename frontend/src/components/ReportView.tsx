@@ -48,11 +48,6 @@ export default function ReportView({ data, request }: ReportViewProps) {
   const displayName = firstProcess ? Object.keys(data.data[firstProcess])[0] : undefined;
 
   const today = new Date().toISOString().slice(0, 10);
-  const periodStart = (() => {
-    const d = new Date();
-    d.setMonth(d.getMonth() - 3);
-    return d.toISOString().slice(0, 10);
-  })();
   // request.products holds the product_id (UI selection key). The title shows the
   // product_id as primary, with the product name (display_name) as secondary meta.
   const productId = request.products[0];
@@ -75,7 +70,7 @@ export default function ReportView({ data, request }: ReportViewProps) {
           )}
           <span style={styles.metaItem}>
             <span style={styles.metaLabel}>Period</span>
-            {periodStart} → {today}
+            {request.start_month} → {request.end_month}
           </span>
           <span style={styles.metaDivider} />
           <span style={styles.metaItem}>
