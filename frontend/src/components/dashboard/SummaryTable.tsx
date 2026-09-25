@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import type { SummaryRow } from "../../types";
 import Sparkline from "./Sparkline";
 import { tableStyles } from "../../ui/tableStyles";
-import Badge from "../../ui/Badge";
+import WarningsPopover from "./WarningsPopover";
 
 type SortKey = "product_id" | "process" | "latest_yield" | "avg_yield_6m" | "delta";
 
@@ -231,9 +231,7 @@ export default function SummaryTable({ rows, months }: Props) {
                 />
               </td>
               <td style={{ ...styles.tdLeft, ...cellEnd }}>
-                {r.warnings.map((w, i) => (
-                  <span key={i} style={{ marginRight: 4 }}><Badge variant="error">⚠ {w.message}</Badge></span>
-                ))}
+                <WarningsPopover warnings={r.warnings} />
               </td>
             </tr>
             </Fragment>
