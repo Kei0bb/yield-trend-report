@@ -1,3 +1,4 @@
+import logging
 import textwrap
 
 import app.services.product_config as product_config
@@ -196,6 +197,37 @@ def test_resolve_target_scalar_is_ignored(tmp_path, monkeypatch):
         """)
 
     assert resolve_target("Product-A", "CP") is None
+    load_product_config.cache_clear()
+
+
+def test_duplicate_product_id_warns_once_at_config_load(tmp_path, monkeypatch, caplog):
+    """Two nicknames sharing a product_id: first wins, and a single warning is
+    logged at config-load time (not once per lookup)."""
+    _write_config(tmp_path, monkeypatch, """
+        products:
+          Phoenix:
+            product_id: SCT101A
+            report:
+              - {family: cp, label: "CP", values: [CP]}
+          PhoenixB:
+            product_id: SCT101A
+            report:
+              - {family: cp, label: "CP", values: [CP]}
+        """)
+
+    with caplog.at_level(logging.WARNING, logger="app.services.product_config"):
+        product_config.load_product_config()
+        # Repeated lookups must not re-emit the warning (config is lru_cached).
+        product_config.nickname_for_product_id("SCT101A")
+        product_config.nickname_for_product_id("SCT101A")
+
+    dup_warnings = [r for r in caplog.records if "SCT101A" in r.message]
+    assert len(dup_warnings) == 1
+    assert "Phoenix" in dup_warnings[0].message
+    assert "PhoenixB" in dup_warnings[0].message
+
+    # first-wins behavior preserved
+    assert product_config.nickname_for_product_id("SCT101A") == "Phoenix"
     load_product_config.cache_clear()
 
 

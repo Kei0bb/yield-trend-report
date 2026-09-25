@@ -81,3 +81,29 @@ def test_bin_surge_message_format():
 def test_empty_or_single_lot_returns_empty():
     assert evaluate([], CFG) == []
     assert evaluate([_lot(95.0)], CFG) == []
+
+
+def test_intermittent_bin_averages_absences_as_zero():
+    # 10 past lots: one at 5%, nine absent (0%) -> avg should be 0.5%, not 5.0%.
+    # latest 8% -> delta 7.5%pt >= 3.0%pt -> triggers, with the correct delta.
+    past_lots = [_lot(95.0, [("Short", 5.0, [5])])] + [_lot(95.0, []) for _ in range(9)]
+    lots = past_lots + [_lot(95.0, [("Short", 8.0, [5])])]
+    warns = [w for w in evaluate(lots, CFG) if w["type"] == "bin_surge"]
+    assert len(warns) == 1
+    assert warns[0]["message"] == "Short ▲7.5%"
+
+
+def test_new_bin_never_seen_before_triggers():
+    # A fail bin absent from every past lot has an implicit past average of 0%.
+    past_lots = [_lot(95.0, [("Open", 1.0, [3])])] * 3
+    lots = past_lots + [_lot(95.0, [("Open", 1.0, [3]), ("Short", 10.0, [5])])]
+    warns = [w for w in evaluate(lots, CFG) if w["type"] == "bin_surge"]
+    assert [w["message"] for w in warns] == ["Short ▲10.0%"]
+    assert warns[0]["bin_code"] == 5
+
+
+def test_new_bin_small_value_does_not_trigger():
+    past_lots = [_lot(95.0, [("Open", 1.0, [3])])] * 3
+    lots = past_lots + [_lot(95.0, [("Open", 1.0, [3]), ("Short", 2.0, [5])])]
+    warns = [w for w in evaluate(lots, CFG) if w["type"] == "bin_surge"]
+    assert warns == []
