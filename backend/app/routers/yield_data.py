@@ -93,8 +93,6 @@ def debug_probe(nickname: str, process: str, start_month: str, end_month: str) -
     Usage: GET /api/debug/probe?nickname=Phoenix&process=FT&start_month=2025-01&end_month=2025-05
     Useful for diagnosing empty data issues (wrong PRODUCT_ID, SQL returning 0 rows, etc.)
     """
-    import traceback
-
     from app.config import settings
 
     out: dict = {
@@ -120,8 +118,8 @@ def debug_probe(nickname: str, process: str, start_month: str, end_month: str) -
         out["yield_avg_sample"] = proc_data.yield_avg[:5]
         out["fail_bin_names"] = list(proc_data.fail_bins.keys())
     except Exception as e:
+        logger.exception("debug_probe failed: nickname=%s process=%s", nickname, process)
         out["error"] = str(e)
-        out["traceback"] = traceback.format_exc()
     return out
 
 

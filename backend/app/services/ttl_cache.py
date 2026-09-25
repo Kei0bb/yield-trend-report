@@ -4,7 +4,12 @@ Lazy: a value is (re)computed only when missing, stale, or force=True.
 ``TTLCache`` is thread-safe and single-flight: when multiple threads request
 the same missing/stale key only one runs compute(); the others wait and share
 the result.  For multi-worker deployments replace with an external store
-(Redis) — this cache is per-process only."""
+(Redis) — this cache is per-process only.
+
+Every cache in the app is a module-level ``TTLCache`` instance (see
+lot_service.py, map_service.py, dashboard.py, explore.py) — there is no bare
+module-level cache function; a shared dict without a lock is not safe under
+concurrent requests."""
 import collections
 import logging
 import threading
@@ -14,22 +19,6 @@ from typing import Callable
 logger = logging.getLogger(__name__)
 
 DEFAULT_TTL_SECONDS = 3 * 60 * 60  # 3 hours
-
-_store: dict[str, tuple[float, object]] = {}
-
-
-def get_or_compute(key: str, compute: Callable[[], object], *, force: bool = False,
-                   ttl: float = DEFAULT_TTL_SECONDS) -> object:
-    now = time.time()
-    if not force and key in _store:
-        ts, val = _store[key]
-        if now - ts < ttl:
-            logger.debug("cache hit %s (age %.0fs)", key, now - ts)
-            return val
-    val = compute()
-    _store[key] = (now, val)
-    logger.info("cache fill %s (force=%s)", key, force)
-    return val
 
 
 class TTLCache:

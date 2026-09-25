@@ -57,9 +57,9 @@ def export_pdf(req: YieldRequest) -> Response:
             end_month=req.end_month,
             data=data,
         )
-    except Exception as e:
+    except Exception:
         logger.error("generate_pdf failed:\n%s", traceback.format_exc())
-        raise HTTPException(status_code=500, detail=f"PDF generation failed: {e}")
+        raise HTTPException(status_code=500, detail="PDF generation failed")
 
     raw_name = f"YieldTrend_{products_label}_{req.start_month}_to_{req.end_month}"
     headers = {"Content-Disposition": content_disposition(raw_name)}

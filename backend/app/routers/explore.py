@@ -8,9 +8,11 @@ from app.services.product_config import (
     resolve_display_name,
     resolve_target,
 )
-from app.services.ttl_cache import get_or_compute
+from app.services.ttl_cache import TTLCache
 
 router = APIRouter()
+
+_explore_cache = TTLCache(maxsize=64)
 
 
 @router.get("/explore/lots", response_model=ExploreLotsResponse)
@@ -44,7 +46,7 @@ def explore_lots(
 
     if force:
         clear_lot_df_cache()
-    return get_or_compute(
+    return _explore_cache.get_or_compute(
         f"explore:{product_id}:{process}:{months}:{sub or ''}",
         _compute,
         force=force,

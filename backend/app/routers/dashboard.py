@@ -2,9 +2,11 @@ from fastapi import APIRouter, Query
 
 from app.services.lot_service import clear_lot_df_cache
 from app.services.summary_service import build_summary
-from app.services.ttl_cache import get_or_compute
+from app.services.ttl_cache import TTLCache
 
 router = APIRouter()
+
+_summary_cache = TTLCache(maxsize=32)
 
 
 @router.get("/dashboard/summary")
@@ -15,7 +17,7 @@ def dashboard_summary(
 ) -> dict:
     if force:
         clear_lot_df_cache()
-    return get_or_compute(
+    return _summary_cache.get_or_compute(
         f"summary:{months}:{process}",
         lambda: build_summary(months=months, process=process),
         force=force,
