@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import type { LotData } from "../../types";
 import { last8 } from "../../utils/tpRev";
 import { tableStyles } from "../../ui/tableStyles";
-import Badge from "../../ui/Badge";
+import WarningsPopover from "../../ui/WarningsPopover";
 
 interface Props {
   lots: LotData[];
@@ -22,8 +22,8 @@ export default function LotTable({ lots, availableBins, productId, process, sub,
 
   // Left identity columns are fixed-width to their content (Lot ID 6ch,
   // Prog Rev 8ch, Date 10ch, Wafers 2ch), all left-aligned; the freed space
-  // goes to wider bin and alert columns.
-  const minWidth = 68 + 84 + 92 + 56 + 58 + availableBins.length * 76 + 220;
+  // goes to wider bin columns (the alert column is a narrow popover trigger).
+  const minWidth = 68 + 84 + 92 + 56 + 58 + availableBins.length * 76 + 70;
 
   return (
     <div style={styles.scroll}>
@@ -35,7 +35,7 @@ export default function LotTable({ lots, availableBins, productId, process, sub,
           <col style={{ width: 56 }} />
           <col style={{ width: 58 }} />
           {availableBins.map((b) => <col key={b} style={{ width: 76 }} />)}
-          <col style={{ width: 220 }} />
+          <col style={{ width: 70 }} />
         </colgroup>
         <thead>
           <tr>
@@ -72,9 +72,7 @@ export default function LotTable({ lots, availableBins, productId, process, sub,
               <td style={styles.td}>{lot.yield_pct.toFixed(1)}%</td>
               {availableBins.map((b) => <td key={b} style={styles.td}>{pctFor(lot, b).toFixed(2)}%</td>)}
               <td style={styles.tdLeft}>
-                {lot.warnings.map((w, i) => (
-                  <span key={i} style={{ marginRight: 4 }}><Badge variant="error">⚠ {w.message}</Badge></span>
-                ))}
+                <WarningsPopover warnings={lot.warnings} />
               </td>
             </tr>
           ))}

@@ -89,3 +89,16 @@ def test_spa_fallback_serves_index_for_unknown_route(tmp_path):
         assert "spa index" in resp.text
     finally:
         _restore(original)
+
+
+def test_spa_index_is_not_cached(tmp_path):
+    """index.html must be revalidated on every load; otherwise browsers keep a
+    stale copy pointing at old hashed bundles after a rebuild."""
+    module, original, _secret = _load_main_with_dist(tmp_path)
+    try:
+        client = TestClient(module.app)
+        resp = client.get("/wafermap")
+        assert resp.status_code == 200
+        assert resp.headers.get("cache-control") == "no-cache"
+    finally:
+        _restore(original)

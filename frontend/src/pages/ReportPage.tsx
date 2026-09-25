@@ -3,7 +3,6 @@ import ReportView from "../components/ReportView";
 import ErrorBanner from "../components/ErrorBanner";
 import { fetchReportProducts, fetchHealth, fetchYieldData, exportPdf, fetchProcessUnits } from "../api/client";
 import type { Product, YieldRequest, YieldResponse } from "../types";
-import PageTitle from "../ui/PageTitle";
 import Select from "../ui/Select";
 import Button from "../ui/Button";
 import WatSummaryTab from "../components/wat/WatSummaryTab";
@@ -106,8 +105,6 @@ export default function ReportPage() {
     <div style={styles.page}>
       {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
       <main style={styles.container}>
-        <PageTitle title="Report" />
-
         <div style={styles.tabs}>
           {([
             ["yield", "Yield Trend"],

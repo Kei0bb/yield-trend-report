@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import type { Warning } from "../../types";
-import Badge from "../../ui/Badge";
+import type { Warning } from "../types";
+import Badge from "./Badge";
 
 interface Props {
   warnings: Warning[];

@@ -103,8 +103,10 @@ if FRONTEND_DIST.exists():
             inside_dist = False
         if full_path and inside_dist and resolved.is_file():
             return FileResponse(resolved)
-        # Otherwise return index.html so React Router can handle the route
-        return FileResponse(FRONTEND_DIST / "index.html")
+        # Otherwise return index.html so React Router can handle the route.
+        # no-cache: always revalidate, so a rebuild's new hashed bundle names
+        # reach the browser (the hashed /assets files stay cacheable).
+        return FileResponse(FRONTEND_DIST / "index.html", headers={"Cache-Control": "no-cache"})
 else:
     logging.getLogger("app").warning(
         "Frontend not built: %s not found. Run 'cd frontend && npm run build' to enable SPA serving.",

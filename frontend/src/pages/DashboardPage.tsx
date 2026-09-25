@@ -2,7 +2,6 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { fetchDashboardSummary } from "../api/client";
 import type { DashboardSummaryResponse } from "../types";
 import SummaryTable from "../components/dashboard/SummaryTable";
-import PageTitle from "../ui/PageTitle";
 import Select from "../ui/Select";
 import Button from "../ui/Button";
 import Spinner from "../ui/Spinner";
@@ -45,8 +44,6 @@ export default function DashboardPage() {
 
   return (
     <main style={styles.container}>
-      <PageTitle title="Dashboard" />
-
       <div style={styles.toolbar}>
         <label style={styles.field}>
           <span style={styles.fieldLabel}>Period</span>
