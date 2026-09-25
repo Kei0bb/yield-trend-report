@@ -61,7 +61,7 @@ export const WAFER_COLORSCALE: [number, string][] = [
  *  black. Use STATUS_PLOT_COLOR for anything Plotly-facing. */
 export const STATUS_COLOR: Record<string, string> = {
   red: "var(--error)",
-  yellow: "var(--warning)",
+  yellow: "var(--warning-deep)",
   gray: "var(--muted-soft)",
   ok: "var(--ink)",
   excluded: "var(--ink)",
