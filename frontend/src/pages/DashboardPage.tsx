@@ -5,12 +5,15 @@ import SummaryTable from "../components/dashboard/SummaryTable";
 import PageTitle from "../ui/PageTitle";
 import Select from "../ui/Select";
 import Button from "../ui/Button";
+import Spinner from "../ui/Spinner";
+import ElapsedTimer from "../ui/ElapsedTimer";
 
 export default function DashboardPage() {
   const [months, setMonths] = useState(3);
   const [process, setProcess] = useState("all");
   const [data, setData] = useState<DashboardSummaryResponse | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadingStartedAt, setLoadingStartedAt] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Guards against out-of-order responses: only the latest request may
@@ -20,6 +23,7 @@ export default function DashboardPage() {
   const load = useCallback(async (force = false) => {
     const id = ++reqIdRef.current;
     setLoading(true);
+    setLoadingStartedAt(Date.now());
     setError(null);
     try {
       const res = await fetchDashboardSummary(months, process, force);
@@ -30,7 +34,10 @@ export default function DashboardPage() {
       console.error(e);
       setError("Failed to load dashboard data.");
     } finally {
-      if (id === reqIdRef.current) setLoading(false);
+      if (id === reqIdRef.current) {
+        setLoading(false);
+        setLoadingStartedAt(null);
+      }
     }
   }, [months, process]);
 
@@ -58,15 +65,41 @@ export default function DashboardPage() {
           </Select>
         </label>
         <Button onClick={() => load(true)} disabled={loading}>
-          {loading ? "Refreshing…" : "🔄 Refresh"}
+          {loading ? (
+            <>
+              <Spinner size={14} /> Refreshing…
+            </>
+          ) : (
+            "🔄 Refresh"
+          )}
         </Button>
         {data && <span style={styles.updated}>Updated: {new Date(data.generated_at).toLocaleString()}</span>}
       </div>
 
       {error && <div style={styles.error}>{error}</div>}
+
+      {!data && loading && (
+        <div style={{ ...styles.card, ...styles.initialLoadingCard }} aria-busy="true">
+          <Spinner size={28} />
+          <div aria-live="polite" style={styles.loadingText}>
+            {loadingStartedAt != null && <ElapsedTimer startedAt={loadingStartedAt} label="Loading data" />}
+          </div>
+        </div>
+      )}
+
       {data && (
-        <div style={styles.card}>
-          <SummaryTable rows={data.rows} months={data.period.months} />
+        <div style={styles.card} aria-busy={loading}>
+          <div style={loading ? styles.dimmedWrap : undefined}>
+            <SummaryTable rows={data.rows} months={data.period.months} />
+          </div>
+          {loading && (
+            <div style={styles.overlay}>
+              <Spinner size={28} />
+              <div aria-live="polite" style={styles.loadingText}>
+                {loadingStartedAt != null && <ElapsedTimer startedAt={loadingStartedAt} label="Refreshing" />}
+              </div>
+            </div>
+          )}
         </div>
       )}
       {data && data.rows.length === 0 && !loading && <p style={styles.empty}>No data available.</p>}
@@ -105,6 +138,27 @@ const styles: Record<string, React.CSSProperties> = {
     border: "var(--hairline)",
     borderRadius: "var(--radius-card)",
     overflow: "hidden",
+    position: "relative",
   },
+  initialLoadingCard: {
+    minHeight: 240,
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+  },
+  dimmedWrap: { opacity: 0.45, pointerEvents: "none" },
+  overlay: {
+    position: "absolute",
+    inset: 0,
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    background: "rgba(250, 249, 245, 0.55)",
+  },
+  loadingText: { fontSize: 13, color: "var(--muted)", fontVariantNumeric: "tabular-nums" },
   empty: { color: "var(--muted-soft)", fontSize: 14 },
 };
