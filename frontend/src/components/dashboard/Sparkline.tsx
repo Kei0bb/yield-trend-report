@@ -1,3 +1,5 @@
+import { INK } from "../../theme";
+
 interface SparklineProps {
   values: number[];
   width?: number;
@@ -7,7 +9,7 @@ interface SparklineProps {
 }
 
 export default function Sparkline({
-  values, width = 90, height = 22, color = "#141413", target,
+  values, width = 90, height = 22, color = INK, target,
 }: SparklineProps) {
   if (values.length < 2) {
     return <svg width={width} height={height} />;
@@ -35,7 +37,7 @@ export default function Sparkline({
           y1={targetY}
           x2={width}
           y2={targetY}
-          stroke="rgba(20,20,19,0.3)"
+          stroke="rgba(23,23,23,0.3)"
           strokeWidth={1}
           strokeDasharray="3 3"
         />

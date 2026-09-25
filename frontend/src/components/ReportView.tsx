@@ -108,10 +108,10 @@ const styles: Record<string, React.CSSProperties> = {
   },
   header: { marginBottom: 32 },
   title: {
-    fontSize: 26,
-    fontWeight: 700,
+    fontSize: 24,
+    fontWeight: 600,
     color: "var(--ink)",
-    letterSpacing: "-0.02em",
+    letterSpacing: "-0.04em",
     lineHeight: 1.2,
     marginBottom: 12,
   },
@@ -145,7 +145,7 @@ const styles: Record<string, React.CSSProperties> = {
   emptyCard: {
     maxWidth: 460,
     background: "var(--surface-card)",
-    border: "var(--hairline)",
+    boxShadow: "var(--shadow-card)",
     borderRadius: "var(--radius-card)",
     padding: "36px 32px",
     textAlign: "center",

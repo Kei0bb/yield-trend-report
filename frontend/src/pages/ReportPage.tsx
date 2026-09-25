@@ -225,7 +225,7 @@ const styles: Record<string, React.CSSProperties> = {
   chipActive: {
     background: "var(--surface-soft)",
     color: "var(--ink)",
-    border: "1px solid rgba(204, 120, 92, 0.45)",
+    border: "1px solid var(--hairline-strong)",
   },
   mock: {
     display: "inline-flex",

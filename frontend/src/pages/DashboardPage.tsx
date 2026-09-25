@@ -126,8 +126,8 @@ const styles: Record<string, React.CSSProperties> = {
   },
   updated: { fontSize: 12, color: "var(--muted-soft)", marginLeft: "auto", fontVariantNumeric: "tabular-nums" },
   error: {
-    background: "rgba(198, 69, 69, 0.08)",
-    color: "var(--error)",
+    background: "var(--error-soft)",
+    color: "var(--error-deep)",
     padding: "10px 14px",
     borderRadius: "var(--radius-control)",
     marginBottom: 16,
@@ -135,7 +135,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   card: {
     background: "var(--surface-card)",
-    border: "var(--hairline)",
+    boxShadow: "var(--shadow-card)",
     borderRadius: "var(--radius-card)",
     overflow: "hidden",
     position: "relative",
@@ -157,7 +157,7 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: "center",
     justifyContent: "center",
     gap: 10,
-    background: "rgba(250, 249, 245, 0.55)",
+    background: "rgba(250, 250, 250, 0.6)",
   },
   loadingText: { fontSize: 13, color: "var(--muted)", fontVariantNumeric: "tabular-nums" },
   empty: { color: "var(--muted-soft)", fontSize: 14 },

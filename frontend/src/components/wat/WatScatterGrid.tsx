@@ -31,8 +31,8 @@ function ScatterPlot({ plot }: { plot: WatScatterPlot }) {
       ? [{
           type: "rect" as const,
           x0: xLo, x1: xHi, y0: yLo, y1: yHi,
-          line: { color: "rgba(198,69,69,0.45)", width: 1, dash: "dash" as const },
-          fillcolor: "rgba(198,69,69,0.05)",
+          line: { color: "rgba(238,0,0,0.45)", width: 1, dash: "dash" as const },
+          fillcolor: "rgba(238,0,0,0.05)",
           layer: "below" as const,
         }]
       : [];
@@ -118,7 +118,7 @@ export default function WatScatterGrid({ pairs }: Props) {
 const styles: Record<string, React.CSSProperties> = {
   card: {
     background: "var(--surface-card)",
-    border: "var(--hairline)",
+    boxShadow: "var(--shadow-card)",
     borderRadius: "var(--radius-card)",
     padding: 16,
     marginBottom: 20,
@@ -137,7 +137,7 @@ const styles: Record<string, React.CSSProperties> = {
   chipActive: {
     background: "var(--surface-soft)",
     color: "var(--ink)",
-    border: "1px solid rgba(204, 120, 92, 0.45)",
+    border: "1px solid var(--hairline-strong)",
   },
   legendHint: { marginLeft: "auto", fontSize: 12, color: "var(--muted-soft)" },
   grid: {

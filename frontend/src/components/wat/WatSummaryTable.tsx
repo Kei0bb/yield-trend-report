@@ -138,7 +138,7 @@ export default function WatSummaryTable<T extends WatTableRow>(
 const styles: Record<string, React.CSSProperties> = {
   card: {
     background: "var(--surface-card)",
-    border: "var(--hairline)",
+    boxShadow: "var(--shadow-card)",
     borderRadius: "var(--radius-card)",
     padding: 8,
     marginBottom: 20,
@@ -146,8 +146,8 @@ const styles: Record<string, React.CSSProperties> = {
   },
   markCol: { width: 24 },
   row: { cursor: "pointer" },
-  rowRed: { background: "rgba(198, 69, 69, 0.06)" },
-  rowYellow: { background: "rgba(212, 160, 23, 0.08)" },
+  rowRed: { background: "var(--error-soft)" },
+  rowYellow: { background: "var(--warning-soft)" },
   rowOpen: { background: "var(--surface-soft)" },
   chartCell: { padding: "8px 4px 16px" },
   sectionCell: {

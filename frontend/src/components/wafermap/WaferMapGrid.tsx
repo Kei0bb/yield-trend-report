@@ -132,5 +132,5 @@ const styles: Record<string, React.CSSProperties> = {
     whiteSpace: "nowrap",
   },
   cell: { padding: 1, textAlign: "center", verticalAlign: "middle" },
-  noWafer: { color: "#c8c3ba", fontSize: 12 },
+  noWafer: { color: "#a1a1a1", fontSize: 12 },
 };

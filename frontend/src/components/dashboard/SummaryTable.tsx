@@ -4,6 +4,7 @@ import type { SummaryRow } from "../../types";
 import Sparkline from "./Sparkline";
 import { tableStyles } from "../../ui/tableStyles";
 import WarningsPopover from "./WarningsPopover";
+import { INK, STATUS_PLOT_COLOR } from "../../theme";
 
 type SortKey = "product_id" | "process" | "latest_yield" | "avg_yield_6m" | "delta";
 
@@ -226,7 +227,7 @@ export default function SummaryTable({ rows, months }: Props) {
               <td style={{ ...styles.td, ...cellEnd }}>
                 <Sparkline
                   values={r.sparkline.map((p) => p.yield_pct)}
-                  color={warn ? "#c64545" : "#141413"}
+                  color={warn ? STATUS_PLOT_COLOR.red : INK}
                   target={r.target}
                 />
               </td>

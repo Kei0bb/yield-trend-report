@@ -56,7 +56,7 @@ export default function YieldChart({ processName, data, target, colorMap }: Yiel
           yref: "y2",
           y0: target,
           y1: target,
-          line: { color: "rgba(198,69,69,0.6)", width: 1.5, dash: "dash" },
+          line: { color: "rgba(238,0,0,0.6)", width: 1.5, dash: "dash" },
         },
       ]
     : [];
@@ -107,7 +107,7 @@ export default function YieldChart({ processName, data, target, colorMap }: Yiel
 const styles: Record<string, React.CSSProperties> = {
   card: {
     background: "var(--surface-card)",
-    border: "var(--hairline)",
+    boxShadow: "var(--shadow-card)",
     borderRadius: "var(--radius-card)",
     padding: "22px 24px 12px",
   },

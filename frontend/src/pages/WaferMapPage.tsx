@@ -312,8 +312,8 @@ const styles: Record<string, React.CSSProperties> = {
   copyRow: { display: "flex", alignItems: "center", gap: 10 },
   copyMsg: { fontSize: 12, color: "var(--muted-soft)" },
   error: {
-    background: "rgba(198, 69, 69, 0.08)",
-    color: "var(--error)",
+    background: "var(--error-soft)",
+    color: "var(--error-deep)",
     padding: "10px 14px",
     borderRadius: "var(--radius-control)",
     marginBottom: 16,
@@ -321,7 +321,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   card: {
     background: "var(--surface-card)",
-    border: "var(--hairline)",
+    boxShadow: "var(--shadow-card)",
     borderRadius: "var(--radius-card)",
     padding: 20,
     marginBottom: 20,
