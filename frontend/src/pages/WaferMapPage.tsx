@@ -6,7 +6,6 @@ import WaferMapGrid from "../components/wafermap/WaferMapGrid";
 import { copyGridToClipboard } from "../components/wafermap/copyGrid";
 import CheckListCard from "../ui/CheckListCard";
 import Button from "../ui/Button";
-import PageTitle from "../ui/PageTitle";
 
 const MAX_LOTS = 12;
 
@@ -197,68 +196,72 @@ export default function WaferMapPage() {
 
   return (
     <main style={styles.container}>
-      <PageTitle title="Wafer Map" />
-
       {lotsError && <div style={styles.error}>{lotsError}</div>}
 
       <div style={styles.row}>
-        <CheckListCard
-          title="Product" grow={1.6} minWidth={140}
-          selected={[productId]}
-          onToggle={(v) => { if (v !== productId) resetSelection(); setProductId(v); setSub(""); }}
-          options={products.map((p) => ({ value: p.product_id, label: p.product_id + (p.display_name && p.display_name !== p.product_id ? ` (${p.display_name})` : "") }))}
-        />
-        <CheckListCard
-          title="Process" grow={1} minWidth={100}
-          selected={[process]}
-          onToggle={(v) => { if (v !== process) resetSelection(); setProcess(v); setSub(""); }}
-          options={[{ value: "CP", label: "CP" }, { value: "FT", label: "FT" }, { value: "SLT", label: "SLT" }]}
-        />
-        <CheckListCard
-          title="Sub" grow={1} minWidth={100}
-          selected={[sub]}
-          onToggle={(v) => { if (v !== sub) resetSelection(); setSub(v); }}
-          options={[{ value: "", label: "All" }, ...(subsByProcess[process] || []).map((s) => ({ value: s, label: s }))]}
-        />
-        <CheckListCard
-          title="Period" grow={1} minWidth={100}
-          selected={[String(months)]}
-          onToggle={(v) => setMonths(Number(v))}
-          options={[{ value: "1", label: "1 month" }, { value: "3", label: "3 months" }, { value: "6", label: "6 months" }]}
-          footer={
-            <Button onClick={() => loadLots()} disabled={lotsLoading} style={{ width: "100%", marginTop: 12 }}>
-              {lotsLoading ? "Loading…" : "🔄 Load lots"}
-            </Button>
-          }
-        />
-        <CheckListCard
-          title="Lots" grow={1.6} minWidth={170}
-          selected={selectedLots}
-          onToggle={toggleLot}
-          options={lotsLoading ? [] : displayLots.map((l) => ({
-            value: l.lot_id,
-            label: l.lot_id,
-            disabled: !selectedLots.includes(l.lot_id) && selectedLots.length >= MAX_LOTS,
-          }))}
-          emptyText={lotsLoading ? "Loading lots…" : lotsData ? "No lots found." : undefined}
-          headerRight={
-            <>
-              <Button variant="ghost" onClick={() => setSelectedLots(displayLots.slice(0, MAX_LOTS).map((l) => l.lot_id))}>Select all</Button>
-              <Button variant="ghost" onClick={() => setSelectedLots([])}>Clear</Button>
-              <span style={styles.lotsCounter}>{selectedLots.length}/{MAX_LOTS}</span>
-            </>
-          }
-          footer={
-            <Button
-              variant="primary"
-              onClick={() => handleShowMaps()}
-              disabled={selectedLots.length === 0 || mapLoading}
-              style={{ alignSelf: "flex-start", marginTop: 12 }}
-            >
-              {mapLoading ? "Loading…" : "Show maps"}
-            </Button>
-          }
-        />
+        <div style={styles.selectionCard}>
+          <CheckListCard
+            title="Product" grow={1.6} minWidth={140} bare height={300}
+            selected={[productId]}
+            onToggle={(v) => { if (v !== productId) resetSelection(); setProductId(v); setSub(""); }}
+            options={products.map((p) => ({ value: p.product_id, label: p.product_id + (p.display_name && p.display_name !== p.product_id ? ` (${p.display_name})` : "") }))}
+          />
+          <CheckListCard
+            title="Process" grow={1} minWidth={100} bare height={300}
+            style={styles.dividedCol}
+            selected={[process]}
+            onToggle={(v) => { if (v !== process) resetSelection(); setProcess(v); setSub(""); }}
+            options={[{ value: "CP", label: "CP" }, { value: "FT", label: "FT" }, { value: "SLT", label: "SLT" }]}
+          />
+          <CheckListCard
+            title="Sub" grow={1} minWidth={100} bare height={300}
+            style={styles.dividedCol}
+            selected={[sub]}
+            onToggle={(v) => { if (v !== sub) resetSelection(); setSub(v); }}
+            options={[{ value: "", label: "All" }, ...(subsByProcess[process] || []).map((s) => ({ value: s, label: s }))]}
+          />
+          <CheckListCard
+            title="Period" grow={1} minWidth={100} bare height={300}
+            style={styles.dividedCol}
+            selected={[String(months)]}
+            onToggle={(v) => setMonths(Number(v))}
+            options={[{ value: "1", label: "1 month" }, { value: "3", label: "3 months" }, { value: "6", label: "6 months" }]}
+            footer={
+              <Button onClick={() => loadLots()} disabled={lotsLoading} style={{ width: "100%", marginTop: 12 }}>
+                {lotsLoading ? "Loading…" : "🔄 Load lots"}
+              </Button>
+            }
+          />
+          <CheckListCard
+            title="Lots" grow={1.6} minWidth={170} bare height={300}
+            style={styles.dividedCol}
+            selected={selectedLots}
+            onToggle={toggleLot}
+            options={lotsLoading ? [] : displayLots.map((l) => ({
+              value: l.lot_id,
+              label: l.lot_id,
+              disabled: !selectedLots.includes(l.lot_id) && selectedLots.length >= MAX_LOTS,
+            }))}
+            emptyText={lotsLoading ? "Loading lots…" : lotsData ? "No lots found." : undefined}
+            headerRight={
+              <>
+                <Button variant="ghost" onClick={() => setSelectedLots(displayLots.slice(0, MAX_LOTS).map((l) => l.lot_id))}>Select all</Button>
+                <Button variant="ghost" onClick={() => setSelectedLots([])}>Clear</Button>
+                <span style={styles.lotsCounter}>{selectedLots.length}/{MAX_LOTS}</span>
+              </>
+            }
+            footer={
+              <Button
+                variant="primary"
+                onClick={() => handleShowMaps()}
+                disabled={selectedLots.length === 0 || mapLoading}
+                style={{ alignSelf: "flex-start", marginTop: 12 }}
+              >
+                {mapLoading ? "Loading…" : "Show maps"}
+              </Button>
+            }
+          />
+        </div>
         <CheckListCard
           title="Bin filter" grow={1.8} minWidth={240}
           selected={selectedBins.map(String)}
@@ -327,6 +330,22 @@ const styles: Record<string, React.CSSProperties> = {
     marginBottom: 20,
   },
   row: { display: "flex", gap: 16, alignItems: "flex-start", marginBottom: 20, flexWrap: "wrap" },
+  // Outer card wrapping the Product/Process/Sub/Period/Lots selection
+  // columns as one unit; flex sum matches its children's combined grow
+  // (1.6 + 1 + 1 + 1 + 1.6 = 6.2). 340 = 300 (child height) + 2×20 padding,
+  // matching the separate Bin filter card's height.
+  selectionCard: {
+    display: "flex",
+    gap: 16,
+    flex: "6.2 1 0",
+    minWidth: 0,
+    background: "var(--surface-card)",
+    boxShadow: "var(--shadow-card)",
+    borderRadius: "var(--radius-card)",
+    padding: 20,
+  },
+  // Vertical hairline separating columns 2-5 within the selection card.
+  dividedCol: { borderLeft: "var(--hairline)", paddingLeft: 16 },
   lotsCounter: { fontSize: 12, color: "var(--muted-soft)", fontVariantNumeric: "tabular-nums" },
   mapMeta: { color: "var(--muted-soft)", fontSize: 13 },
   gridSpacer: { marginTop: 16 },

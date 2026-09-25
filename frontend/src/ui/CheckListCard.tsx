@@ -20,16 +20,31 @@ interface CheckListCardProps {
   height?: number;
   /** Shown inside the scroll box when there are no options (loading / empty). */
   emptyText?: string;
+  /** When true, the outer wrapper drops its own card chrome (background,
+   *  shadow, radius, padding) — for use inside a shared outer card. Header,
+   *  bordered scroll list, footer, and flex sizing are unchanged. */
+  bare?: boolean;
+  /** Extra styles merged last into the outer wrapper (e.g. a divider border). */
+  style?: CSSProperties;
 }
 
 /** Titled fixed-height card with a bordered scroll box of checkbox rows —
  *  the unified filter-card design from the wafer-map tab, now shared. */
 export default function CheckListCard({
   title, options, selected, onToggle, headerRight, footer,
-  grow = 1, minWidth = 0, height = 340, emptyText,
+  grow = 1, minWidth = 0, height = 340, emptyText, bare = false, style,
 }: CheckListCardProps) {
   return (
-    <div style={{ ...styles.card, flex: `${grow} 1 0`, minWidth, height }}>
+    <div
+      style={{
+        ...styles.card,
+        ...(bare ? styles.cardBare : {}),
+        flex: `${grow} 1 0`,
+        minWidth,
+        height,
+        ...style,
+      }}
+    >
       <div style={styles.header}>
         <span style={styles.title}>{title}</span>
         {headerRight && <div style={styles.headerRight}>{headerRight}</div>}
@@ -66,6 +81,13 @@ const styles: Record<string, CSSProperties> = {
     marginBottom: 0,
     display: "flex",
     flexDirection: "column",
+  },
+  // Drops card chrome when nested inside a shared outer card (`bare`).
+  cardBare: {
+    background: "none",
+    boxShadow: "none",
+    borderRadius: 0,
+    padding: 0,
   },
   header: {
     display: "flex",

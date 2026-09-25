@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import type { SummaryRow } from "../../types";
 import Sparkline from "./Sparkline";
 import { tableStyles } from "../../ui/tableStyles";
-import WarningsPopover from "./WarningsPopover";
+import WarningsPopover from "../../ui/WarningsPopover";
 import { INK, STATUS_PLOT_COLOR } from "../../theme";
 
 type SortKey = "product_id" | "process" | "latest_yield" | "avg_yield_6m" | "delta";
