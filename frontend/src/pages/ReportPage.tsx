@@ -48,16 +48,20 @@ export default function ReportPage() {
       setProcesses([]);
       return;
     }
+    let cancelled = false;
     fetchProcessUnits(productId)
       .then((list) => {
+        if (cancelled) return; // stale response — productId changed mid-fetch
         setUnits(list);
         setProcesses(list.map((u) => u.label));
       })
       .catch((err) => {
+        if (cancelled) return;
         console.error("Failed to fetch process units:", err);
         setUnits([]);
         setProcesses([]);
       });
+    return () => { cancelled = true; };
   }, [productId]);
 
   const toggleProcess = (p: string) =>

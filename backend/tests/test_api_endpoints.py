@@ -49,3 +49,26 @@ def test_existing_yield_data_endpoint_unchanged():
     })
     assert r.status_code == 200
     assert "data" in r.json()
+
+
+def test_debug_probe_logs_traceback_but_does_not_leak_it(monkeypatch, caplog):
+    """A failure inside debug_probe must be logged server-side (with
+    traceback) but the response body must only carry str(e), not the
+    traceback text."""
+    import app.routers.yield_data as yield_data
+
+    def _boom(**kwargs):
+        raise RuntimeError("boom: distinctive probe failure")
+
+    monkeypatch.setattr(yield_data, "get_yield_data_merged", _boom)
+
+    with caplog.at_level("ERROR"):
+        r = client.get("/api/debug/probe", params={
+            "nickname": "Product-A", "process": "CP",
+            "start_month": "2026-01", "end_month": "2026-05",
+        })
+    assert r.status_code == 200
+    body = r.json()
+    assert body["error"] == "boom: distinctive probe failure"
+    assert "traceback" not in body
+    assert "boom: distinctive probe failure" in caplog.text

@@ -64,9 +64,9 @@ def wat_export_pdf(req: WatExportRequest) -> Response:
     try:
         summary = get_wat_summary(nickname, req.product_id, req.lot_id)
         pdf_bytes = generate_wat_pdf(summary)
-    except Exception as e:
+    except Exception:
         logger.error("wat_export_pdf failed:\n%s", traceback.format_exc())
-        raise HTTPException(status_code=500, detail=f"PDF generation failed: {e}")
+        raise HTTPException(status_code=500, detail="PDF generation failed")
 
     headers = {"Content-Disposition": content_disposition(f"WAT_{req.product_id}_{req.lot_id}")}
     return Response(content=pdf_bytes, media_type="application/pdf", headers=headers)
@@ -78,9 +78,9 @@ def wat_export_trend_pdf(req: WatTrendExportRequest) -> Response:
     try:
         trend = get_wat_trend(nickname, req.product_id, req.months)
         pdf_bytes = generate_wat_trend_pdf(trend)
-    except Exception as e:
+    except Exception:
         logger.error("wat_export_trend_pdf failed:\n%s", traceback.format_exc())
-        raise HTTPException(status_code=500, detail=f"PDF generation failed: {e}")
+        raise HTTPException(status_code=500, detail="PDF generation failed")
 
     name = f"WAT_TREND_{req.product_id}_{req.months}M"
     headers = {"Content-Disposition": content_disposition(name)}

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { fetchDashboardSummary } from "../api/client";
 import type { DashboardSummaryResponse } from "../types";
 import SummaryTable from "../components/dashboard/SummaryTable";
@@ -13,16 +13,24 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Guards against out-of-order responses: only the latest request may
+  // write data/error/loading (months/process can change mid-fetch).
+  const reqIdRef = useRef(0);
+
   const load = useCallback(async (force = false) => {
+    const id = ++reqIdRef.current;
     setLoading(true);
     setError(null);
     try {
-      setData(await fetchDashboardSummary(months, process, force));
+      const res = await fetchDashboardSummary(months, process, force);
+      if (id !== reqIdRef.current) return; // stale response
+      setData(res);
     } catch (e) {
+      if (id !== reqIdRef.current) return; // stale response
       console.error(e);
       setError("Failed to load dashboard data.");
     } finally {
-      setLoading(false);
+      if (id === reqIdRef.current) setLoading(false);
     }
   }, [months, process]);
 

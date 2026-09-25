@@ -74,6 +74,25 @@ export default function WaferMapPage() {
   // Guards loadLots against out-of-order responses: only the latest request
   // may write state when product/process changes mid-fetch.
   const lotsReqIdRef = useRef(0);
+  // Same guard for handleShowMaps.
+  const mapReqIdRef = useRef(0);
+
+  // Product/Process/Sub changed: the old lot selection, lots list, and
+  // displayed maps no longer apply to the new scope. Bumping the request-id
+  // refs discards any in-flight lots/maps response for the old selection
+  // (and their finally blocks then skip clearing the loading flags, so do it here).
+  const resetSelection = () => {
+    lotsReqIdRef.current++;
+    mapReqIdRef.current++;
+    setLotsLoading(false);
+    setMapLoading(false);
+    setSelectedLots([]);
+    setLotsData(null);
+    setLotsError(null);
+    setMapData(null);
+    setMapError(null);
+    setSelectedBins([]);
+  };
 
   const loadLots = useCallback(async () => {
     if (!productId || !process) return;
@@ -107,20 +126,23 @@ export default function WaferMapPage() {
     // Deep-link entry runs before the lots list loads — fall back to as-given.
     const ids = ordered.length > 0 ? ordered : [...chosen];
     if (ids.length === 0 || !productId || !process) return;
+    const id = ++mapReqIdRef.current;
     setMapLoading(true);
     setMapError(null);
     try {
       const res = await fetchWaferMaps({
         product_id: productId, process, lot_ids: ids, sub: sub || undefined,
       });
+      if (id !== mapReqIdRef.current) return; // stale response
       setMapData(res);
       setSelectedBins([]);
     } catch (e) {
+      if (id !== mapReqIdRef.current) return; // stale response
       console.error("Failed to load wafer maps:", e);
       setMapError("Failed to load wafer maps.");
       setMapData(null);
     } finally {
-      setMapLoading(false);
+      if (id === mapReqIdRef.current) setMapLoading(false);
     }
   }, [selectedLots, displayLots, productId, process, sub]);
 
@@ -183,19 +205,19 @@ export default function WaferMapPage() {
         <CheckListCard
           title="Product" grow={1.6} minWidth={140}
           selected={[productId]}
-          onToggle={(v) => { setProductId(v); setSub(""); }}
+          onToggle={(v) => { if (v !== productId) resetSelection(); setProductId(v); setSub(""); }}
           options={products.map((p) => ({ value: p.product_id, label: p.product_id + (p.display_name && p.display_name !== p.product_id ? ` (${p.display_name})` : "") }))}
         />
         <CheckListCard
           title="Process" grow={1} minWidth={100}
           selected={[process]}
-          onToggle={(v) => { setProcess(v); setSub(""); }}
+          onToggle={(v) => { if (v !== process) resetSelection(); setProcess(v); setSub(""); }}
           options={[{ value: "CP", label: "CP" }, { value: "FT", label: "FT" }, { value: "SLT", label: "SLT" }]}
         />
         <CheckListCard
           title="Sub" grow={1} minWidth={100}
           selected={[sub]}
-          onToggle={setSub}
+          onToggle={(v) => { if (v !== sub) resetSelection(); setSub(v); }}
           options={[{ value: "", label: "All" }, ...(subsByProcess[process] || []).map((s) => ({ value: s, label: s }))]}
         />
         <CheckListCard

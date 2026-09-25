@@ -143,6 +143,57 @@ def test_load_dataframe_cached():
     assert len(df1) > 0  # sanity: data was returned
 
 
+# ---------------------------------------------------------------------------
+# Router cache integration tests (Fix #4: routers must use the thread-safe
+# TTLCache, not the old bare-dict module-level get_or_compute/_store)
+# ---------------------------------------------------------------------------
+
+def test_dashboard_and_explore_routers_use_ttlcache_instances():
+    import app.routers.dashboard as dashboard_router
+    import app.routers.explore as explore_router
+
+    assert isinstance(dashboard_router._summary_cache, TTLCache)
+    assert isinstance(explore_router._explore_cache, TTLCache)
+
+
+def test_dashboard_summary_cache_is_single_flight(monkeypatch):
+    """Concurrent requests for the same summary key must invoke
+    build_summary exactly once (TTLCache single-flight) — this would run
+    once per thread with the old unsafe bare-dict cache."""
+    import app.routers.dashboard as dashboard_router
+
+    dashboard_router._summary_cache.clear()
+
+    call_count = [0]
+    barrier = threading.Barrier(5)
+
+    def slow_build_summary(*, months, process):
+        time.sleep(0.15)
+        call_count[0] += 1
+        return {"months": months, "process": process}
+
+    monkeypatch.setattr(dashboard_router, "build_summary", slow_build_summary)
+
+    results = []
+    results_lock = threading.Lock()
+
+    def worker():
+        barrier.wait()  # all 5 threads request simultaneously
+        r = dashboard_router.dashboard_summary(months=3, process="CP", force=False)
+        with results_lock:
+            results.append(r)
+
+    threads = [threading.Thread(target=worker) for _ in range(5)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join(timeout=5)
+
+    assert call_count[0] == 1, f"build_summary ran {call_count[0]} times, expected 1"
+    assert len(results) == 5
+    assert all(r == {"months": 3, "process": "CP"} for r in results)
+
+
 def test_load_dataframe_returns_independent_copies():
     """Mutating the returned DataFrame must not affect the cached value or subsequent calls."""
     clear_lot_df_cache()

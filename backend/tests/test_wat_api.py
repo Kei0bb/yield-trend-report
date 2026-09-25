@@ -71,6 +71,43 @@ def test_export_pdf_lot_id_with_quote_does_not_inject_second_filename():
     assert ascii_part.count('filename="') == 1
 
 
+def test_export_pdf_failure_returns_500_without_exception_text(monkeypatch, caplog):
+    """PDF generation failures must be logged server-side but must not leak
+    the exception message into the response body."""
+    import app.routers.wat as wat_router
+
+    def _boom(summary):
+        raise RuntimeError("distinctive wat pdf failure xyz")
+
+    monkeypatch.setattr(wat_router, "generate_wat_pdf", _boom)
+
+    with caplog.at_level("ERROR"):
+        res = client.post("/api/wat/export-pdf",
+                          json={"product_id": "P12345-A", "lot_id": "ロット1"})
+    assert res.status_code == 500
+    assert res.json()["detail"] == "PDF generation failed"
+    assert "distinctive wat pdf failure xyz" not in res.text
+    assert "distinctive wat pdf failure xyz" in caplog.text
+
+
+def test_export_trend_pdf_failure_returns_500_without_exception_text(monkeypatch, caplog):
+    """Same leak check for the trend PDF export endpoint."""
+    import app.routers.wat as wat_router
+
+    def _boom(trend):
+        raise RuntimeError("distinctive wat trend pdf failure xyz")
+
+    monkeypatch.setattr(wat_router, "generate_wat_trend_pdf", _boom)
+
+    with caplog.at_level("ERROR"):
+        res = client.post("/api/wat/export-trend-pdf",
+                          json={"product_id": "P12345-A", "months": 3})
+    assert res.status_code == 500
+    assert res.json()["detail"] == "PDF generation failed"
+    assert "distinctive wat trend pdf failure xyz" not in res.text
+    assert "distinctive wat trend pdf failure xyz" in caplog.text
+
+
 def test_get_endpoints_log_and_return_503_on_db_failure(monkeypatch, caplog):
     """A real-DB failure must be logged with traceback and surfaced as a
     503 with an actionable detail, not a bare unlogged 500."""
