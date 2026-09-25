@@ -1,6 +1,6 @@
 // Shared design tokens used by chart components and print view.
 // Edit here to change colors site-wide — do not duplicate in individual files.
-// Palette source: docs/superpowers/specs/2026-07-19-design-refresh-claude-style-design.md
+// Palette source: docs/superpowers/specs/2026-09-25-design-refresh-vercel-style-design.md
 
 /** Categorical fail-bin palette. Mirrored in backend/app/services/pdf_service.py
  *  BIN_COLORS — keep the two lists identical so screen and PDF agree.
@@ -23,12 +23,12 @@ export const BIN_COLORS = [
 export const FONT_FAMILY =
   "'Inter Variable', Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif";
 
-// Claude-style ink/hairline chart chrome
-export const INK = "#141413";
-export const MUTED = "#6c6a64";
-export const MUTED_SOFT = "#8e8b82";
-export const GRID = "#efe9de";
-export const AXIS_LINE = "#e6dfd8";
+// Vercel-style ink/hairline chart chrome
+export const INK = "#171717";
+export const MUTED = "#666666";
+export const MUTED_SOFT = "#888888";
+export const GRID = "#f2f2f2";
+export const AXIS_LINE = "#ebebeb";
 
 export const YIELD_LINE_COLOR = INK;
 
@@ -50,9 +50,9 @@ export function plotlyBaseLayout(): Partial<Plotly.Layout> {
 /** Wafer number is an ordered quantity, so it gets a single-hue light→dark
  *  ramp with a colorbar — not 25 categorical swatches, and never a rainbow. */
 export const WAFER_COLORSCALE: [number, string][] = [
-  [0.0, "#f0d9cf"],
-  [0.5, "#cc785c"],
-  [1.0, "#5c2f1e"],
+  [0.0, "#d3e5ff"],
+  [0.5, "#0070f3"],
+  [1.0, "#0a3a82"],
 ];
 
 /** PCM/WAT judgement. Reserved status colors — never reused as series colors.
@@ -60,8 +60,8 @@ export const WAFER_COLORSCALE: [number, string][] = [
  *  etc.) — tinycolor cannot resolve `var(...)` and silently falls back to
  *  black. Use STATUS_PLOT_COLOR for anything Plotly-facing. */
 export const STATUS_COLOR: Record<string, string> = {
-  red: "var(--error)",
-  yellow: "var(--warning)",
+  red: "var(--error-deep)",
+  yellow: "var(--warning-deep)",
   gray: "var(--muted-soft)",
   ok: "var(--ink)",
   excluded: "var(--ink)",
@@ -70,9 +70,11 @@ export const STATUS_COLOR: Record<string, string> = {
 /** Plotly parses colors with tinycolor and cannot resolve CSS custom
  *  properties — a `var(--error)` marker silently renders black, with no
  *  error. Literal mirror of STATUS_COLOR for anything handed to Plotly.
- *  Values match index.css and the backend's STATUS_HEX. */
+ *  Values match index.css. They intentionally differ from the backend's
+ *  STATUS_HEX (PDF keeps the previous palette — out of scope for the
+ *  Vercel refresh). */
 export const STATUS_PLOT_COLOR: Record<string, string> = {
-  red: "#c64545", yellow: "#d4a017", gray: "#8e8b82", ok: INK, excluded: INK,
+  red: "#ee0000", yellow: "#f5a623", gray: "#888888", ok: INK, excluded: INK,
 };
 
 /** Printed alongside the color so a black-and-white PDF still carries the
@@ -85,4 +87,4 @@ export const STATUS_MARK: Record<string, string> = {
   excluded: "",
 };
 
-export const SPEC_LINE_COLOR = "#c64545";
+export const SPEC_LINE_COLOR = "#ee0000";

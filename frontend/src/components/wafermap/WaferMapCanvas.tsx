@@ -38,7 +38,7 @@ export default function WaferMapCanvas({
     const cellY = size / (spanY + 2);
 
     ctx.clearRect(0, 0, size, size);
-    ctx.fillStyle = "#f3f2f0"; // wafer disc
+    ctx.fillStyle = "#f2f2f2"; // wafer disc
     ctx.beginPath();
     ctx.arc(size / 2, size / 2, size / 2 - 1, 0, Math.PI * 2);
     ctx.fill();
@@ -47,8 +47,8 @@ export default function WaferMapCanvas({
       const b = wafer.bin[i];
       const isPass = passBinCodes.includes(b);
       let color: string;
-      if (selectedBins.length) color = selectedBins.includes(b) ? colorFor(b) : "#eceae7";
-      else color = isPass ? "#e3e1de" : colorFor(b);
+      if (selectedBins.length) color = selectedBins.includes(b) ? colorFor(b) : "#ededed";
+      else color = isPass ? "#e5e5e5" : colorFor(b);
       ctx.fillStyle = color;
       ctx.fillRect(
         (wafer.x[i] - minX + 1) * cellX,

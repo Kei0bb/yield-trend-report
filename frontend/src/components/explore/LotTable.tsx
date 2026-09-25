@@ -94,5 +94,5 @@ const styles: Record<string, React.CSSProperties> = {
   warn: { ...tableStyles.rowWarn },
   binHead: { display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
   cellTrunc: { display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
-  lotLink: { display: "block", color: "var(--primary)", textDecoration: "none", fontWeight: 500 },
+  lotLink: { display: "block", color: "var(--link)", textDecoration: "none", fontWeight: 500 },
 };

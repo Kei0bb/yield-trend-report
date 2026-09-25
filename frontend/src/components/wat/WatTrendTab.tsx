@@ -163,14 +163,14 @@ const styles: Record<string, React.CSSProperties> = {
     color: "var(--muted-soft)", fontSize: 13,
   },
   error: {
-    background: "rgba(198, 69, 69, 0.08)", color: "var(--error)",
+    background: "var(--error-soft)", color: "var(--error-deep)",
     padding: "10px 14px", borderRadius: "var(--radius-control)",
     marginBottom: 16, fontSize: 13,
   },
   header: {
     display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap",
     padding: "12px 16px", marginBottom: 16,
-    background: "var(--surface-card)", border: "var(--hairline)",
+    background: "var(--surface-card)", boxShadow: "var(--shadow-card)",
     borderRadius: "var(--radius-card)",
     fontSize: 13, color: "var(--muted)",
   },

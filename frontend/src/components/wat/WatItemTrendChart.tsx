@@ -50,7 +50,7 @@ export default function WatItemTrendChart({
         y: points.flatMap((p) => p.values),
         type: "scatter",
         mode: "markers",
-        marker: { size: 4, color: "rgba(20,20,19,0.45)" },
+        marker: { size: 4, color: "rgba(23,23,23,0.45)" },
         hovertemplate: `${hoverPrefix}%{x}<br>%{y:.4g}<extra></extra>`,
       }]}
       layout={{

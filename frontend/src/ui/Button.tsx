@@ -6,8 +6,8 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
 }
 
-/** Kit button. primary = coral (one main action per view); secondary = white
- *  with hairline; ghost = borderless coral text link-button. */
+/** Kit button. primary = ink black (one main action per view); secondary =
+ *  white with hairline; ghost = borderless ink text link-button. */
 export default function Button({ variant = "secondary", disabled, style, ...rest }: ButtonProps) {
   const merged: CSSProperties = {
     ...base,
@@ -19,8 +19,8 @@ export default function Button({ variant = "secondary", disabled, style, ...rest
 }
 
 const base: CSSProperties = {
-  height: 36,
-  padding: "0 16px",
+  height: 32,
+  padding: "0 14px",
   borderRadius: "var(--radius-control)",
   fontSize: 13,
   fontWeight: 500,
@@ -35,7 +35,7 @@ const base: CSSProperties = {
 const variants: Record<Variant, CSSProperties> = {
   primary: { background: "var(--primary)", color: "#ffffff", border: "none" },
   secondary: { background: "var(--surface-card)", color: "var(--ink)", border: "var(--hairline)" },
-  ghost: { background: "none", color: "var(--primary)", border: "none", padding: 0, height: "auto", fontSize: 12 },
+  ghost: { background: "none", color: "var(--ink)", border: "none", padding: 0, height: "auto", fontSize: 12 },
 };
 
 const disabledStyles: Record<Variant, CSSProperties> = {

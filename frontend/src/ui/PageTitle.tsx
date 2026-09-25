@@ -5,7 +5,7 @@ interface PageTitleProps {
   subtext?: ReactNode;
 }
 
-/** Page heading: 26/700 ink title with an optional subtext line below. */
+/** Page heading: 24/600 ink title (tight tracking) with an optional subtext line below. */
 export default function PageTitle({ title, subtext }: PageTitleProps) {
   return (
     <header style={styles.header}>
@@ -18,11 +18,11 @@ export default function PageTitle({ title, subtext }: PageTitleProps) {
 const styles: Record<string, CSSProperties> = {
   header: { marginBottom: 24 },
   title: {
-    fontSize: 26,
-    fontWeight: 700,
+    fontSize: 24,
+    fontWeight: 600,
     color: "var(--ink)",
-    letterSpacing: "-0.02em",
-    lineHeight: 1.2,
+    letterSpacing: "-0.04em",
+    lineHeight: 1.25,
   },
   subtext: { marginTop: 10, fontSize: 13, color: "var(--muted)" },
 };
