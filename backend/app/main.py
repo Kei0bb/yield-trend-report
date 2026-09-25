@@ -91,10 +91,18 @@ if FRONTEND_DIST.exists():
         # Reject API/health requests that fell through (they should be handled above)
         if full_path.startswith(("api/", "health")):
             raise HTTPException(status_code=404, detail="Not found")
-        # Serve real files (favicon.ico, vite.svg, etc.) if they exist at dist root
+        # Serve real files (favicon.ico, vite.svg, etc.) if they exist at dist root.
+        # full_path can contain an unnormalized "../" (e.g. from a %2f-encoded
+        # slash the router decodes before we see it), so resolve the candidate
+        # and only serve it if it's still inside FRONTEND_DIST.
         candidate = FRONTEND_DIST / full_path
-        if full_path and candidate.is_file():
-            return FileResponse(candidate)
+        try:
+            resolved = candidate.resolve()
+            inside_dist = resolved.is_relative_to(FRONTEND_DIST.resolve())
+        except (OSError, ValueError):
+            inside_dist = False
+        if full_path and inside_dist and resolved.is_file():
+            return FileResponse(resolved)
         # Otherwise return index.html so React Router can handle the route
         return FileResponse(FRONTEND_DIST / "index.html")
 else:

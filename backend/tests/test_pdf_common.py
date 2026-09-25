@@ -67,3 +67,21 @@ def test_yield_pdf_still_generates():
     out = pdf_service.generate_pdf(["Product-A"], "2026-01", "2026-02", data)
     assert out[:4] == b"%PDF"
     assert len(out) > 1000
+
+
+def test_yield_pdf_header_shows_the_requested_period():
+    """Regression: the header used to ignore start_month/end_month and always
+    print date.today()-90days to today instead of the requested period."""
+    from io import BytesIO
+
+    from pypdf import PdfReader
+
+    from app.models.schemas import ProcessData
+    data = {"CP": {"Product-A": ProcessData(
+        lots=["2025W01", "2025W02"], yield_avg=[95.0, 94.0],
+        fail_bins={"Leak": [2.0, 3.0]},
+    )}}
+    out = pdf_service.generate_pdf(["Product-A"], "2025-01", "2025-05", data)
+    text = PdfReader(BytesIO(out)).pages[0].extract_text()
+    assert "2025-01" in text
+    assert "2025-05" in text
